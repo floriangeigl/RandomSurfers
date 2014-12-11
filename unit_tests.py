@@ -22,3 +22,9 @@ class TestMover(unittest.TestCase):
         network = GraphGenerator().create_karate_graph()
         cf = cost_function.CostFunction(network)
         cf.calc_cost()
+
+    def test_CostFunctionSpeed(self):
+        network = GraphGenerator(3000)
+        network = network.create_random_graph()
+        cf = cost_function.CostFunction(network)
+        cf.calc_cost()

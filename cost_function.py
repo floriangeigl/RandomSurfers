@@ -100,5 +100,6 @@ class CostFunction():
             prop = deg * self.deg_weight + cos * self.cos_weight
             part_cost = np.nansum((prop * self.best_neighbours[srcs, :]))
             cost += part_cost
-        print cost
+        self.print_f('cost:', cost)
+        return cost
 
