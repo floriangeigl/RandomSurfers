@@ -1,3 +1,4 @@
+from __future__ import division
 from abc import abstractmethod
 import math
 
@@ -20,16 +21,17 @@ class MoveSwapper(Mover):
         Mover.__init__(self)
         self.swap_size = swap_size
         assert swap_size <= 0.5
-        self.upper = True
+        self.upper = upper
         self.reduce_fun = reduce_function
 
     def move(self, vector):
         super(MoveSwapper, self).move(vector)
-        num_elements = int(math.round(self.swap_size * len(vector)))
+        num_elements = int(round(self.swap_size * len(vector)))
         if self.upper:
-            vector = vector[num_elements:num_elements * 2] + vector[:num_elements] + vector[:num_elements * 2:]
+            vector = vector[num_elements:num_elements * 2] + vector[:num_elements] + vector[num_elements * 2:]
         else:
-            pass
+            vector = vector[:-num_elements * 2] + vector[-num_elements:] + vector[-num_elements * 2:-num_elements]
+        return vector
 
     def reduce_step_size(self):
         self.swap_size = self.reduce_fun(self.swap_size)
