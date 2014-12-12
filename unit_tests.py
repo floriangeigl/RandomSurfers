@@ -1,8 +1,11 @@
+from __future__ import division
 import unittest
 import moves
 import copy
 import cost_function
 from tools.gt_tools import GraphGenerator
+import timeit
+import random
 
 
 class TestMover(unittest.TestCase):
@@ -22,9 +25,17 @@ class TestMover(unittest.TestCase):
         network = GraphGenerator().create_karate_graph()
         cf = cost_function.CostFunction(network)
         cf.calc_cost()
+        random_known_nodes = random.sample(range(network.num_vertices()), int(network.num_vertices() * 0.1))
+        cf.calc_cost(random_known_nodes)
 
     def test_CostFunctionSpeed(self):
-        network = GraphGenerator(3000)
+        network = GraphGenerator(1000)
         network = network.create_random_graph()
-        cf = cost_function.CostFunction(network)
+        cf = cost_function.CostFunction(network, pairs_reduce=0.1)
         cf.calc_cost()
+        random_known_nodes = range(network.num_vertices())
+        for i in range(1, 11):
+            num_known_nodes = int(round(network.num_vertices() * (1 / (i * 10))))
+            random_known_nodes = random.sample(random_known_nodes, num_known_nodes)
+            cf.calc_cost(random_known_nodes)
+
