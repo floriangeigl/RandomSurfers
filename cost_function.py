@@ -55,23 +55,30 @@ class CostFunction():
         else:
             s_map = shortest_distance(graph)
             for src, dests in tmp_pairs.iteritems():
+                src_s_map = s_map[graph.vertex(src)]
                 for dest in dests:
-                    shortest_distances[dest][src] = s_map[graph.vertex(src)][dest]
+                    shortest_distances[dest][src] = src_s_map[dest]
         # TODO: is there a way to include all shortest distance neigbours?
+        if pairs_reduce is not None:
+            self.print_f('\treduce targets of pairs to:', pairs_reduce)
+            self.print_f('\tall targets:', len(self.pairs))
+            num_targets = int(round(len(self.pairs) * pairs_reduce))
+            self.pairs = random.sample(self.pairs, num_targets)
+            self.print_f('\treduced targets:', len(self.pairs))
         self.print_f('\tfind best next hop for each pair')
         best_neighbours = defaultdict(lambda: dict())
-        for src, dests in tmp_pairs.iteritems():
-            for dest in dests:
-                sd = shortest_distances[dest]
+        for dest, srcs in self.pairs:
+            sd = shortest_distances[dest]
+            for src in srcs:
                 best_n = set()
                 best_sd = 10000000000000
-                for n in graph.vertex(src).out_neighbours():
-                    n_sd = sd[int(n)]
+                for n in map(int, graph.vertex(src).out_neighbours()):
+                    n_sd = sd[n]
                     if n_sd < best_sd:
                         best_sd = n_sd
-                        best_n = {int(n)}
+                        best_n = {n}
                     elif n_sd == best_sd:
-                        best_n.add(int(n))
+                        best_n.add(n)
                 best_n = random.sample(best_n, 1)[0]
                 best_neighbours[src][dest] = best_n
         data, i, j = zip(*[(best_neighbours[i][j], i, j) for i in xrange(graph.num_vertices()) for j in xrange(graph.num_vertices()) if i != j])
@@ -80,12 +87,7 @@ class CostFunction():
         self.print_f('\ttranspose and convert adj matrix')
         self.adj_mat = csr_matrix(self.adj_mat.T)
         self.print_f('\tadj matrix: type:', type(self.adj_mat), 'shape', self.adj_mat.shape, 'filled elements:', self.adj_mat.nnz / (self.adj_mat.shape[0] * self.adj_mat.shape[1]))
-        if pairs_reduce is not None:
-            self.print_f('\treduce targets of pairs to:', pairs_reduce)
-            self.print_f('\tall targets:', len(self.pairs))
-            num_targets = int(round(len(self.pairs) * pairs_reduce))
-            self.pairs = random.sample(self.pairs, num_targets)
-            self.print_f('\treduced targets:', len(self.pairs))
+
 
     def calc_cossim(self, src, dest):
         if src == dest:
