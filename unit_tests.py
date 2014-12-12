@@ -6,17 +6,18 @@ import cost_function
 from tools.gt_tools import GraphGenerator
 import timeit
 import random
+from optimizer import Optimizer
 
 
 class TestMover(unittest.TestCase):
     def test_MoveSwapper(self):
-        mover = moves.MoveSwapper(swap_size=0.1)
+        mover = moves.MoveSwapper(size=0.1)
         v = range(10)
         v_old = v
         v = mover.move(v)
         self.assertEqual(v_old, range(10))
         self.assertEqual(v, [1, 0] + range(2, 10))
-        mover = moves.MoveSwapper(swap_size=0.1, upper=False)
+        mover = moves.MoveSwapper(size=0.1, upper=False)
         v = range(10)
         v = mover.move(v)
         self.assertEqual(v, range(8) + [9, 8])
@@ -27,6 +28,16 @@ class TestMover(unittest.TestCase):
         cf.calc_cost()
         random_known_nodes = random.sample(range(network.num_vertices()), int(network.num_vertices() * 0.1))
         cf.calc_cost(random_known_nodes)
+
+    def test_simple_optimizer(self):
+        network = GraphGenerator(200)
+        network = network.create_random_graph()
+        cf = cost_function.CostFunction(network)
+        mover = moves.MoveSwapper(size=0.5)
+        all_nodes = range(network.num_vertices())
+        random.shuffle(all_nodes)
+        opt = Optimizer(cf, mover, all_nodes, known=0.1)
+        opt.optimize()
 
     def test_CostFunctionSpeed(self):
         network = GraphGenerator(1000)
