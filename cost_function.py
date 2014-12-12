@@ -81,8 +81,10 @@ class CostFunction():
                         best_n.add(n)
                 best_n = random.sample(best_n, 1)[0]
                 best_neighbours[src][dest] = best_n
-        data, i, j = zip(*[(best_neighbours[i][j], i, j) for i in xrange(graph.num_vertices()) for j in xrange(graph.num_vertices()) if i != j])
-        self.best_next_hop = csr_matrix((data, (i, j))).T
+
+        #TODO: check matrix correct
+        data, i, j = zip(*[(best_neighbours[j][i], i, j) for i, srcs in self.pairs for j in srcs])
+        self.best_next_hop = csr_matrix((data, (i, j)), shape=self.adj_mat.shape)
         # each row: index destination, elements best next neighbour from col-index-node to destination
         self.print_f('\ttranspose and convert adj matrix')
         self.adj_mat = csr_matrix(self.adj_mat.T)
