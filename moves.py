@@ -2,6 +2,7 @@ from __future__ import division
 from abc import abstractmethod
 import math
 from tools.printing import print_f
+import random
 
 
 class Mover(object):
@@ -46,16 +47,24 @@ class MoveSwapper(Mover):
 
 
 class MoveShuffle(Mover):
-    def __init__(self, size=0.4, reduce_function=lambda x: x / 2):
+    def __init__(self, size=1, upper=True, reduce_function=lambda x: x / 2):
         Mover.__init__(self)
         self.shuffle_size = size
         self.reduce_fun = reduce_function
+        self.upper = upper
 
     def move(self, vector):
         super(MoveShuffle, self).move(vector)
         num_elements = int(round(self.shuffle_size * len(vector)))
-        print 'not implemented yet'
-        exit()
+        if self.upper:
+            shuffle_part = vector[:num_elements]
+            static_part = vector[num_elements:]
+        else:
+            shuffle_part = vector[num_elements:]
+            static_part = vector[:num_elements]
+        random.shuffle(shuffle_part)
+        vector = shuffle_part + static_part
+        return vector
 
     def reduce_step_size(self):
         super(MoveShuffle, self).reduce_step_size()

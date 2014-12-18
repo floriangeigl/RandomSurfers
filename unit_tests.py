@@ -30,13 +30,13 @@ class TestMover(unittest.TestCase):
         cf.calc_cost(random_known_nodes)
 
     def test_simple_optimizer(self):
-        network = GraphGenerator(3000)
+        network = GraphGenerator(200)
         network = network.create_random_graph()
         cf = cost_function.CostFunction(network, pairs_reduce=0.1)
-        mover = moves.MoveSwapper(size=0.5)
+        mover = moves.MoveShuffle(size=1)
         all_nodes = range(network.num_vertices())
         random.shuffle(all_nodes)
-        opt = Optimizer(cf, mover, all_nodes, known=0.1, max_runs=10)
+        opt = Optimizer(cf, mover, all_nodes, known=0.1, max_runs=100, reduce_step_after_fails=10)
         opt.optimize()
 
     def test_CostFunctionSpeed(self):
