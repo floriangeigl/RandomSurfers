@@ -6,7 +6,7 @@ import cost_function
 from tools.gt_tools import GraphGenerator
 import timeit
 import random
-from optimizer import Optimizer
+from optimizer import Optimizer, SimulatedAnnealing
 
 
 class TestMover(unittest.TestCase):
@@ -37,6 +37,16 @@ class TestMover(unittest.TestCase):
         all_nodes = range(network.num_vertices())
         random.shuffle(all_nodes)
         opt = Optimizer(cf, mover, all_nodes, known=0.1, max_runs=100, reduce_step_after_fails=10)
+        opt.optimize()
+
+    def test_simulated_annealing(self):
+        network = GraphGenerator(200)
+        network = network.create_random_graph()
+        cf = cost_function.CostFunction(network, pairs_reduce=0.1)
+        mover = moves.MoveTravelSM()
+        all_nodes = range(network.num_vertices())
+        random.shuffle(all_nodes)
+        opt = SimulatedAnnealing(cf, mover, all_nodes, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=100)
         opt.optimize()
 
     def test_CostFunctionSpeed(self):
