@@ -46,8 +46,11 @@ class TestMover(unittest.TestCase):
         mover = moves.MoveTravelSM()
         all_nodes = range(network.num_vertices())
         random.shuffle(all_nodes)
-        opt = SimulatedAnnealing(cf, mover, all_nodes, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=100)
-        opt.optimize()
+        opt = SimulatedAnnealing(cf, mover, all_nodes, known=0.1, max_runs=1000, reduce_step_after_fails=0, reduce_step_after_accepts=100)
+        ranking, cost = opt.optimize()
+        print 'runs:', opt.runs
+        print 'best ranking', ranking
+        print 'cost:', cost
 
     def test_CostFunctionSpeed(self):
         network = GraphGenerator(1000)

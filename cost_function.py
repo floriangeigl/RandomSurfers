@@ -152,22 +152,15 @@ class CostFunction():
                 degs = degs.multiply(ranking)
             degs = degs.multiply(csr_matrix(1 / (degs.sum(axis=1))))
             prob = neigh_cossim * self.cos_weight + degs * self.deg_weight
-            # each row => index is src, elments are prob to select this neighbour
-            # print self.best_next_hops[dest, :].toarray()[0][srcs]
             best_next_hops = self.best_next_hops[dest]
             best_per_src = [best_next_hops[i] for i in srcs]
             n_best_per_src = np.array([len(i) for i in best_per_src])
-            self.print_f('cos shape:', neigh_cossim.shape)
-            self.print_f('deg shape:', degs.shape)
-            self.print_f('prob shape:', prob.shape)
-            self.print_f('min,max src:', min(srcs), max(srcs))
-            self.print_f('best src min,max:', min((j for i in best_per_src for j in i)), max((j for i in best_per_src for j in i)))
             mask = csr_matrix(
                 ([1] * n_best_per_src.sum(), ([src for src, n_src in zip(srcs, n_best_per_src) for i in xrange(n_src)], [j for i in best_per_src for j in i])),
                 shape=prob.shape)
             prob_of_best_n = prob.multiply(mask)
             cost += prob_of_best_n.max(axis=1).sum()
-            self.print_f('probability sum:', cost)
+        self.print_f('probability sum:', cost)
         return cost
 
     def create_mask_vector(self, ranking):

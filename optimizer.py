@@ -17,7 +17,6 @@ class Optimizer(object):
         self.reduce_after_a = reduce_step_after_accepts
         self.runs = max_runs
         self.fails = 0
-        self.best_ranking = None
         self.accepts = 0
 
     def optimize(self):
@@ -40,18 +39,21 @@ class Optimizer(object):
 
 class SimulatedAnnealing(Optimizer):
     def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, *args, **kwargs):
-        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0)
+        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails,
+                           reduce_step_after_accepts=reduce_step_after_accepts)
         self.beta = beta
 
     def optimize(self):
         best_cost = None
         self.accepts = 0
         self.fails = 0
-        num_known_nodes = int(round(len(self.init_ranking) * self.known))
-        new_ranking = self.init_ranking
-        current_ranking = self.init_ranking
+        current_init_ranking = self.init_ranking
+        num_known_nodes = int(round(len(current_init_ranking) * self.known))
+        new_ranking = current_init_ranking
+        current_ranking = current_init_ranking
         known_nodes = new_ranking[:num_known_nodes]
         cost = self.cf.calc_cost(known_nodes)
+        best_ranking = None
         for i in xrange(self.runs):
             known_nodes = new_ranking[:num_known_nodes]
             current_cost = self.cf.calc_cost(known_nodes)
@@ -60,8 +62,7 @@ class SimulatedAnnealing(Optimizer):
                 current_ranking = new_ranking
                 if best_cost is None or current_cost > best_cost:
                     best_cost = current_cost
-                    self.best_ranking = current_ranking
-                    self.init_ranking = new_ranking
+                    best_ranking = current_ranking
             else:
                 self.fails += 1
             new_ranking = self.mv.move(current_ranking)
@@ -70,3 +71,4 @@ class SimulatedAnnealing(Optimizer):
                 self.beta *= 1.005
                 self.accepts = 0
                 self.fails = 0
+        return best_ranking, best_cost
