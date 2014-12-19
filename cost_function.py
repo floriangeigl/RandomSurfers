@@ -9,13 +9,14 @@ import operator
 
 
 class CostFunction():
-    def __init__(self, graph, deg_weight=0.1, cos_weight=0.9, pairs=None, pairs_reduce=None, cos_sim_th=0.0, verbose=2):
+    def __init__(self, graph, deg_weight=0.1, cos_weight=0.9, pairs=None, pairs_reduce=None, cos_sim_th=0.0, verbose=2, ranking_weights=None):
         assert deg_weight + cos_weight == 1
         self.verbose = verbose
         self.deg_weight = deg_weight
         self.cos_weight = cos_weight
         self.graph = graph
         self.print_f('Init cost function', verbose=1)
+        self.ranking_weights = self.calc_weights_ranking()
         self.print_f('\tget adjacency matrix', verbose=1)
         self.adj_mat = adjacency(graph)  # .tocsc()
         self.print_f('\tgenerate pairs', verbose=1)
@@ -82,13 +83,13 @@ class CostFunction():
                         best_n = {n}
                     elif n_sd == best_sd:
                         best_n.add(n)
-                best_n = random.sample(best_n, 1)[0]
-                best_neighbours[src][dest] = best_n
+                # best_n = random.sample(best_n, 1)[0]
+                best_neighbours[dest][src] = best_n
 
         # TODO: check matrix correct
-        data, i, j = zip(*[(best_neighbours[j][i], i, j) for i, srcs in self.pairs for j in srcs])
-        self.best_next_hops = csr_matrix((data, (i, j)), shape=self.adj_mat.shape)
-        #self.best_next_hops = best_neighbours
+        # data, i, j = zip(*[(best_neighbours[j][i], i, j) for i, srcs in self.pairs for j in srcs])
+        # self.best_next_hops = csr_matrix((data, (i, j)), shape=self.adj_mat.shape)
+        self.best_next_hops = best_neighbours
 
         # each row: index destination, elements best next neighbour from col-index-node to destination
         self.print_f('\ttranspose and convert adj matrix', verbose=1)
@@ -105,40 +106,71 @@ class CostFunction():
         dest_n = set(dest.all_neighbours())
         return len(self.src_n & dest_n) / np.sqrt(len(self.src_n) * len(dest_n))
 
+    def calc_weights_ranking(self, ranking_weights=None, num_nodes=None):
+        if num_nodes is None:
+            num_nodes = self.graph.num_vertices()
+        if ranking_weights is None:
+            self.print_f('use linear weighting for ranking')
+            ranking_weights = reversed(range(num_nodes))
+        elif isinstance(ranking_weights, str):
+            if ranking_weights == 'linear':
+                self.print_f('use default (linear) weighting for ranking')
+                ranking_weights = reversed(range(num_nodes))
+            elif ranking_weights == 'quadratic':
+                self.print_f('use quadratic weighting for ranking')
+                ranking_weights = reversed(range(num_nodes))
+                ranking_weights = np.power(np.array(ranking_weights), 2)
+            elif ranking_weights == 'exponential':
+                self.print_f('use exponential weighting for ranking')
+                ranking_weights = reversed(range(num_nodes))
+                ranking_weights = np.exp(np.array(ranking_weights))
+        ranking_weights = np.array(list(ranking_weights))
+        result = ranking_weights / ranking_weights.max()
+        self.print_f(result, type(result), verbose=2)
+        return result
+
     def print_f(self, *args, **kwargs):
         if not 'verbose' in kwargs or kwargs['verbose'] <= self.verbose:
             kwargs.update({'class_name': 'CostFunction'})
             print_f(*args, **kwargs)
 
-    def calc_cost(self, known_nodes=None):
+    def calc_cost(self, ranking=None):
         self.print_f('calc cost')
-        if known_nodes is not None:
-            self.print_f('known nodes:', len(known_nodes), '(', str(len(known_nodes) / self.adj_mat.shape[0] * 100) + '% )')
-            known_nodes = self.create_mask_vector(known_nodes)
-            assert known_nodes.shape[0] == 1 and known_nodes.shape[1] == self.adj_mat.shape[1]
+        if ranking is not None:
+            self.print_f('known nodes:', len(ranking), '(', str(len(ranking) / self.adj_mat.shape[0] * 100) + '% )')
+            ranking = self.create_mask_vector(ranking)
+            assert ranking.shape[0] == 1 and ranking.shape[1] == self.adj_mat.shape[1]
         cost = 0
         for dest, srcs in self.pairs:
             cossims = self.cos_sim[dest, :]
-            if known_nodes is not None:
-                cossims = cossims.multiply(known_nodes)
-            neigh_cossim = self.adj_mat[srcs, :].multiply(cossims)
+            if ranking is not None:
+                cossims = cossims.multiply(ranking)
+            neigh_cossim = self.adj_mat.multiply(cossims)
             neigh_cossim = neigh_cossim.multiply(csr_matrix(1 / (neigh_cossim.sum(axis=1))))
-            degs = self.deg[srcs, :]
-            if known_nodes is not None:
-                degs = degs.multiply(known_nodes)
+            degs = self.deg
+            if ranking is not None:
+                degs = degs.multiply(ranking)
             degs = degs.multiply(csr_matrix(1 / (degs.sum(axis=1))))
             prob = neigh_cossim * self.cos_weight + degs * self.deg_weight
             # each row => index is src, elments are prob to select this neighbour
             # print self.best_next_hops[dest, :].toarray()[0][srcs]
-            #TODO: FIX this for multiple best neighbour
-            mask = csr_matrix(([1] * len(srcs), (range(len(srcs)), self.best_next_hops[dest, :].toarray()[0][srcs])), shape=prob.shape)
+            best_next_hops = self.best_next_hops[dest]
+            best_per_src = [best_next_hops[i] for i in srcs]
+            n_best_per_src = np.array([len(i) for i in best_per_src])
+            self.print_f('cos shape:', neigh_cossim.shape)
+            self.print_f('deg shape:', degs.shape)
+            self.print_f('prob shape:', prob.shape)
+            self.print_f('min,max src:', min(srcs), max(srcs))
+            self.print_f('best src min,max:', min((j for i in best_per_src for j in i)), max((j for i in best_per_src for j in i)))
+            mask = csr_matrix(
+                ([1] * n_best_per_src.sum(), ([src for src, n_src in zip(srcs, n_best_per_src) for i in xrange(n_src)], [j for i in best_per_src for j in i])),
+                shape=prob.shape)
             prob_of_best_n = prob.multiply(mask)
-            #TODO: take axis max
-            cost += prob_of_best_n.sum()
-        self.print_f('probability sum:', cost)
+            cost += prob_of_best_n.max(axis=1).sum()
+            self.print_f('probability sum:', cost)
         return cost
 
     def create_mask_vector(self, known_nodes):
         num_known_nodes = len(known_nodes)
-        return csr_matrix(([1] * num_known_nodes, ([0] * num_known_nodes, sorted(known_nodes))), shape=(1, self.adj_mat.shape[1]))
+        return csr_matrix(([1] * num_known_nodes, ([0] * num_known_nodes, known_nodes)), shape=(1, self.adj_mat.shape[1]))
 

@@ -79,22 +79,23 @@ class MoveTravelSM(Mover):
     def move(self, vector):
         super(MoveTravelSM, self).move(vector)
         p = random.uniform(0.0, 1.0)
-        vector_len = len(vector)
+        max_idx = len(vector) - 1
         if p < 0.2:
-            i = random.randint(0, vector_len / 2)
+            half_idx = int(round(max_idx / 2))
+            i = random.randint(0, half_idx)
             vector = vector[i:] + vector[:i]
-            i = random.randint(0, vector_len / 2)
+            i = random.randint(0, half_idx)
             a = vector[:i]
             a.reverse()
             vector = a + vector[i:]
         elif p < 0.6:
-            i = random.randint(0, vector_len - 1)
+            i = random.randint(0, max_idx)
             a = vector.pop(i)
-            j = random.randint(0, len(vector) - 1)
+            j = random.randint(0, max_idx - 1)
             vector.insert(j, a)
         else:
-            i = random.randint(0, vector_len)
-            j = random.randint(0, vector_len)
+            i = random.randint(0, max_idx)
+            j = random.randint(0, max_idx)
             vector[i], vector[j] = vector[j], vector[i]
         return vector
 

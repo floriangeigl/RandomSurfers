@@ -40,7 +40,7 @@ class TestMover(unittest.TestCase):
         opt.optimize()
 
     def test_simulated_annealing(self):
-        network = GraphGenerator(200)
+        network = GraphGenerator(50)
         network = network.create_random_graph()
         cf = cost_function.CostFunction(network, pairs_reduce=0.1)
         mover = moves.MoveTravelSM()
