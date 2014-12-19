@@ -170,7 +170,7 @@ class CostFunction():
             self.print_f('probability sum:', cost)
         return cost
 
-    def create_mask_vector(self, known_nodes):
-        num_known_nodes = len(known_nodes)
-        return csr_matrix(([1] * num_known_nodes, ([0] * num_known_nodes, known_nodes)), shape=(1, self.adj_mat.shape[1]))
+    def create_mask_vector(self, ranking):
+        num_known_nodes = len(ranking)
+        return csr_matrix((self.ranking_weights[:num_known_nodes], ([0] * num_known_nodes, ranking)), shape=(1, self.adj_mat.shape[1]))
 
