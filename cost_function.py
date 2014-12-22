@@ -127,10 +127,10 @@ class CostFunction():
             print_f(*args, **kwargs)
 
     def calc_cost(self, ranking=None):
-        self.print_f('calc cost')
+        self.print_f('calc cost', verbose=2)
         if ranking is not None:
             known_nodes = len(filter(lambda x: x > 0, self.ranking_weights))
-            self.print_f('known nodes:', known_nodes, '(', str(known_nodes / self.adj_mat.shape[0] * 100) + '% | rw_sum: ', np.sum(self.ranking_weights), ')')
+            self.print_f('known nodes:', known_nodes, '(', str(known_nodes / self.adj_mat.shape[0] * 100) + '% | rw_sum: ', np.sum(self.ranking_weights), ')', verbose=2)
             ranking_vector = self.create_ranking_vector(ranking)
             assert ranking_vector.shape == (1, self.adj_mat.shape[1])
         cost = 0
@@ -152,7 +152,7 @@ class CostFunction():
             mask = csr_matrix(([1] * n_best_per_src.sum(), ([rdx for rdx, (src, n_src) in enumerate(zip(srcs, n_best_per_src)) for i in xrange(n_src)], [j for i in best_per_src for j in i])), shape=prob.shape)
             prob_of_best_n = prob.multiply(mask)
             cost += prob_of_best_n.max(axis=1).sum()
-        self.print_f('probability sum:', cost)
+        self.print_f('probability sum:', cost, verbose=1)
         return cost
 
     def create_mask_vector(self, known_nodes):

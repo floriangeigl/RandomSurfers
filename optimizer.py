@@ -62,8 +62,14 @@ class SimulatedAnnealing(Optimizer):
         cost = self.cf.calc_cost(known_nodes)
         best_cost = cost
         best_ranking = None
+        perc = -10
         for i in xrange(self.runs):
-            self.print_f('run:', i, '(', (i / self.runs) * 100, '% )')
+            c_perc = int((i / self.runs) * 100)
+            if self.verbose >= 3:
+                self.print_f('run:', i, '(', c_perc, '% )', verbose=3)
+            elif c_perc >= perc + 10:
+                perc = c_perc
+                self.print_f('run:', i, '(', c_perc, '% )')
             known_nodes = new_ranking[:num_known_nodes]
             current_cost = self.cf.calc_cost(known_nodes)
             if random.uniform(0.0, 1.0) < np.exp(- self.beta * (current_cost - best_cost)):

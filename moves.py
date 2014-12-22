@@ -73,8 +73,8 @@ class MoveShuffle(Mover):
 
 
 class MoveTravelSM(Mover):
-    def __init__(self):
-        Mover.__init__(self)
+    def __init__(self, *args, **kwargs):
+        Mover.__init__(self, *args, **kwargs)
         pass
 
     def move(self, vector):
