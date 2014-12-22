@@ -6,8 +6,9 @@ import random
 
 
 class Mover(object):
-    def __init__(self):
+    def __init__(self, verbose=2):
         self.moves_counter = 0
+        self.verbose = verbose
 
     @abstractmethod
     def move(self, vector):
@@ -15,13 +16,13 @@ class Mover(object):
 
     @abstractmethod
     def reduce_step_size(self):
-        self.print_f('reduce step size')
+        self.print_f('reduce step size', verbose=2)
         pass
 
-    @staticmethod
-    def print_f(*args, **kwargs):
-        kwargs.update({'class_name': 'Mover'})
-        print_f(*args, **kwargs)
+    def print_f(self, *args, **kwargs):
+        if 'verbose' not in kwargs or kwargs['verbose'] <= self.verbose:
+            kwargs.update({'class_name': 'Mover'})
+            print_f(*args, **kwargs)
 
 
 class MoveSwapper(Mover):

@@ -1,12 +1,14 @@
+from __future__ import division
 from abc import abstractmethod
 from cost_function import CostFunction
 from moves import Mover
 import random
-import math
+import numpy as np
+from tools.printing import print_f
 
 
 class Optimizer(object):
-    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, *args, **kwargs):
+    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, verbose=2, *args, **kwargs):
         assert isinstance(cost_function, CostFunction)
         assert isinstance(mover, Mover)
         self.cf = cost_function
@@ -18,12 +20,14 @@ class Optimizer(object):
         self.runs = max_runs
         self.fails = 0
         self.accepts = 0
+        self.verbose = verbose
 
     def optimize(self):
         num_known_nodes = int(round(len(self.init_ranking) * self.known))
         best_cost = None
         new_ranking = self.init_ranking
         for i in xrange(self.runs):
+            self.print_f('run:', i, '(', (i / self.runs) * 100, '% )')
             known_nodes = new_ranking[:num_known_nodes]
             current_cost = self.cf.calc_cost(known_nodes)
             if best_cost is None or current_cost > best_cost:
@@ -36,15 +40,18 @@ class Optimizer(object):
                 self.mv.reduce_step_size()
             new_ranking = self.mv.move(self.init_ranking)
 
+    def print_f(self, *args, **kwargs):
+        if 'verbose' not in kwargs or kwargs['verbose'] <= self.verbose:
+            kwargs.update({'class_name': 'Optimizer'})
+            print_f(*args, **kwargs)
+
 
 class SimulatedAnnealing(Optimizer):
     def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, *args, **kwargs):
-        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails,
-                           reduce_step_after_accepts=reduce_step_after_accepts)
+        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts)
         self.beta = beta
 
     def optimize(self):
-        best_cost = None
         self.accepts = 0
         self.fails = 0
         current_init_ranking = self.init_ranking
@@ -53,14 +60,16 @@ class SimulatedAnnealing(Optimizer):
         current_ranking = current_init_ranking
         known_nodes = new_ranking[:num_known_nodes]
         cost = self.cf.calc_cost(known_nodes)
+        best_cost = cost
         best_ranking = None
         for i in xrange(self.runs):
+            self.print_f('run:', i, '(', (i / self.runs) * 100, '% )')
             known_nodes = new_ranking[:num_known_nodes]
             current_cost = self.cf.calc_cost(known_nodes)
-            if random.uniform(0.0, 1.0) < math.exp(- self.beta * (current_cost - cost)):
+            if random.uniform(0.0, 1.0) < np.exp(- self.beta * (current_cost - best_cost)):
                 self.accepts += 1
                 current_ranking = new_ranking
-                if best_cost is None or current_cost > best_cost:
+                if current_cost > best_cost:
                     best_cost = current_cost
                     best_ranking = current_ranking
             else:

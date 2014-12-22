@@ -16,14 +16,16 @@ class CostFunction():
         self.cos_weight = cos_weight
         self.graph = graph
         self.print_f('Init cost function', verbose=1)
-        self.ranking_weights = self.calc_weights_ranking()
+        self.ranking_weights = self.calc_weights_ranking(ranking_weights)
         self.print_f('\tget adjacency matrix', verbose=1)
         self.adj_mat = adjacency(graph)  # .tocsc()
         self.print_f('\tgenerate pairs', verbose=1)
         if pairs is None:
             all_shortest_dist = True
             # format destination, array_of_sources
-            self.pairs = [(i, np.array([j for j in xrange(self.adj_mat.shape[1]) if j != i])) for i in xrange(self.adj_mat.shape[0])]
+            shape_0 = range(self.adj_mat.shape[0])
+            shape_1 = range(self.adj_mat.shape[1])
+            self.pairs = [(i, np.array(filter(lambda x: x != i, shape_1))) for i in shape_0]
         else:
             all_shortest_dist = False
             self.pairs = pairs
@@ -31,21 +33,18 @@ class CostFunction():
         deg_map = graph.degree_property_map('total')
         self.deg = csr_matrix((([deg_map[v] for v in graph.vertices()]), (range(graph.num_vertices()), [0] * graph.num_vertices())), shape=(graph.num_vertices(), 1))
         self.deg = self.deg.multiply(self.adj_mat)
-        # self.deg = self.deg.multiply(csr_matrix(1 / self.deg.sum(axis=0)))
         self.deg = csr_matrix(self.deg.T)
         self.print_f('\tdeg matrix: type:', type(self.deg), 'shape:', self.deg.shape, 'filled elements:', self.deg.nnz / (self.deg.shape[0] * self.deg.shape[1]), verbose=2)
         self.print_f('\tgenerate cosine similarity matrix', verbose=1)
         self.src = None
         self.src_n = None
-        self.cos_sim = filter(lambda x: x[2] > cos_sim_th,
-                              ((int(src), int(dest), self.calc_cossim(src, dest)) for src in graph.vertices() for dest in graph.vertices() if int(dest) >= int(src)))
+        self.cos_sim = filter(lambda x: x[2] > cos_sim_th, ((int(src), int(dest), self.calc_cossim(src, dest)) for src in graph.vertices() for dest in graph.vertices() if int(dest) >= int(src)))
         i, j, data = zip(*self.cos_sim)
         self.cos_sim = csr_matrix(coo_matrix((data, (i, j)), shape=(graph.num_vertices(), graph.num_vertices())))
         self.cos_sim = self.cos_sim + self.cos_sim.T
         # self.cos_sim.setdiag(1)
         # self.cos_sim = self.cos_sim.multiply(self.adj_mat).T
-        self.print_f('\tcos sim matrix: type:', type(self.cos_sim), 'shape', self.cos_sim.shape, 'filled elements:',
-                     self.cos_sim.nnz / (self.cos_sim.shape[0] * self.cos_sim.shape[1]), verbose=2)
+        self.print_f('\tcos sim matrix: type:', type(self.cos_sim), 'shape', self.cos_sim.shape, 'filled elements:', self.cos_sim.nnz / (self.cos_sim.shape[0] * self.cos_sim.shape[1]), verbose=2)
         self.print_f('\tcalc shortest distances for pairs', verbose=1)
         tmp_pairs = defaultdict(set)
         for dest, srcs in self.pairs:
@@ -62,7 +61,6 @@ class CostFunction():
                 for dest in dests:
                     shortest_distances[dest][src] = src_s_map[dest]
 
-        # TODO: is there a way to include all shortest distance neigbours?
         if pairs_reduce is not None:
             self.print_f('\treduce targets of pairs to:', pairs_reduce, verbose=1)
             self.print_f('\tall targets:', len(self.pairs), verbose=2)
@@ -70,7 +68,7 @@ class CostFunction():
             self.pairs = random.sample(self.pairs, num_targets)
             self.print_f('\treduced targets:', len(self.pairs), verbose=2)
         self.print_f('\tfind best next hop for each pair', verbose=1)
-        best_neighbours = defaultdict(lambda: dict())
+        self.best_next_hops = defaultdict(lambda: dict())
         for dest, srcs in self.pairs:
             sd = shortest_distances[dest]
             for src in srcs:
@@ -84,18 +82,12 @@ class CostFunction():
                     elif n_sd == best_sd:
                         best_n.add(n)
                 # best_n = random.sample(best_n, 1)[0]
-                best_neighbours[dest][src] = best_n
-
-        # TODO: check matrix correct
-        # data, i, j = zip(*[(best_neighbours[j][i], i, j) for i, srcs in self.pairs for j in srcs])
-        # self.best_next_hops = csr_matrix((data, (i, j)), shape=self.adj_mat.shape)
-        self.best_next_hops = best_neighbours
+                self.best_next_hops[dest][src] = best_n
 
         # each row: index destination, elements best next neighbour from col-index-node to destination
         self.print_f('\ttranspose and convert adj matrix', verbose=1)
         self.adj_mat = csr_matrix(self.adj_mat.T)
-        self.print_f('\tadj matrix: type:', type(self.adj_mat), 'shape', self.adj_mat.shape, 'filled elements:', self.adj_mat.nnz / (self.adj_mat.shape[0] * self.adj_mat.shape[1]),
-                     verbose=2)
+        self.print_f('\tadj matrix: type:', type(self.adj_mat), 'shape', self.adj_mat.shape, 'filled elements:', self.adj_mat.nnz / (self.adj_mat.shape[0] * self.adj_mat.shape[1]), verbose=2)
 
     def calc_cossim(self, src, dest):
         if src == dest:
@@ -126,44 +118,48 @@ class CostFunction():
                 ranking_weights = np.exp(np.array(ranking_weights))
         ranking_weights = np.array(list(ranking_weights))
         result = ranking_weights / ranking_weights.max()
-        self.print_f(result, type(result), verbose=2)
+        self.print_f('ranking vector:', result, type(result), verbose=2)
         return result
 
     def print_f(self, *args, **kwargs):
-        if not 'verbose' in kwargs or kwargs['verbose'] <= self.verbose:
+        if 'verbose' not in kwargs or kwargs['verbose'] <= self.verbose:
             kwargs.update({'class_name': 'CostFunction'})
             print_f(*args, **kwargs)
 
     def calc_cost(self, ranking=None):
         self.print_f('calc cost')
         if ranking is not None:
-            self.print_f('known nodes:', len(ranking), '(', str(len(ranking) / self.adj_mat.shape[0] * 100) + '% )')
-            ranking = self.create_mask_vector(ranking)
-            assert ranking.shape[0] == 1 and ranking.shape[1] == self.adj_mat.shape[1]
+            known_nodes = len(filter(lambda x: x > 0, self.ranking_weights))
+            self.print_f('known nodes:', known_nodes, '(', str(known_nodes / self.adj_mat.shape[0] * 100) + '% | rw_sum: ', np.sum(self.ranking_weights), ')')
+            ranking_vector = self.create_ranking_vector(ranking)
+            assert ranking_vector.shape == (1, self.adj_mat.shape[1])
         cost = 0
         for dest, srcs in self.pairs:
             cossims = self.cos_sim[dest, :]
             if ranking is not None:
-                cossims = cossims.multiply(ranking)
-            neigh_cossim = self.adj_mat.multiply(cossims)
+                cossims = cossims.multiply(ranking_vector)
+            neigh_cossim = self.adj_mat[srcs, :].multiply(cossims)
             neigh_cossim = neigh_cossim.multiply(csr_matrix(1 / (neigh_cossim.sum(axis=1))))
             degs = self.deg
             if ranking is not None:
-                degs = degs.multiply(ranking)
+                degs = degs.multiply(ranking_vector)
+            degs = degs[srcs, :]
             degs = degs.multiply(csr_matrix(1 / (degs.sum(axis=1))))
             prob = neigh_cossim * self.cos_weight + degs * self.deg_weight
             best_next_hops = self.best_next_hops[dest]
             best_per_src = [best_next_hops[i] for i in srcs]
             n_best_per_src = np.array([len(i) for i in best_per_src])
-            mask = csr_matrix(
-                ([1] * n_best_per_src.sum(), ([src for src, n_src in zip(srcs, n_best_per_src) for i in xrange(n_src)], [j for i in best_per_src for j in i])),
-                shape=prob.shape)
+            mask = csr_matrix(([1] * n_best_per_src.sum(), ([rdx for rdx, (src, n_src) in enumerate(zip(srcs, n_best_per_src)) for i in xrange(n_src)], [j for i in best_per_src for j in i])), shape=prob.shape)
             prob_of_best_n = prob.multiply(mask)
             cost += prob_of_best_n.max(axis=1).sum()
         self.print_f('probability sum:', cost)
         return cost
 
-    def create_mask_vector(self, ranking):
+    def create_mask_vector(self, known_nodes):
+        num_known_nodes = len(known_nodes)
+        return csr_matrix(([1] * num_known_nodes, ([0] * num_known_nodes, known_nodes)), shape=(1, self.adj_mat.shape[1]))
+
+    def create_ranking_vector(self, ranking):
         num_known_nodes = len(ranking)
         return csr_matrix((self.ranking_weights[:num_known_nodes], ([0] * num_known_nodes, ranking)), shape=(1, self.adj_mat.shape[1]))
 
