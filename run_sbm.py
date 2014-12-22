@@ -22,8 +22,8 @@ import os
 
 def graph_gen(self_con, other_con, nodes=100, groups=10):
     corr = lambda x, y: self_con if x == y else other_con
-    g, bm = random_graph(nodes, lambda: poisson(10).rvs(1), directed=False, model="blockmodel-traditional", block_membership=lambda: np.random.randint(groups), vertex_corr=corr)
-    return g
+    g, bm = random_graph(nodes, lambda: poisson(10).rvs(1), directed=False, model="blockmodel-traditional", block_membership=lambda: np.random.randint(int(groups)), vertex_corr=corr)
+    return g, bm
 
 
 def get_ranking(vp_map):
@@ -34,19 +34,19 @@ def get_ranking(vp_map):
 
 
 def main():
-    nodes = 500
-    groups = 5
-    step = 0.1
+    nodes = 100
+    groups = 3
+    step = 0.01
     max_con = 1
     pairs_reduce = 0.1
-    max_runs = 1000
+    max_runs = 10000
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
     correlation_perc = -1
     for self_con in np.arange(0, max_con + (step * 0.9), step):
         self_con = max_con - self_con
         print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', max_con - self_con, ')'
-        network = graph_gen(self_con, max_con - self_con, nodes, groups)
+        network, bm_groups = graph_gen(self_con, max_con - self_con, nodes, groups)
         cf = cost_function.CostFunction(network, pairs_reduce=pairs_reduce, ranking_weights=[np.power(i, 2) for i in reversed(range(network.num_vertices()))], verbose=0)
         mover = moves.MoveTravelSM(verbose=0)
         all_nodes = range(network.num_vertices())
@@ -83,7 +83,7 @@ def main():
             df = df.loc[0:int(round(len(df) * correlation_perc))]
         correlations = df.corr(method='spearman')
         create_folder_structure('output/graph_plots/')
-        graph_draw(network, output='output/graph_plots/sbm_' + str(self_con) + '.png')
+        graph_draw(network, groups=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
         plt.close('all')
         print correlations
         results_df.at[self_con, 'deg'] = correlations['deg']['ranking']
