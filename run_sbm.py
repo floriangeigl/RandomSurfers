@@ -18,6 +18,7 @@ import random
 import operator
 import os
 from utils import *
+import datetime
 
 
 def main():
@@ -94,5 +95,7 @@ def main():
 
 
 if __name__ == '__main__':
+    start = datetime.datetime.now()
     main()
+    print 'ALL DONE. Time:', datetime.datetime.now() - start
 
