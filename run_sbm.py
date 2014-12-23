@@ -31,11 +31,13 @@ def main():
     correlation_perc = 0.2
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
+    assert groups > 0
     for network_num, self_con in enumerate(np.arange(0, max_con + (step * 0.9), step)):
         self_con = max_con - self_con
-        print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', max_con - self_con, ')'
-        network, bm_groups = graph_gen(self_con, max_con - self_con, nodes, groups)
-        cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[i for i in reversed(range(network.num_vertices()))], verbose=0)
+        other_con = (max_con - self_con) / (groups - 1)
+        print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', other_con, ')'
+        network, bm_groups = graph_gen(self_con, other_con, nodes, groups)
+        cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[np.power(i, 2) for i in reversed(range(network.num_vertices()))], verbose=0)
         mover = moves.MoveTravelSM(verbose=0)
         all_nodes = range(network.num_vertices())
         random.shuffle(all_nodes)
