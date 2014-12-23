@@ -48,18 +48,16 @@ class Optimizer(object):
 
 class SimulatedAnnealing(Optimizer):
     def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, *args, **kwargs):
-        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts)
+        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts,*args,**kwargs)
         self.beta = beta
 
     def optimize(self):
         self.accepts = 0
         self.fails = 0
         current_init_ranking = self.init_ranking
-        num_known_nodes = int(round(len(current_init_ranking) * self.known))
         new_ranking = current_init_ranking
         current_ranking = current_init_ranking
-        known_nodes = new_ranking[:num_known_nodes]
-        current_cost = self.cf.calc_cost(known_nodes)
+        current_cost = self.cf.calc_cost(new_ranking)
         best_cost = current_cost
         best_ranking = None
         perc = -10
@@ -70,8 +68,7 @@ class SimulatedAnnealing(Optimizer):
             elif c_perc >= perc + 10:
                 perc = c_perc
                 self.print_f('run:', i, '(', c_perc, '% )')
-            known_nodes = new_ranking[:num_known_nodes]
-            new_cost = self.cf.calc_cost(known_nodes)
+            new_cost = self.cf.calc_cost(new_ranking)
             if random.uniform(0.0, 1.0) < np.exp(- self.beta * (new_cost - current_cost)):
                 self.accepts += 1
                 current_cost = new_cost
@@ -82,7 +79,7 @@ class SimulatedAnnealing(Optimizer):
             else:
                 self.fails += 1
             new_ranking = self.mv.move(current_ranking)
-            if 0 < self.accepts <= self.reduce_after_a or 0 < self.fails <= self.reduce_after_f:
+            if 0 < self.reduce_after_a <= self.accepts or 0 < self.reduce_after_f <= self.fails:
                 self.mv.reduce_step_size()
                 self.beta *= 1.005
                 self.accepts = 0

@@ -1,6 +1,6 @@
 from __future__ import division
 from abc import abstractmethod
-import math
+import copy
 from tools.printing import print_f
 import random
 
@@ -35,6 +35,7 @@ class MoveSwapper(Mover):
 
     def move(self, vector):
         super(MoveSwapper, self).move(vector)
+        vector = copy.copy(vector)
         num_elements = int(round(self.swap_size * len(vector)))
         if self.upper:
             vector = vector[num_elements:num_elements * 2] + vector[:num_elements] + vector[num_elements * 2:]
@@ -56,6 +57,7 @@ class MoveShuffle(Mover):
 
     def move(self, vector):
         super(MoveShuffle, self).move(vector)
+        vector = copy.copy(vector)
         num_elements = int(round(self.shuffle_size * len(vector)))
         if self.upper:
             shuffle_part = vector[:num_elements]
@@ -79,6 +81,7 @@ class MoveTravelSM(Mover):
 
     def move(self, vector):
         super(MoveTravelSM, self).move(vector)
+        vector = copy.copy(vector)
         p = random.uniform(0.0, 1.0)
         max_idx = len(vector) - 1
         if p < 0.2:
