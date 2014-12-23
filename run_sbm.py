@@ -21,12 +21,12 @@ from utils import *
 
 
 def main():
-    nodes = 30
+    nodes = 100
     groups = 3
     step = 0.25
     max_con = 1
-    target_reduce = 0.1
-    max_runs = 10000
+    target_reduce = 1
+    max_runs = 1000
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
     correlation_perc = -1
