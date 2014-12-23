@@ -3,6 +3,7 @@ from abc import abstractmethod
 from cost_function import CostFunction
 from moves import Mover
 import random
+import copy
 import numpy as np
 from tools.printing import print_f
 
@@ -48,18 +49,16 @@ class Optimizer(object):
 
 class SimulatedAnnealing(Optimizer):
     def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, *args, **kwargs):
-        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts,*args,**kwargs)
+        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
         self.beta = beta
 
     def optimize(self):
         self.accepts = 0
         self.fails = 0
-        current_init_ranking = self.init_ranking
-        new_ranking = current_init_ranking
-        current_ranking = current_init_ranking
-        current_cost = self.cf.calc_cost(new_ranking)
+        current_ranking = copy.copy(self.init_ranking)
+        current_cost = self.cf.calc_cost(current_ranking)
         best_cost = current_cost
-        best_ranking = None
+        best_ranking = current_ranking
         perc = -10
         for i in xrange(self.runs):
             c_perc = int((i / self.runs) * 100)
@@ -68,6 +67,7 @@ class SimulatedAnnealing(Optimizer):
             elif c_perc >= perc + 10:
                 perc = c_perc
                 self.print_f('run:', i, '(', c_perc, '% )')
+            new_ranking = self.mv.move(current_ranking)
             new_cost = self.cf.calc_cost(new_ranking)
             if random.uniform(0.0, 1.0) < np.exp(- self.beta * (new_cost - current_cost)):
                 self.accepts += 1
@@ -75,10 +75,9 @@ class SimulatedAnnealing(Optimizer):
                 current_ranking = new_ranking
                 if new_cost > best_cost:
                     best_cost = new_cost
-                    best_ranking = current_ranking
+                    best_ranking = copy.copy(current_ranking)
             else:
                 self.fails += 1
-            new_ranking = self.mv.move(current_ranking)
             if 0 < self.reduce_after_a <= self.accepts or 0 < self.reduce_after_f <= self.fails:
                 self.mv.reduce_step_size()
                 self.beta *= 1.005
