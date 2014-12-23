@@ -42,7 +42,7 @@ class TestMover(unittest.TestCase):
 
     def test_simulated_annealing(self):
         network = Graph(directed=False)
-        vertices = [network.add_vertex() for i in range(10)]
+        vertices = [network.add_vertex() for i in range(5)]
         edges = [network.add_edge(vertices[0], v) for v in vertices[1:]]
         edges += [network.add_edge(vertices[1], v) for v in vertices[2:]]
         # star-like network with two main nodes: v0 connected to all, v1 connected to all without v0
@@ -51,7 +51,7 @@ class TestMover(unittest.TestCase):
         cf = cost_function.CostFunction(network, target_reduce=1)
         mover = moves.MoveTravelSM()
         print 'init ranking:', init_nodes_ranking
-        opt = SimulatedAnnealing(cf, mover, init_nodes_ranking=init_nodes_ranking, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=100)
+        opt = SimulatedAnnealing(cf, mover, init_nodes_ranking=init_nodes_ranking, max_runs=200, reduce_step_after_fails=0, reduce_step_after_accepts=100)
         ranking, cost = opt.optimize()
         print 'runs:', opt.runs
         print 'best ranking', ranking
