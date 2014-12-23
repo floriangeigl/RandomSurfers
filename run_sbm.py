@@ -14,40 +14,27 @@ from tools.basics import *
 from graph_tool.all import *
 import seaborn as sns
 import numpy as np
-from scipy.stats import poisson
 import random
 import operator
 import os
-
-
-def graph_gen(self_con, other_con, nodes=100, groups=10):
-    corr = lambda x, y: self_con if x == y else other_con
-    g, bm = random_graph(nodes, lambda: poisson(10).rvs(1), directed=False, model="blockmodel-traditional", block_membership=lambda: np.random.randint(int(groups)), vertex_corr=corr)
-    return g, bm
-
-
-def get_ranking(vp_map):
-    network = vp_map.get_graph()
-    tmp_ranking = [(int(v), rank) for rank, v in zip(xrange(network.num_vertices()), sorted(network.vertices(), key=lambda x: vp_map[x], reverse=True))]
-    _, result = zip(*sorted(tmp_ranking, key=operator.itemgetter(0)))
-    return result
+from utils import *
 
 
 def main():
-    nodes = 300
+    nodes = 30
     groups = 3
-    step = 0.5
+    step = 0.25
     max_con = 1
-    target_reduce = 0.01
+    target_reduce = 0.1
     max_runs = 10000
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
-    correlation_perc = 0.2
+    correlation_perc = -1
     for self_con in np.arange(0, max_con + (step * 0.9), step):
         self_con = max_con - self_con
         print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', max_con - self_con, ')'
         network, bm_groups = graph_gen(self_con, max_con - self_con, nodes, groups)
-        cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[np.power(i, 2) for i in reversed(range(network.num_vertices()))], verbose=0)
+        cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[np.exp(i) for i in reversed(range(network.num_vertices()))], verbose=0)
         mover = moves.MoveTravelSM(verbose=0)
         all_nodes = range(network.num_vertices())
         random.shuffle(all_nodes)
