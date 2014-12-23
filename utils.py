@@ -1,6 +1,7 @@
 from graph_tool.all import *
 from scipy.stats import poisson
 import operator
+import pandas as pd
 import numpy as np
 
 
@@ -12,6 +13,11 @@ def graph_gen(self_con, other_con, nodes=100, groups=10):
 
 def get_ranking(vp_map):
     network = vp_map.get_graph()
-    tmp_ranking = ((rank, int(v)) for rank, v in zip(xrange(network.num_vertices()), sorted(network.vertices(), key=lambda x: vp_map[x], reverse=True)))
-    _, result = zip(*sorted(tmp_ranking, key=operator.itemgetter(0)))
+    result = map(int, sorted(network.vertices(), key=lambda v: vp_map[v], reverse=True))
     return result
+
+
+def get_ranking_df(ranking, weights):
+    data = [(val, vertex) for val, vertex in zip(weights, ranking)]
+    df = pd.DataFrame(columns=['values', 'ranked_vertex'], data=data)
+    return df

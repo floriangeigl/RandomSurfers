@@ -21,20 +21,20 @@ from utils import *
 
 
 def main():
-    nodes = 100
-    groups = 3
-    step = 0.25
+    nodes = 10
+    groups = 2
+    step = 0.2
     max_con = 1
-    target_reduce = 1
+    target_reduce = 0.1
     max_runs = 1000
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
-    correlation_perc = -1
+    correlation_perc = 0.1
     for self_con in np.arange(0, max_con + (step * 0.9), step):
         self_con = max_con - self_con
         print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', max_con - self_con, ')'
         network, bm_groups = graph_gen(self_con, max_con - self_con, nodes, groups)
-        cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[np.exp(i) for i in reversed(range(network.num_vertices()))], verbose=0)
+        cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[i for i in reversed(range(network.num_vertices()))], verbose=0)
         mover = moves.MoveTravelSM(verbose=0)
         all_nodes = range(network.num_vertices())
         random.shuffle(all_nodes)
@@ -45,12 +45,17 @@ def main():
         # print 'best ranking', ranking
         print 'cost:', cost
         # print 'weights:', cf.ranking_weights
-        data = [(idx, val) for idx, val in enumerate(cf.ranking_weights)]
-        df = pd.DataFrame(columns=['ranking', 'values'], data=data, index=ranking)
-        df.sort(inplace=True)
+        df = get_ranking_df(ranking, cf.ranking_weights)
+        print df.head()
         # deg
         vp_map = network.degree_property_map('total')
         df['deg'] = get_ranking(vp_map)
+
+        test_dict = {network.vertex(v): idx for idx, v in enumerate(ranking)}
+        vp_map = network.new_vertex_property('int')
+        for v in network.vertices():
+            vp_map[v] = test_dict[v]
+        df['test'] = get_ranking(vp_map)
 
         if network.is_directed():
             vp_map = network.degree_property_map('in')
@@ -70,12 +75,12 @@ def main():
             df = df.loc[0:int(round(len(df) * correlation_perc))]
         correlations = df.corr(method='spearman')
         create_folder_structure('output/graph_plots/')
-        graph_draw(network, groups=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
+        graph_draw(network, groups=bm_groups, mu=3, vertex_fill_color=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
         plt.close('all')
         print correlations
-        results_df.at[self_con, 'deg'] = correlations['deg']['ranking']
-        results_df.at[self_con, 'pagerank'] = correlations['pagerank']['ranking']
-        results_df.at[self_con, 'betweeness'] = correlations['betweeness']['ranking']
+        results_df.at[self_con, 'deg'] = correlations['deg']['ranked_vertex']
+        results_df.at[self_con, 'pagerank'] = correlations['pagerank']['ranked_vertex']
+        results_df.at[self_con, 'betweeness'] = correlations['betweeness']['ranked_vertex']
         results_df.plot(lw=3)
         plt.xlabel('self connectivity')
         plt.savefig('output/sbm_results.png', dpi=300)

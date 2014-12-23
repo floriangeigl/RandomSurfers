@@ -7,6 +7,7 @@ from tools.gt_tools import GraphGenerator
 import timeit
 import random
 from optimizer import Optimizer, SimulatedAnnealing
+from utils import *
 
 
 class TestMover(unittest.TestCase):
@@ -63,3 +64,22 @@ class TestMover(unittest.TestCase):
             random_known_nodes = random.sample(random_known_nodes, num_known_nodes)
             cf.calc_cost(random_known_nodes)
 
+    def test_Ranking(self):
+        ranking = range(10) + list(reversed(range(10, 20)))
+        weights = list(reversed(range(len(ranking))))
+        random.shuffle(weights)
+        weights = np.array(weights).astype(float)
+        weights /= weights.max()
+        print ranking
+        print weights
+        df = get_ranking_df(ranking, weights)
+        g = Graph()
+        vertices = [g.add_vertex() for i in range(len(ranking))]
+        for v1 in vertices:
+            for v2 in vertices[int(v1):]:
+                g.add_edge(v1, v2)
+        deg_map = g.degree_property_map('total')
+        df['deg'] = get_ranking(deg_map)
+        assert range(len(ranking)) == list(df['deg'])
+        assert list(df['ranked_vertex']) == ranking
+        assert list(df['values']) == list(weights)
