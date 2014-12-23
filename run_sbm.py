@@ -34,20 +34,20 @@ def get_ranking(vp_map):
 
 
 def main():
-    nodes = 100
+    nodes = 300
     groups = 3
-    step = 0.01
+    step = 0.5
     max_con = 1
-    pairs_reduce = 0.1
+    target_reduce = 0.01
     max_runs = 10000
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
-    correlation_perc = -1
+    correlation_perc = 0.2
     for self_con in np.arange(0, max_con + (step * 0.9), step):
         self_con = max_con - self_con
         print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', max_con - self_con, ')'
         network, bm_groups = graph_gen(self_con, max_con - self_con, nodes, groups)
-        cf = cost_function.CostFunction(network, pairs_reduce=pairs_reduce, ranking_weights=[np.power(i, 2) for i in reversed(range(network.num_vertices()))], verbose=0)
+        cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[np.power(i, 2) for i in reversed(range(network.num_vertices()))], verbose=0)
         mover = moves.MoveTravelSM(verbose=0)
         all_nodes = range(network.num_vertices())
         random.shuffle(all_nodes)
@@ -93,9 +93,10 @@ def main():
         plt.xlabel('self connectivity')
         plt.savefig('output/sbm_results.png', dpi=300)
         plt.close('all')
-
-    plt.plot(x=range(len(cf.ranking_weights)), y=cf.ranking_weights, label='ranking weights')
+    plt.clf()
+    plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
     plt.savefig('output/sbm_results_rank_weights.png')
+    plt.close('all')
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ import operator
 
 
 class CostFunction():
-    def __init__(self, graph, deg_weight=0.1, cos_weight=0.9, pairs=None, pairs_reduce=None, cos_sim_th=0.0, verbose=2, ranking_weights=None):
+    def __init__(self, graph, deg_weight=0.1, cos_weight=0.9, pairs=None, target_reduce=None, cos_sim_th=0.0, verbose=2, ranking_weights=None):
         assert deg_weight + cos_weight == 1
         self.verbose = verbose
         self.deg_weight = deg_weight
@@ -61,10 +61,10 @@ class CostFunction():
                 for dest in dests:
                     shortest_distances[dest][src] = src_s_map[dest]
 
-        if pairs_reduce is not None:
-            self.print_f('\treduce targets of pairs to:', pairs_reduce, verbose=1)
+        if target_reduce is not None:
+            self.print_f('\treduce targets of pairs to:', target_reduce, verbose=1)
             self.print_f('\tall targets:', len(self.pairs), verbose=2)
-            num_targets = int(round(len(self.pairs) * pairs_reduce))
+            num_targets = int(round(len(self.pairs) * target_reduce))
             self.pairs = random.sample(self.pairs, num_targets)
             self.print_f('\treduced targets:', len(self.pairs), verbose=2)
         self.print_f('\tfind best next hop for each pair', verbose=1)
@@ -134,15 +134,17 @@ class CostFunction():
             ranking_vector = self.create_ranking_vector(ranking)
             assert ranking_vector.shape == (1, self.adj_mat.shape[1])
         cost = 0
+        num_pairs = 0
         for dest, srcs in self.pairs:
+            num_pairs += len(srcs)
             cossims = self.cos_sim[dest, :]
-            if ranking is not None:
-                cossims = cossims.multiply(ranking_vector)
+            # if ranking is not None:
+            # cossims = cossims.multiply(ranking_vector)
             neigh_cossim = self.adj_mat[srcs, :].multiply(cossims)
             neigh_cossim = neigh_cossim.multiply(csr_matrix(1 / (neigh_cossim.sum(axis=1))))
             degs = self.deg
-            if ranking is not None:
-                degs = degs.multiply(ranking_vector)
+            # if ranking is not None:
+            # degs = degs.multiply(ranking_vector)
             degs = degs[srcs, :]
             degs = degs.multiply(csr_matrix(1 / (degs.sum(axis=1))))
             prob = neigh_cossim * self.cos_weight + degs * self.deg_weight
@@ -151,8 +153,11 @@ class CostFunction():
             n_best_per_src = np.array([len(i) for i in best_per_src])
             mask = csr_matrix(([1] * n_best_per_src.sum(), ([rdx for rdx, (src, n_src) in enumerate(zip(srcs, n_best_per_src)) for i in xrange(n_src)], [j for i in best_per_src for j in i])), shape=prob.shape)
             prob_of_best_n = prob.multiply(mask)
+            if ranking is not None:
+                prob_of_best_n = prob_of_best_n.multiply(ranking_vector)
             cost += prob_of_best_n.max(axis=1).sum()
-        self.print_f('probability sum:', cost, verbose=1)
+        cost /= num_pairs
+        self.print_f('avg probability:', cost, verbose=1)
         return cost
 
     def create_mask_vector(self, known_nodes):
