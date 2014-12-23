@@ -30,7 +30,7 @@ def main():
     correlation_perc = 0.2
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
-    for self_con in np.arange(0, max_con + (step * 0.9), step):
+    for network_num, self_con in enumerate(np.arange(0, max_con + (step * 0.9), step)):
         self_con = max_con - self_con
         print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', max_con - self_con, ')'
         network, bm_groups = graph_gen(self_con, max_con - self_con, nodes, groups)
@@ -73,7 +73,10 @@ def main():
             df = df.loc[0:int(round(len(df) * correlation_perc))]
         correlations = df.corr(method='spearman')
         create_folder_structure('output/graph_plots/')
-        graph_draw(network, groups=bm_groups, mu=3, vertex_fill_color=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
+        eweights = network.new_edge_property('float')
+        for e in network.edges():
+            eweights[e] = 1 if bm_groups[e.source()] == bm_groups[e.target()] else 0
+        graph_draw(network, groups=bm_groups, eweights=eweights, mu=3, vertex_fill_color=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
         plt.close('all')
         print correlations
         results_df.at[self_con, 'deg'] = correlations['deg']['ranked_vertex']
@@ -83,10 +86,11 @@ def main():
         plt.xlabel('self connectivity')
         plt.savefig('output/sbm_results.png', dpi=300)
         plt.close('all')
-    plt.clf()
-    plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
-    plt.savefig('output/sbm_results_rank_weights.png')
-    plt.close('all')
+        if network_num == 0:
+            plt.clf()
+            plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
+            plt.savefig('output/sbm_results_rank_weights.png')
+            plt.close('all')
 
 
 if __name__ == '__main__':
