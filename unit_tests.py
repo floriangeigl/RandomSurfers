@@ -41,22 +41,26 @@ class TestMover(unittest.TestCase):
         opt.optimize()
 
     def test_simulated_annealing(self):
-        network = GraphGenerator(50)
-        network = network.create_random_graph()
-        cf = cost_function.CostFunction(network, pairs_reduce=0.1)
+        network = Graph(directed=False)
+        vertices = [network.add_vertex() for i in range(5)]
+        edges = [network.add_edge(vertices[0], v) for v in vertices[1:]]
+        init_nodes_ranking = range(network.num_vertices())
+        random.shuffle(init_nodes_ranking)
+        cf = cost_function.CostFunction(network, target_reduce=1)
         mover = moves.MoveTravelSM()
-        all_nodes = range(network.num_vertices())
-        random.shuffle(all_nodes)
-        opt = SimulatedAnnealing(cf, mover, all_nodes, known=0.1, max_runs=1000, reduce_step_after_fails=0, reduce_step_after_accepts=100)
+        print 'init ranking:', init_nodes_ranking
+        opt = SimulatedAnnealing(cf, mover, init_nodes_ranking=init_nodes_ranking, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=100)
         ranking, cost = opt.optimize()
         print 'runs:', opt.runs
         print 'best ranking', ranking
         print 'cost:', cost
+        assert ranking[0] == 0
+
 
     def test_CostFunctionSpeed(self):
         network = GraphGenerator(1000)
         network = network.create_random_graph()
-        cf = cost_function.CostFunction(network, pairs_reduce=0.1)
+        cf = cost_function.CostFunction(network, target_reduce=0.1)
         cf.calc_cost()
         random_known_nodes = range(network.num_vertices())
         for i in range(1, 11):
@@ -83,3 +87,4 @@ class TestMover(unittest.TestCase):
         assert range(len(ranking)) == list(df['deg'])
         assert list(df['ranked_vertex']) == ranking
         assert list(df['values']) == list(weights)
+

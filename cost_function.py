@@ -156,7 +156,7 @@ class CostFunction():
             if ranking is not None:
                 prob_of_best_n = prob_of_best_n.multiply(ranking_vector)
             cost += prob_of_best_n.max(axis=1).sum()
-        cost /= num_pairs if ranking is None else ranking_vector.sum()
+        cost /= num_pairs
         self.print_f('cost:', cost, verbose=1)
         return cost
 

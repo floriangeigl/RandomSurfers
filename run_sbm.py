@@ -21,15 +21,15 @@ from utils import *
 
 
 def main():
-    nodes = 10
-    groups = 2
+    nodes = 500
+    groups = 5
     step = 0.2
     max_con = 1
-    target_reduce = 0.1
-    max_runs = 1000
+    target_reduce = 0.01
+    max_runs = 10000
+    correlation_perc = 0.2
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
-    correlation_perc = 0.1
     for self_con in np.arange(0, max_con + (step * 0.9), step):
         self_con = max_con - self_con
         print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', max_con - self_con, ')'
@@ -42,16 +42,14 @@ def main():
         opt = optimizer.SimulatedAnnealing(cf, mover, all_nodes, known=0.1, max_runs=max_runs, reduce_step_after_fails=0, reduce_step_after_accepts=100, verbose=0)
         ranking, cost = opt.optimize()
         print 'runs:', opt.runs
-        # print 'best ranking', ranking
         print 'cost:', cost
-        # print 'weights:', cf.ranking_weights
         df = get_ranking_df(ranking, cf.ranking_weights)
         print df.head()
         # deg
         vp_map = network.degree_property_map('total')
         df['deg'] = get_ranking(vp_map)
 
-        test_dict = {network.vertex(v): idx for idx, v in enumerate(ranking)}
+        test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
         vp_map = network.new_vertex_property('int')
         for v in network.vertices():
             vp_map[v] = test_dict[v]
