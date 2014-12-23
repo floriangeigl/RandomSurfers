@@ -42,8 +42,10 @@ class TestMover(unittest.TestCase):
 
     def test_simulated_annealing(self):
         network = Graph(directed=False)
-        vertices = [network.add_vertex() for i in range(5)]
+        vertices = [network.add_vertex() for i in range(10)]
         edges = [network.add_edge(vertices[0], v) for v in vertices[1:]]
+        edges += [network.add_edge(vertices[1], v) for v in vertices[2:]]
+        # star-like network with two main nodes: v0 connected to all, v1 connected to all without v0
         init_nodes_ranking = range(network.num_vertices())
         random.shuffle(init_nodes_ranking)
         cf = cost_function.CostFunction(network, target_reduce=1)
@@ -55,6 +57,7 @@ class TestMover(unittest.TestCase):
         print 'best ranking', ranking
         print 'cost:', cost
         assert ranking[0] == 0
+        assert ranking[1] == 1
 
 
     def test_CostFunctionSpeed(self):
