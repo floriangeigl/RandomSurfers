@@ -27,10 +27,10 @@ def main():
     nodes = 1000
 
     # divide network into x groups
-    groups = 3
+    groups = 10
 
     # stepsize between different block configurations
-    step = 0.2
+    step = 0.25
 
     # max connection between blocks
     max_con = 1
@@ -39,7 +39,7 @@ def main():
     target_reduce = 0.1
 
     # max runs for optimizer
-    max_runs = 1000
+    max_runs = 10000
 
     # percentage of which to calc the correlation between rankings (top x)
     correlation_perc = 0.2
@@ -64,6 +64,9 @@ def main():
         if network_num == 0:
             plt.clf()
             plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
+            plt.xtitle('ranking position')
+            plt.ytitle('weight')
+            plt.title('weights of ranking')
             plt.savefig('output/sbm_results_rank_weights.png')
             plt.close('all')
 
