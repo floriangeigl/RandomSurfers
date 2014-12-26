@@ -1,5 +1,5 @@
 from graph_tool.all import *
-from scipy.stats import poisson
+from scipy.stats import poisson, powerlaw
 import operator
 import pandas as pd
 import numpy as np
@@ -7,7 +7,8 @@ import numpy as np
 
 def graph_gen(self_con, other_con, nodes=100, groups=10):
     corr = lambda x, y: self_con if x == y else other_con
-    g, bm = random_graph(nodes, lambda: poisson(10).rvs(1), directed=False, model="blockmodel-traditional", block_membership=lambda: np.random.randint(int(groups)), vertex_corr=corr)
+    g, bm = random_graph(nodes, lambda: (powerlaw.rvs(2.4, size=1) * -1 + 1)*20, directed=False, model="blockmodel-traditional", block_membership=lambda: np.random.randint(int(groups)), vertex_corr=corr)
+    # poisson(10).rvs(1)
     return g, bm
 
 

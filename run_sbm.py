@@ -118,9 +118,9 @@ def main():
         for e in network.edges():
             eweight[e] = 1 if bm_groups[e.source()] == bm_groups[e.target()] else 0
         pos = sfdp_layout(network, groups=bm_groups, mu=1)
-        graph_draw(network, pos=pos, vertex_fill_color=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
-        graph_draw(network, pos=pos, vertex_fill_color=deg_pmap, output='output/graph_plots/sbm_' + str(self_con) + '_deg.png')
-        graph_draw(network, pos=pos, vertex_fill_color=bw_pmap, output='output/graph_plots/sbm_' + str(self_con) + '_betwe.png')
+        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
+        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=deg_pmap, output='output/graph_plots/sbm_' + str(self_con) + '_deg.png')
+        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=bw_pmap, output='output/graph_plots/sbm_' + str(self_con) + '_betwe.png')
 
         # plot degree distribution
         deg_dist = defaultdict(float)
