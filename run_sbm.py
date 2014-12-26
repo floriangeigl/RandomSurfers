@@ -36,7 +36,7 @@ def main():
     max_con = 1
 
     # reduce targets by
-    target_reduce = 0.1
+    target_reduce = 0.01
 
     # max runs for optimizer
     max_runs = 10000
@@ -60,12 +60,12 @@ def main():
 
         # init cost function and print configuration details
         cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)
-        print 'missions:', sum(len(j) for i, j in cf.pairs), 'targets:', len(cf.pairs)
+        print 'missions:', "{:,}".format(sum(len(j) for i, j in cf.pairs)), 'targets:', len(cf.pairs)
         if network_num == 0:
             plt.clf()
             plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
-            plt.xtitle('ranking position')
-            plt.ytitle('weight')
+            plt.xlabel('ranking position')
+            plt.ylabel('weight')
             plt.title('weights of ranking')
             plt.savefig('output/sbm_results_rank_weights.png')
             plt.close('all')
@@ -127,12 +127,12 @@ def main():
         for v in network.vertices():
             deg_dist[deg_pmap[v]] += 1
         x_axis = range(max(deg_dist.keys()) + 1)
-        plt.plot(x=x_axis, y=[deg_dist[i] for i in x_axis], lw=2)
+        plt.plot([deg_dist[i] for i in x_axis], lw=2)
         plt.title('degree distribution')
         plt.xscale('log')
         plt.yscale('log')
-        plt.xtitle('degree')
-        plt.ytitle('# nodes')
+        plt.xlabel('degree')
+        plt.ylabel('# nodes')
         plt.savefig('output/graph_plots/sbm_' + str(self_con) + '_degdist.png')
         plt.close('all')
 
