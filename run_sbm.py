@@ -88,7 +88,8 @@ def main():
         sample_size = min(len(targets), 50)
         print sample_size, 'targets', random.sample(targets, sample_size)
         targets = set(targets)
-        print 'top 50 in targets:', np.sum(i in targets for i in ranking[:50])
+        top_50_ranking = set(ranking[:50])
+        print 'top 50 overlap of targets and ranking:', len(targets & top_50_ranking)
 
         # get ranking of different measurements
         deg_pmap = network.degree_property_map('total')
