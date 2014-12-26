@@ -22,13 +22,13 @@ import datetime
 
 
 def main():
-    nodes = 500
+    nodes = 1000
     groups = 5
     step = 0.2
     max_con = 1
     target_reduce = 0.01
     max_runs = 10000
-    correlation_perc = 0.2
+    correlation_perc = -1
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
     assert groups > 0
@@ -48,9 +48,14 @@ def main():
         print 'cost:', cost
         df = get_ranking_df(ranking, cf.ranking_weights)
         print df.head()
+        print 'ranking top 50', ranking[:50]
+        targets, _ = zip(*cf.pairs)
+        print '50 targets', targets[:50]
+        targets = set(targets)
+        print 'top 50 in targets:', np.sum(i in targets for i in ranking[:50])
         # deg
-        vp_map = network.degree_property_map('total')
-        df['deg'] = get_ranking(vp_map)
+        deg_pmap = network.degree_property_map('total')
+        df['deg'] = get_ranking(deg_pmap)
 
         test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
         vp_map = network.new_vertex_property('int')
@@ -65,11 +70,11 @@ def main():
             vp_map = network.degree_property_map('out')
             df['out-deg'] = get_ranking(vp_map)
 
-        vp_map = pagerank(network)
-        df['pagerank'] = get_ranking(vp_map)
+        pr_pmap = pagerank(network)
+        df['pagerank'] = get_ranking(pr_pmap)
 
-        vp_map, _ = betweenness(network)
-        df['betweeness'] = get_ranking(vp_map)
+        bw_pmap, _ = betweenness(network)
+        df['betweeness'] = get_ranking(bw_pmap)
 
         if correlation_perc > 0:
             print 'calc correlation between top:', correlation_perc
@@ -80,6 +85,8 @@ def main():
         for e in network.edges():
             eweights[e] = 1 if bm_groups[e.source()] == bm_groups[e.target()] else 0
         graph_draw(network, groups=bm_groups, eweights=eweights, mu=3, vertex_fill_color=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
+        graph_draw(network, groups=bm_groups, eweights=eweights, mu=3, vertex_fill_color=deg_pmap, output='output/graph_plots/sbm_' + str(self_con) + '_deg.png')
+        graph_draw(network, groups=bm_groups, eweights=eweights, mu=3, vertex_fill_color=bw_pmap, output='output/graph_plots/sbm_' + str(self_con) + '_betwe.png')
         plt.close('all')
         print correlations
         results_df.at[self_con, 'deg'] = correlations['deg']['ranked_vertex']

@@ -137,24 +137,32 @@ class CostFunction():
         num_pairs = 0
         for dest, srcs in self.pairs:
             num_pairs += len(srcs)
+
+            # cosim
             cossims = self.cos_sim[dest, :]
-            # if ranking is not None:
-            # cossims = cossims.multiply(ranking_vector)
             neigh_cossim = self.adj_mat[srcs, :].multiply(cossims)
             neigh_cossim = neigh_cossim.multiply(csr_matrix(1 / (neigh_cossim.sum(axis=1))))
+            if ranking is not None:
+                neigh_cossim = neigh_cossim.multiply(ranking_vector)
+
+            # degree
             degs = self.deg
-            # if ranking is not None:
-            # degs = degs.multiply(ranking_vector)
             degs = degs[srcs, :]
             degs = degs.multiply(csr_matrix(1 / (degs.sum(axis=1))))
+            if ranking is not None:
+                degs = degs.multiply(ranking_vector)
+
+            # mix deg and cos
             prob = neigh_cossim * self.cos_weight + degs * self.deg_weight
+
+            # get next best hops for each src and create a mask thereof
             best_next_hops = self.best_next_hops[dest]
             best_per_src = [best_next_hops[i] for i in srcs]
             n_best_per_src = np.array([len(i) for i in best_per_src])
             mask = csr_matrix(([1] * n_best_per_src.sum(), ([rdx for rdx, (src, n_src) in enumerate(zip(srcs, n_best_per_src)) for i in xrange(n_src)], [j for i in best_per_src for j in i])), shape=prob.shape)
+
+            # filter out prob of next best hops and take the max per srcs
             prob_of_best_n = prob.multiply(mask)
-            if ranking is not None:
-                prob_of_best_n = prob_of_best_n.multiply(ranking_vector)
             cost += prob_of_best_n.max(axis=1).sum()
         cost /= num_pairs
         self.print_f('cost:', cost, verbose=1)
