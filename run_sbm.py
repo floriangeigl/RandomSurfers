@@ -36,7 +36,7 @@ def main():
     max_con = 1
 
     # reduce targets by
-    target_reduce = 0.01
+    target_reduce = 0.05
 
     # max runs for optimizer
     max_runs = 10000
@@ -78,6 +78,15 @@ def main():
         print 'optimizing...'
         opt = optimizer.SimulatedAnnealing(cf, mover, all_nodes, known=0.1, max_runs=max_runs, reduce_step_after_fails=0, reduce_step_after_accepts=100, verbose=0)
         ranking, cost = opt.optimize()
+        print 'end beta:', opt.beta
+
+        # print accept prob
+        df = pd.DataFrame(columns=['accept prob'], data=opt.prob_history)
+        create_folder_structure('output/prob/')
+        df.plot()
+        plt.legend()
+        plt.savefig('output/prob/sbm_' + str(self_con) + '.png', dpi=150)
+        plt.close('all')
 
         # create ranking dataframe
         df = get_ranking_df(ranking, cf.ranking_weights)

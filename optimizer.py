@@ -73,6 +73,7 @@ class SimulatedAnnealing(Optimizer):
     def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, *args, **kwargs):
         Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
         self.beta = beta
+        self.prob_history = []
 
     def optimize(self):
         self.accepts = 0
@@ -92,7 +93,9 @@ class SimulatedAnnealing(Optimizer):
             new_ranking = self.mv.move(current_ranking)
             new_cost = self.cf.calc_cost(new_ranking)
             self.cost_history.append(new_cost)
-            if random.uniform(0.0, 1.0) < np.exp(- self.beta * (new_cost - current_cost)):
+            accept_prob = np.exp(- self.beta * (current_cost - new_cost))
+            self.prob_history.append(accept_prob)
+            if random.uniform(0.0, 1.0) < accept_prob:
                 self.accepts += 1
                 current_cost = new_cost
                 current_ranking = new_ranking
@@ -103,7 +106,7 @@ class SimulatedAnnealing(Optimizer):
                 self.fails += 1
             if 0 < self.reduce_after_a <= self.accepts or 0 < self.reduce_after_f <= self.fails:
                 self.mv.reduce_step_size()
-                self.beta *= 1.005
+                self.beta *= 1.05
                 self.accepts = 0
                 self.fails = 0
         return best_ranking, best_cost
