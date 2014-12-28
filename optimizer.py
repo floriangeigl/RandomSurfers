@@ -1,4 +1,10 @@
 from __future__ import division
+from sys import platform as _platform
+import matplotlib
+
+if _platform == "linux" or _platform == "linux2":
+    matplotlib.use('Agg')
+import matplotlib.pylab as plt
 from abc import abstractmethod
 from cost_function import CostFunction
 from moves import Mover
@@ -6,6 +12,7 @@ import random
 import copy
 import numpy as np
 from tools.printing import print_f
+from itertools import cycle
 
 
 class Optimizer(object):
@@ -22,6 +29,21 @@ class Optimizer(object):
         self.fails = 0
         self.accepts = 0
         self.verbose = verbose
+        self.cost_history = []
+
+    def draw_cost_history(self, filename='output/cost.png', compare_dict=None):
+        colors = ['blue', 'red', 'yellow']
+        plt.plot(self.cost_history, lw=3, c='black', label='cost', alpha=0.5)
+        if compare_dict is not None:
+            for idx, (name, vals) in enumerate(compare_dict.iteritems()):
+                c = colors[idx % len(colors)]
+                if hasattr(vals, '__iter__'):
+                    plt.plot(vals, lw=2, label=name, c=c, alpha=0.4)
+                else:
+                    plt.axhline(y=vals, label=name, c=c, alpha=0.4)
+        plt.legend(loc='best')
+        plt.savefig(filename, dpi=150)
+        plt.close('all')
 
     def optimize(self):
         num_known_nodes = int(round(len(self.init_ranking) * self.known))
@@ -69,6 +91,7 @@ class SimulatedAnnealing(Optimizer):
                 self.print_f('run:', i, '(', c_perc, '% )')
             new_ranking = self.mv.move(current_ranking)
             new_cost = self.cf.calc_cost(new_ranking)
+            self.cost_history.append(new_cost)
             if random.uniform(0.0, 1.0) < np.exp(- self.beta * (new_cost - current_cost)):
                 self.accepts += 1
                 current_cost = new_cost

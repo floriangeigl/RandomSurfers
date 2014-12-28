@@ -82,6 +82,10 @@ def main():
         # create ranking dataframe
         df = get_ranking_df(ranking, cf.ranking_weights)
 
+        # make sure move did not exclude some vals
+        assert len(ranking) == network.num_vertices()
+        assert set(ranking) == set(map(int, network.vertices()))
+
         # print some stats
         print 'runs:', opt.runs
         print 'cost:', cost
@@ -94,9 +98,13 @@ def main():
         top_50_ranking = set(ranking[:50])
         print 'top 50 overlap of targets and ranking:', len(targets & top_50_ranking)
 
+        # create dict to compare costs
+        measurements_costs = dict()
+
         # get ranking of different measurements
         deg_pmap = network.degree_property_map('total')
         df['deg'] = get_ranking(deg_pmap)
+        measurements_costs['deg'] = cf.calc_cost(list(df['deg']))
         test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
         vp_map = network.new_vertex_property('int')
         for v in network.vertices():
@@ -109,8 +117,14 @@ def main():
             df['out-deg'] = get_ranking(vp_map)
         pr_pmap = pagerank(network)
         df['pagerank'] = get_ranking(pr_pmap)
+        measurements_costs['pagerank'] = cf.calc_cost(list(df['pagerank']))
         bw_pmap, _ = betweenness(network)
         df['betweeness'] = get_ranking(bw_pmap)
+        measurements_costs['betweeness'] = cf.calc_cost(list(df['betweeness']))
+
+        # plot cost history
+        create_folder_structure('output/cost/')
+        opt.draw_cost_history(filename='output/cost/sbm_' + str(self_con) + '.png', compare_dict=measurements_costs)
 
         # plot networks
         create_folder_structure('output/graph_plots/')
