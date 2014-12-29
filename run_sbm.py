@@ -24,10 +24,10 @@ from collections import defaultdict
 
 def main():
     # total number of nodes per network
-    nodes = 100
+    nodes = 1000
 
     # divide network into x groups
-    groups = 3
+    groups = 5
 
     # stepsize between different block configurations
     step = 0.25
@@ -36,7 +36,7 @@ def main():
     max_con = 1
 
     # reduce targets by
-    target_reduce = 0.1
+    target_reduce = 0.01
 
     # max runs for optimizer
     max_runs = 1000

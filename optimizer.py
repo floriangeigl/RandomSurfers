@@ -35,7 +35,7 @@ class Optimizer(object):
     def draw_cost_history(self, filename='output/cost.png', compare_dict=None):
         colors = ['blue', 'red', 'yellow']
         f, ax = plt.subplots()
-        ax.plot(self.cost_history, lw=2, c='black', label='cost', alpha=0.8)
+        ax.plot(self.cost_history, lw=1, c='black', label='cost', alpha=0.8)
         df = pd.DataFrame(columns=['rolling mean'], data=self.cost_history)
         df['rolling mean'] = pd.rolling_mean(df['rolling mean'], window=100)
         df.plot(ax=ax, lw=3, c='green')
@@ -106,9 +106,9 @@ class SimulatedAnnealing(Optimizer):
             new_ranking = self.mv.move(current_ranking)
             new_cost = self.cf.calc_cost(new_ranking)
             self.cost_history.append(new_cost)
-            accept_prob = min(np.exp(- self.beta * (current_cost - new_cost)), 1)
+            accept_prob = np.exp(- self.beta * (current_cost - new_cost)) if new_cost < current_cost else 1
             self.prob_history.append(accept_prob)
-            if random.uniform(0.0, 1.0) < accept_prob:
+            if random.uniform(0.0, 1.0) <= accept_prob:
                 self.accepts += 1
                 current_cost = new_cost
                 current_ranking = new_ranking
