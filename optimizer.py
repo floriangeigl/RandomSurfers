@@ -74,6 +74,7 @@ class SimulatedAnnealing(Optimizer):
         Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
         self.beta = beta
         self.prob_history = []
+        self.beta_history = {}
 
     def optimize(self):
         self.accepts = 0
@@ -83,13 +84,13 @@ class SimulatedAnnealing(Optimizer):
         best_cost = current_cost
         best_ranking = current_ranking
         perc = -10
-        for i in xrange(self.runs):
-            c_perc = int((i / self.runs) * 100)
+        for run in xrange(self.runs):
+            c_perc = int((run / self.runs) * 100)
             if self.verbose >= 3:
-                self.print_f('run:', i, '(', c_perc, '% )', verbose=3)
+                self.print_f('run:', run, '(', c_perc, '% )', verbose=3)
             elif c_perc >= perc + 10:
                 perc = c_perc
-                self.print_f('run:', i, '(', c_perc, '% )')
+                self.print_f('run:', run, '(', c_perc, '% )')
             new_ranking = self.mv.move(current_ranking)
             new_cost = self.cf.calc_cost(new_ranking)
             self.cost_history.append(new_cost)
@@ -107,6 +108,7 @@ class SimulatedAnnealing(Optimizer):
             if 0 < self.reduce_after_a <= self.accepts or 0 < self.reduce_after_f <= self.fails:
                 self.mv.reduce_step_size()
                 self.beta *= 1.05
+                self.beta_history[run] = self.beta
                 self.accepts = 0
                 self.fails = 0
         return best_ranking, best_cost

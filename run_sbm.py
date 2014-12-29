@@ -83,7 +83,12 @@ def main():
         # print accept prob
         df = pd.DataFrame(columns=['accept prob'], data=opt.prob_history)
         create_folder_structure('output/prob/')
-        df.plot()
+        df.plot(lw=1)
+        prob_min, prob_max = df['accept prob'].min(), df['accept prob'].max()
+        prob_mid = prob_min + ((prob_max - prob_min) / 2)
+        for run, betaval in opt.beta_history.iteritems():
+            plt.axvline(run, c='blue', alpha='0.2', lw=2)
+            plt.annotate(str(betaval), xy=(run, prob_mid))
         plt.legend()
         plt.savefig('output/prob/sbm_' + str(self_con) + '.png', dpi=150)
         plt.close('all')

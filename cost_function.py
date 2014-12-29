@@ -117,9 +117,9 @@ class CostFunction():
                 ranking_weights = reversed(range(num_nodes))
                 ranking_weights = np.exp(np.array(ranking_weights))
         ranking_weights = np.array(list(ranking_weights))
-        result = ranking_weights / ranking_weights.max()
-        self.print_f('ranking vector:', result, type(result), verbose=2)
-        return result
+        ranking_weights = ranking_weights / ranking_weights.max()
+        self.print_f('ranking vector:', ranking_weights, type(ranking_weights), verbose=2)
+        return ranking_weights
 
     def print_f(self, *args, **kwargs):
         if 'verbose' not in kwargs or kwargs['verbose'] <= self.verbose:
@@ -136,7 +136,8 @@ class CostFunction():
         cost = 0
         num_pairs = 0
         for dest, srcs in self.pairs:
-            num_pairs += len(srcs)
+            num_srcs = len(srcs)
+            num_pairs += num_srcs
 
             # cosim
             cossims = self.cos_sim[dest, :]
@@ -163,8 +164,8 @@ class CostFunction():
 
             # filter out prob of next best hops and take the max per srcs
             prob_of_best_n = prob.multiply(mask)
-            cost += prob_of_best_n.max(axis=1).sum()
-        cost /= num_pairs
+            cost += (prob_of_best_n.max(axis=1).sum() / self.ranking_weights[:num_srcs].sum())
+        # cost /= num_pairs
         self.print_f('cost:', cost, verbose=1)
         return cost
 
