@@ -36,7 +36,7 @@ def main():
     max_con = 1
 
     # reduce targets by
-    target_reduce = 0.01
+    target_reduce = 0.1
 
     # max runs for optimizer
     max_runs = 1000
