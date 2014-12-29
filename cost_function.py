@@ -6,6 +6,7 @@ from scipy.sparse import csr_matrix, coo_matrix, csc_matrix
 from collections import defaultdict
 import random
 import operator
+import scipy
 
 
 class CostFunction():
@@ -31,6 +32,7 @@ class CostFunction():
             self.pairs = pairs
         self.print_f('\tgenerate degrees vector', verbose=1)
         deg_map = graph.degree_property_map('total')
+        self.sorted_degs = np.array(sorted((deg_map[v] for v in graph.vertices()), reverse=True))
         self.deg = csr_matrix((([deg_map[v] for v in graph.vertices()]), (range(graph.num_vertices()), [0] * graph.num_vertices())), shape=(graph.num_vertices(), 1))
         self.deg = self.deg.multiply(self.adj_mat)
         self.deg = csr_matrix(self.deg.T)
@@ -164,8 +166,8 @@ class CostFunction():
 
             # filter out prob of next best hops and take the max per srcs
             prob_of_best_n = prob.multiply(mask)
-            cost += (prob_of_best_n.max(axis=1).sum() / self.ranking_weights[:num_srcs].sum())
-        # cost /= num_pairs
+            cost += (prob_of_best_n.max(axis=1).sum() / (self.sorted_degs[:num_srcs] * self.ranking_weights[:num_srcs]).sum())
+        cost /= len(self.pairs)
         self.print_f('cost:', cost, verbose=1)
         return cost
 

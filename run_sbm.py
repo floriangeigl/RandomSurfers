@@ -24,10 +24,10 @@ from collections import defaultdict
 
 def main():
     # total number of nodes per network
-    nodes = 1000
+    nodes = 100
 
     # divide network into x groups
-    groups = 10
+    groups = 3
 
     # stepsize between different block configurations
     step = 0.25
@@ -36,10 +36,10 @@ def main():
     max_con = 1
 
     # reduce targets by
-    target_reduce = 0.05
+    target_reduce = 0.1
 
     # max runs for optimizer
-    max_runs = 10000
+    max_runs = 1000
 
     # percentage of which to calc the correlation between rankings (top x)
     correlation_perc = 0.2
@@ -55,7 +55,7 @@ def main():
         # generate network
         self_con = max_con - self_con
         other_con = (max_con - self_con) / (groups - 1)
-        print 'gen graph with ', nodes, 'nodes.(self:', self_con, ',other:', other_con, ')'
+        print 'gen graph with ', nodes, 'nodes and', groups, 'groups.(self:', self_con, ',other:', other_con, ')'
         network, bm_groups = graph_gen(self_con, other_con, nodes, groups)
 
         # init cost function and print configuration details
@@ -82,13 +82,14 @@ def main():
 
         # print accept prob
         df = pd.DataFrame(columns=['accept prob'], data=opt.prob_history)
+        df['accept prob'] = df['accept prob'].apply(lambda x: min(x, 1.5))
+        df['rolling mean'] = pd.rolling_mean(df['accept prob'], window=100)
         create_folder_structure('output/prob/')
         df.plot(lw=1)
         prob_min, prob_max = df['accept prob'].min(), df['accept prob'].max()
-        prob_mid = prob_min + ((prob_max - prob_min) / 2)
+        prob_quad = prob_min + ((prob_max - prob_min) / 4)
         for run, betaval in opt.beta_history.iteritems():
-            plt.axvline(run, c='blue', alpha='0.2', lw=2)
-            plt.annotate(str(betaval), xy=(run, prob_mid))
+            plt.annotate(str(betaval), xy=(run, prob_quad), rotation=90)
         plt.legend()
         plt.savefig('output/prob/sbm_' + str(self_con) + '.png', dpi=150)
         plt.close('all')

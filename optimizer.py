@@ -13,6 +13,7 @@ import copy
 import numpy as np
 from tools.printing import print_f
 from itertools import cycle
+import pandas as pd
 
 
 class Optimizer(object):
@@ -33,14 +34,18 @@ class Optimizer(object):
 
     def draw_cost_history(self, filename='output/cost.png', compare_dict=None):
         colors = ['blue', 'red', 'yellow']
-        plt.plot(self.cost_history, lw=3, c='black', label='cost', alpha=0.5)
+        f, ax = plt.subplots()
+        ax.plot(self.cost_history, lw=2, c='black', label='cost', alpha=0.8)
+        df = pd.DataFrame(columns=['rolling mean'], data=self.cost_history)
+        df['rolling mean'] = pd.rolling_mean(df['rolling mean'], window=100)
+        df.plot(ax=ax, lw=3, c='green')
         if compare_dict is not None:
             for idx, (name, vals) in enumerate(compare_dict.iteritems()):
                 c = colors[idx % len(colors)]
                 if hasattr(vals, '__iter__'):
-                    plt.plot(vals, lw=2, label=name, c=c, alpha=0.4)
+                    plt.plot(vals, lw=2, label=name, c=c, alpha=0.6)
                 else:
-                    plt.axhline(y=vals, label=name, c=c, alpha=0.4)
+                    plt.axhline(y=vals, lw=2, label=name, c=c, alpha=0.6)
         plt.legend(loc='best')
         plt.savefig(filename, dpi=150)
         plt.close('all')
@@ -84,30 +89,40 @@ class SimulatedAnnealing(Optimizer):
         best_cost = current_cost
         best_ranking = current_ranking
         perc = -10
-        for run in xrange(self.runs):
-            c_perc = int((run / self.runs) * 100)
-            if self.verbose >= 3:
-                self.print_f('run:', run, '(', c_perc, '% )', verbose=3)
-            elif c_perc >= perc + 10:
-                perc = c_perc
-                self.print_f('run:', run, '(', c_perc, '% )')
+        self.prob_history = [1]
+        run = -1
+        ten_percent_runs = int(self.runs * 0.1)
+        # for run in xrange(self.runs):
+        while True:
+            run += 1
+            if run % ten_percent_runs == 0:
+                mean_prop_last_runs = np.mean(self.prob_history[-100:])
+                if mean_prop_last_runs > 0.5 and run + ten_percent_runs > self.runs:
+                    self.runs += ten_percent_runs
+                c_perc = int(run / self.runs * 100)
+                self.print_f('run:', run, '||' + str(c_perc) + '% ||best cost:', best_cost, '||min prob:', np.min(self.prob_history), '||mean prob last 100:', mean_prop_last_runs, '||beta:', self.beta)
+            if run > self.runs:
+                break
             new_ranking = self.mv.move(current_ranking)
             new_cost = self.cf.calc_cost(new_ranking)
             self.cost_history.append(new_cost)
-            accept_prob = np.exp(- self.beta * (current_cost - new_cost))
+            accept_prob = min(np.exp(- self.beta * (current_cost - new_cost)), 1)
             self.prob_history.append(accept_prob)
             if random.uniform(0.0, 1.0) < accept_prob:
                 self.accepts += 1
                 current_cost = new_cost
                 current_ranking = new_ranking
                 if new_cost > best_cost:
+                    # current_cost = new_cost
                     best_cost = new_cost
                     best_ranking = copy.copy(current_ranking)
             else:
                 self.fails += 1
             if 0 < self.reduce_after_a <= self.accepts or 0 < self.reduce_after_f <= self.fails:
                 self.mv.reduce_step_size()
-                self.beta *= 1.05
+                self.beta *= 1.5
+                current_cost = best_cost
+                current_ranking = copy.copy(best_ranking)
                 self.beta_history[run] = self.beta
                 self.accepts = 0
                 self.fails = 0
