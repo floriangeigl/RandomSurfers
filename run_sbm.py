@@ -41,11 +41,11 @@ def main():
     # max runs for optimizer
     max_runs = 1000
 
-    # percentage of which to calc the correlation between rankings (top x)
-    correlation_perc = 0.2
+    # percentages of which to calc the correlation between rankings (top x)
+    correlation_perc = np.arange(0.1, 1.1, 0.1)
 
     # the weighting function for the ranking
-    ranking_weights_func = lambda x: np.power(max(x - (nodes * 0.8), 0), 2)
+    ranking_weights_func = lambda x: np.power(x, 4)
 
     results_df = pd.DataFrame()
     results_df.index = results_df.index.astype('float')
@@ -60,7 +60,6 @@ def main():
 
         # init cost function and print configuration details
         cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)
-        print 'missions:', "{:,}".format(sum(len(j) for i, j in cf.pairs)), 'targets:', len(cf.pairs)
         if network_num == 0:
             plt.clf()
             plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
@@ -70,13 +69,44 @@ def main():
             plt.savefig('output/sbm_results_rank_weights.png')
             plt.close('all')
 
+            # create dict to compare costs
+        measurements_costs = dict()
+        measurements = dict()
+
+        # get ranking of different measurements
+        print 'calc cost of measurements rankings'
+        deg_pmap = network.degree_property_map('total')
+        measurements['deg'] = deg_pmap
+        df['deg'] = get_ranking(deg_pmap)
+        measurements_costs['deg'] = cf.calc_cost(list(df['deg']))
+        test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
+        vp_map = network.new_vertex_property('int')
+        for v in network.vertices():
+            vp_map[v] = test_dict[v]
+        df['test'] = get_ranking(vp_map)
+        if network.is_directed():
+            vp_map = network.degree_property_map('in')
+            df['in-deg'] = get_ranking(vp_map)
+            vp_map = network.degree_property_map('out')
+            df['out-deg'] = get_ranking(vp_map)
+        pr_pmap = pagerank(network)
+        measurements['page rank'] = pr_pmap
+        df['pagerank'] = get_ranking(pr_pmap)
+        measurements_costs['pagerank'] = cf.calc_cost(list(df['pagerank']))
+        bw_pmap, _ = betweenness(network)
+        measurements['betweeness'] = bw_pmap
+        df['betweeness'] = get_ranking(bw_pmap)
+        measurements_costs['betweeness'] = cf.calc_cost(list(df['betweeness']))
+
+        # take best of measurement rankings as init ranking
+        init_ranking, max_m_cost = max(measurements_costs.iteritems(), key=lambda x: x[1])
+        init_ranking = list(df[init_ranking])
+
         mover = moves.MoveTravelSM(verbose=0)
-        all_nodes = range(network.num_vertices())
-        random.shuffle(all_nodes)
 
         # optimize ranking
         print 'optimizing...'
-        opt = optimizer.SimulatedAnnealing(cf, mover, all_nodes, known=0.1, max_runs=max_runs, reduce_step_after_fails=0, reduce_step_after_accepts=100, verbose=0)
+        opt = optimizer.SimulatedAnnealing(cf, mover, init_ranking, known=0.1, max_runs=max_runs, reduce_step_after_fails=0, reduce_step_after_accepts=100, verbose=0)
         ranking, cost = opt.optimize()
         print 'end beta:', opt.beta
 
@@ -97,6 +127,9 @@ def main():
         # create ranking dataframe
         df = get_ranking_df(ranking, cf.ranking_weights)
 
+        # plot measurements of ranking
+        plot_measurements_of_ranking(ranking, measurements, logx=False)
+
         # make sure move did not exclude some vals
         assert len(ranking) == network.num_vertices()
         assert set(ranking) == set(map(int, network.vertices()))
@@ -106,36 +139,6 @@ def main():
         print 'cost:', cost
         print df.head()
         print 'ranking top 50', ranking[:50]
-        targets, _ = zip(*cf.pairs)
-        sample_size = min(len(targets), 50)
-        print sample_size, 'targets', random.sample(targets, sample_size)
-        targets = set(targets)
-        top_50_ranking = set(ranking[:50])
-        print 'top 50 overlap of targets and ranking:', len(targets & top_50_ranking)
-
-        # create dict to compare costs
-        measurements_costs = dict()
-
-        # get ranking of different measurements
-        deg_pmap = network.degree_property_map('total')
-        df['deg'] = get_ranking(deg_pmap)
-        measurements_costs['deg'] = cf.calc_cost(list(df['deg']))
-        test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
-        vp_map = network.new_vertex_property('int')
-        for v in network.vertices():
-            vp_map[v] = test_dict[v]
-        df['test'] = get_ranking(vp_map)
-        if network.is_directed():
-            vp_map = network.degree_property_map('in')
-            df['in-deg'] = get_ranking(vp_map)
-            vp_map = network.degree_property_map('out')
-            df['out-deg'] = get_ranking(vp_map)
-        pr_pmap = pagerank(network)
-        df['pagerank'] = get_ranking(pr_pmap)
-        measurements_costs['pagerank'] = cf.calc_cost(list(df['pagerank']))
-        bw_pmap, _ = betweenness(network)
-        df['betweeness'] = get_ranking(bw_pmap)
-        measurements_costs['betweeness'] = cf.calc_cost(list(df['betweeness']))
 
         # plot cost history
         create_folder_structure('output/cost/')
@@ -166,18 +169,17 @@ def main():
         plt.close('all')
 
         # calculate correlation, append it to overall results and plot it
-        if correlation_perc > 0:
-            print 'calc correlation between top:', correlation_perc
-            df = df.loc[0:int(round(len(df) * correlation_perc))]
-        correlations = df.corr(method='spearman')
-        print correlations
-        results_df.at[self_con, 'deg'] = correlations['deg']['ranked_vertex']
-        results_df.at[self_con, 'pagerank'] = correlations['pagerank']['ranked_vertex']
-        results_df.at[self_con, 'betweeness'] = correlations['betweeness']['ranked_vertex']
-        results_df.plot(lw=3)
-        plt.xlabel('self connectivity')
-        plt.savefig('output/sbm_results.png', dpi=300)
-        plt.close('all')
+        for perc in correlation_perc:
+            print 'calc correlation between top:', perc
+            tmp_df = df.loc[0:int(round(len(df) * perc))]
+            correlations = tmp_df.corr(method='spearman')
+            results_df.at[self_con, 'deg'] = correlations['deg']['ranked_vertex']
+            results_df.at[self_con, 'pagerank'] = correlations['pagerank']['ranked_vertex']
+            results_df.at[self_con, 'betweeness'] = correlations['betweeness']['ranked_vertex']
+            results_df.plot(lw=3)
+            plt.xlabel('self connectivity')
+            plt.savefig('output/sbm_correlation_top_' + str(perc) + '.png', dpi=300)
+            plt.close('all')
 
 
 if __name__ == '__main__':

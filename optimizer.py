@@ -80,6 +80,13 @@ class SimulatedAnnealing(Optimizer):
         self.beta = beta
         self.prob_history = []
         self.beta_history = {}
+        self.accept_deny_history = []
+
+    def get_acceptance_rate(self, n_last=None):
+        if n_last is None:
+            return np.mean(self.accept_deny_history)
+        else:
+            return np.mean(self.accept_deny_history[-n_last:])
 
     def optimize(self):
         self.accepts = 0
@@ -110,6 +117,7 @@ class SimulatedAnnealing(Optimizer):
             self.prob_history.append(accept_prob)
             if random.uniform(0.0, 1.0) <= accept_prob:
                 self.accepts += 1
+                self.accept_deny_history.append(1)
                 current_cost = new_cost
                 current_ranking = new_ranking
                 if new_cost > best_cost:
@@ -118,6 +126,7 @@ class SimulatedAnnealing(Optimizer):
                     best_ranking = copy.copy(current_ranking)
             else:
                 self.fails += 1
+                self.accept_deny_history.append(0)
             if 0 < self.reduce_after_a <= self.accepts or 0 < self.reduce_after_f <= self.fails:
                 self.mv.reduce_step_size()
                 self.beta *= 1.5

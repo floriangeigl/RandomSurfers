@@ -10,7 +10,7 @@ import scipy
 
 
 class CostFunction():
-    def __init__(self, graph, deg_weight=0.1, cos_weight=0.9, pairs=None, target_reduce=None, cos_sim_th=0.0, verbose=2, ranking_weights=None):
+    def __init__(self, graph, deg_weight=0.1, cos_weight=0.9, pairs=None, target_reduce=None, source_reduce=None, cos_sim_th=0.0, verbose=2, ranking_weights=None):
         assert deg_weight + cos_weight == 1
         self.verbose = verbose
         self.deg_weight = deg_weight
@@ -21,6 +21,8 @@ class CostFunction():
         self.print_f('\tget adjacency matrix', verbose=1)
         self.adj_mat = adjacency(graph)  # .tocsc()
         self.print_f('\tgenerate pairs', verbose=1)
+        self.target_reduce = target_reduce
+        self.source_reduce = source_reduce
         if pairs is None:
             all_shortest_dist = True
             # format destination, array_of_sources
@@ -63,12 +65,6 @@ class CostFunction():
                 for dest in dests:
                     shortest_distances[dest][src] = src_s_map[dest]
 
-        if target_reduce is not None:
-            self.print_f('\treduce targets of pairs to:', target_reduce, verbose=1)
-            self.print_f('\tall targets:', len(self.pairs), verbose=2)
-            num_targets = int(round(len(self.pairs) * target_reduce))
-            self.pairs = random.sample(self.pairs, num_targets)
-            self.print_f('\treduced targets:', len(self.pairs), verbose=2)
         self.print_f('\tfind best next hop for each pair', verbose=1)
         self.best_next_hops = defaultdict(lambda: dict())
         for dest, srcs in self.pairs:
@@ -137,7 +133,17 @@ class CostFunction():
             assert ranking_vector.shape == (1, self.adj_mat.shape[1])
         cost = 0
         num_pairs = 0
-        for dest, srcs in self.pairs:
+        if self.target_reduce is not None:
+            # self.print_f('\treduce targets of pairs to:', target_reduce, verbose=1)
+            # self.print_f('\tall targets:', len(self.pairs), verbose=2)
+            num_targets = int(round(len(self.pairs) * self.target_reduce))
+            pairs = random.sample(self.pairs, num_targets)
+            #self.print_f('\treduced targets:', len(self.pairs), verbose=2)
+        else:
+            pairs = self.pairs
+        for dest, srcs in pairs:
+            if self.source_reduce is not None:
+                srcs = random.sample(srcs, int(round(len(srcs) * self.source_reduce)))
             num_srcs = len(srcs)
             num_pairs += num_srcs
 
