@@ -77,14 +77,15 @@ class MoveShuffle(Mover):
 class MoveTravelSM(Mover):
     def __init__(self, *args, **kwargs):
         Mover.__init__(self, *args, **kwargs)
-        pass
+        self.big_move_prob = 0.2
+        self.small_moves_prob = 0.4
 
     def move(self, vector):
         super(MoveTravelSM, self).move(vector)
         vector = copy.copy(vector)
         p = random.uniform(0.0, 1.0)
         max_idx = len(vector) - 1
-        if p < 0.2:
+        if p < self.big_move_prob:
             half_idx = int(round(max_idx / 2))
             i = random.randint(0, half_idx)
             vector = vector[i:] + vector[:i]
@@ -92,20 +93,21 @@ class MoveTravelSM(Mover):
             a = vector[:i]
             a.reverse()
             vector = a + vector[i:]
-        elif p < 0.6:
+        elif p < self.big_move_prob + self.small_moves_prob:
+            i = random.randint(0, max_idx)
+            j = random.randint(0, max_idx)
+            vector[i], vector[j] = vector[j], vector[i]
+        else:
             i = random.randint(0, max_idx)
             a = vector.pop(i)
             j = random.randint(0, max_idx - 1)
             vector.insert(j, a)
-        else:
-            i = random.randint(0, max_idx)
-            j = random.randint(0, max_idx)
-            vector[i], vector[j] = vector[j], vector[i]
         return vector
 
     def reduce_step_size(self):
         super(MoveTravelSM, self).reduce_step_size()
-        pass
+        self.big_move_prob *= 0.9
+        self.small_moves_prob = (1 - self.big_move_prob) / 2
 
 
 

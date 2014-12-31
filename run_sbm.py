@@ -24,10 +24,10 @@ from collections import defaultdict
 
 def main():
     # total number of nodes per network
-    nodes = 1000
+    nodes = 100
 
     # divide network into x groups
-    groups = 5
+    groups = 3
 
     # stepsize between different block configurations
     step = 0.25
@@ -35,11 +35,17 @@ def main():
     # max connection between blocks
     max_con = 1
 
-    # reduce targets by
+    # reduce targets of missions by
     target_reduce = 0.1
 
+    # reduce source per target by
+    source_reduce = 0.1
+
     # max runs for optimizer
-    max_runs = 1000
+    runs_per_temp = 100
+
+    # init beta
+    beta = 1000
 
     # percentages of which to calc the correlation between rankings (top x)
     correlation_perc = np.arange(0.1, 1.1, 0.1)
@@ -47,8 +53,10 @@ def main():
     # the weighting function for the ranking
     ranking_weights_func = lambda x: np.power(x, 4)
 
-    results_df = pd.DataFrame()
-    results_df.index = results_df.index.astype('float')
+    correlation_results = dict()
+    for perc in correlation_perc:
+        correlation_results[perc] = pd.DataFrame()
+        correlation_results[perc].index = correlation_results[perc].index.astype('float')
     assert groups > 0
     for network_num, self_con in enumerate(np.arange(0, max_con + (step * 0.9), step)):
 
@@ -59,7 +67,7 @@ def main():
         network, bm_groups = graph_gen(self_con, other_con, nodes, groups)
 
         # init cost function and print configuration details
-        cf = cost_function.CostFunction(network, target_reduce=target_reduce, ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)
+        cf = cost_function.CostFunction(network, target_reduce=target_reduce, source_reduce=source_reduce, ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)
         if network_num == 0:
             plt.clf()
             plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
@@ -75,15 +83,11 @@ def main():
 
         # get ranking of different measurements
         print 'calc cost of measurements rankings'
+        df = pd.DataFrame()
         deg_pmap = network.degree_property_map('total')
         measurements['deg'] = deg_pmap
         df['deg'] = get_ranking(deg_pmap)
         measurements_costs['deg'] = cf.calc_cost(list(df['deg']))
-        test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
-        vp_map = network.new_vertex_property('int')
-        for v in network.vertices():
-            vp_map[v] = test_dict[v]
-        df['test'] = get_ranking(vp_map)
         if network.is_directed():
             vp_map = network.degree_property_map('in')
             df['in-deg'] = get_ranking(vp_map)
@@ -106,17 +110,16 @@ def main():
 
         # optimize ranking
         print 'optimizing...'
-        opt = optimizer.SimulatedAnnealing(cf, mover, init_ranking, known=0.1, max_runs=max_runs, reduce_step_after_fails=0, reduce_step_after_accepts=100, verbose=0)
+        opt = optimizer.SimulatedAnnealing(cf, mover, init_ranking, runs_per_temp=runs_per_temp, beta=beta, verbose=0)
         ranking, cost = opt.optimize()
-        print 'end beta:', opt.beta
 
         # print accept prob
-        df = pd.DataFrame(columns=['accept prob'], data=opt.prob_history)
-        df['accept prob'] = df['accept prob'].apply(lambda x: min(x, 1.5))
-        df['rolling mean'] = pd.rolling_mean(df['accept prob'], window=100)
+        accept_prob_df = pd.DataFrame(columns=['accept prob'], data=opt.prob_history)
+        accept_prob_df['accept prob'] = accept_prob_df['accept prob'].apply(lambda x: min(x, 1.5))
+        accept_prob_df['rolling mean'] = pd.rolling_mean(accept_prob_df['accept prob'], window=100)
         create_folder_structure('output/prob/')
-        df.plot(lw=1)
-        prob_min, prob_max = df['accept prob'].min(), df['accept prob'].max()
+        accept_prob_df.plot(lw=1)
+        prob_min, prob_max = accept_prob_df['accept prob'].min(), accept_prob_df['accept prob'].max()
         prob_quad = prob_min + ((prob_max - prob_min) / 4)
         for run, betaval in opt.beta_history.iteritems():
             plt.annotate(str(betaval), xy=(run, prob_quad), rotation=90)
@@ -124,15 +127,23 @@ def main():
         plt.savefig('output/prob/sbm_' + str(self_con) + '.png', dpi=150)
         plt.close('all')
 
-        # create ranking dataframe
-        df = get_ranking_df(ranking, cf.ranking_weights)
-
         # plot measurements of ranking
         plot_measurements_of_ranking(ranking, measurements, logx=False)
 
         # make sure move did not exclude some vals
         assert len(ranking) == network.num_vertices()
         assert set(ranking) == set(map(int, network.vertices()))
+
+        # create ranking dataframe
+        ranking_df = get_ranking_df(ranking, cf.ranking_weights)
+        for key in ranking_df.columns:
+            df[key] = ranking_df[key]
+        test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
+        vp_map = network.new_vertex_property('int')
+        print len(df)
+        for v in network.vertices():
+            vp_map[v] = test_dict[v]
+        df['test'] = get_ranking(vp_map)
 
         # print some stats
         print 'runs:', opt.runs
@@ -171,12 +182,12 @@ def main():
         # calculate correlation, append it to overall results and plot it
         for perc in correlation_perc:
             print 'calc correlation between top:', perc
-            tmp_df = df.loc[0:int(round(len(df) * perc))]
+            tmp_df = df.loc[0:int(round((len(df) - 1) * perc))]
             correlations = tmp_df.corr(method='spearman')
-            results_df.at[self_con, 'deg'] = correlations['deg']['ranked_vertex']
-            results_df.at[self_con, 'pagerank'] = correlations['pagerank']['ranked_vertex']
-            results_df.at[self_con, 'betweeness'] = correlations['betweeness']['ranked_vertex']
-            results_df.plot(lw=3)
+            correlation_results[perc].at[self_con, 'deg'] = correlations['deg']['ranked_vertex']
+            correlation_results[perc].at[self_con, 'pagerank'] = correlations['pagerank']['ranked_vertex']
+            correlation_results[perc].at[self_con, 'betweeness'] = correlations['betweeness']['ranked_vertex']
+            correlation_results[perc].plot(lw=3)
             plt.xlabel('self connectivity')
             plt.savefig('output/sbm_correlation_top_' + str(perc) + '.png', dpi=300)
             plt.close('all')

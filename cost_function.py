@@ -138,7 +138,7 @@ class CostFunction():
             # self.print_f('\tall targets:', len(self.pairs), verbose=2)
             num_targets = int(round(len(self.pairs) * self.target_reduce))
             pairs = random.sample(self.pairs, num_targets)
-            #self.print_f('\treduced targets:', len(self.pairs), verbose=2)
+            # self.print_f('\treduced targets:', len(self.pairs), verbose=2)
         else:
             pairs = self.pairs
         for dest, srcs in pairs:

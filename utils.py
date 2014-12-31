@@ -1,9 +1,12 @@
+from __future__ import division
+from sys import platform as _platform
 from graph_tool.all import *
 from scipy.stats import poisson, powerlaw
 import operator
 import pandas as pd
 import numpy as np
 import matplotlib
+
 
 if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')

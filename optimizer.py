@@ -17,7 +17,7 @@ import pandas as pd
 
 
 class Optimizer(object):
-    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, verbose=2, *args, **kwargs):
+    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, verbose=2, *args, **kwargs):
         assert isinstance(cost_function, CostFunction)
         assert isinstance(mover, Mover)
         self.cf = cost_function
@@ -26,7 +26,7 @@ class Optimizer(object):
         self.known = known
         self.reduce_after_f = reduce_step_after_fails
         self.reduce_after_a = reduce_step_after_accepts
-        self.runs = max_runs
+        self.runs = runs
         self.fails = 0
         self.accepts = 0
         self.verbose = verbose
@@ -75,12 +75,13 @@ class Optimizer(object):
 
 
 class SimulatedAnnealing(Optimizer):
-    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, max_runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, *args, **kwargs):
-        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, max_runs=max_runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
+    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, runs_per_temp=100, *args, **kwargs):
+        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, runs=runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
         self.beta = beta
         self.prob_history = []
         self.beta_history = {}
         self.accept_deny_history = []
+        self.runs_per_temp = runs_per_temp
 
     def get_acceptance_rate(self, n_last=None):
         if n_last is None:
@@ -88,51 +89,87 @@ class SimulatedAnnealing(Optimizer):
         else:
             return np.mean(self.accept_deny_history[-n_last:])
 
-    def optimize(self):
+    def find_beta(self, target_acceptance_rate=.5, runs=None, ranking=None, init_beta=None):
+        beta = self.beta if init_beta is None else init_beta
+        orig_cf_reduce = (self.cf.source_reduce, self.cf.target_reduce)
+        runs = self.runs_per_temp if runs is None else runs
+        self.cf.source_reduce = 0.1
+        self.cf.target_reduce = 0.01
+        last_accept_rate = 1
+        while True:
+            current_ranking = copy.copy(self.init_ranking) if ranking is None else copy.copy(ranking)
+            current_cost = self.cf.calc_cost(current_ranking)
+            accept_rate = []
+            for i in range(runs):
+                new_ranking = self.mv.move(current_ranking)
+                new_cost = self.cf.calc_cost(new_ranking)
+                accept_prob = np.exp(- beta * (current_cost - new_cost)) if new_cost < current_cost else 1
+                if random.uniform(0.0, 1.0) <= accept_prob:
+                    accept_rate.append(1)
+                    current_cost = new_cost
+                    current_ranking = new_ranking
+                else:
+                    accept_rate.append(0)
+            accept_rate = np.mean(accept_rate)
+            self.print_f('find beta: current beta: ', beta, '||current accept rate:', accept_rate, '||target:', target_acceptance_rate)
+            if accept_rate > target_acceptance_rate:
+                beta *= 1.1
+                last_accept_rate = accept_rate
+            else:
+                if abs(last_accept_rate - target_acceptance_rate) < abs(accept_rate - target_acceptance_rate):
+                    beta /= 1.1
+                break
+        self.cf.source_reduce, self.cf.target_reduce = orig_cf_reduce
+        self.print_f('best beta for ', target_acceptance_rate, 'accept rate:', beta)
+        return beta
+
+    def optimize(self, max_runs=None):
         self.accepts = 0
         self.fails = 0
+        self.accept_deny_history = []
+        self.beta_history = dict()
+        self.prob_history = []
+        self.cost_history = []
+        self.print_f('find good init beta')
+        beta = self.find_beta(target_acceptance_rate=0.8)
+        beta_07 = self.find_beta(target_acceptance_rate=0.7, init_beta=beta)
+        self.print_f('beta accept rate 0.8:', beta)
+        self.print_f('beta accept rate 0.7:', beta_07)
+        beta_fac = beta_07 / beta
+        self.print_f('beta fac:', beta_fac)
         current_ranking = copy.copy(self.init_ranking)
         current_cost = self.cf.calc_cost(current_ranking)
         best_cost = current_cost
         best_ranking = current_ranking
-        perc = -10
-        self.prob_history = [1]
-        run = -1
-        ten_percent_runs = int(self.runs * 0.1)
+        run = 0
         # for run in xrange(self.runs):
         while True:
             run += 1
-            if run % ten_percent_runs == 0:
-                mean_prop_last_runs = np.mean(self.prob_history[-100:])
-                if mean_prop_last_runs > 0.5 and run + ten_percent_runs > self.runs:
-                    self.runs += ten_percent_runs
-                c_perc = int(run / self.runs * 100)
-                self.print_f('run:', run, '||' + str(c_perc) + '% ||best cost:', best_cost, '||min prob:', np.min(self.prob_history), '||mean prob last 100:', mean_prop_last_runs, '||beta:', self.beta)
-            if run > self.runs:
+            if run % self.runs_per_temp == 0:
+                accept_rate = np.mean(self.accept_deny_history[-self.runs_per_temp:])
+                mean_prop = np.mean(self.prob_history[-self.runs_per_temp:])
+                self.print_f('run:', run, '||best cost:', best_cost, '||min prob:', np.min(self.prob_history), '||mean prob:', mean_prop, '||beta:', beta, '||acceptance rate:', accept_rate)
+                self.beta_history[run] = beta
+                beta *= beta_fac
+                current_cost = best_cost
+                current_ranking = copy.copy(best_ranking)
+                self.mv.reduce_step_size()
+                if accept_rate <= 0.01:
+                    break
+            if max_runs is not None and run > max_runs:
                 break
             new_ranking = self.mv.move(current_ranking)
             new_cost = self.cf.calc_cost(new_ranking)
             self.cost_history.append(new_cost)
-            accept_prob = np.exp(- self.beta * (current_cost - new_cost)) if new_cost < current_cost else 1
+            accept_prob = np.exp(- beta * (current_cost - new_cost)) if new_cost < current_cost else 1
             self.prob_history.append(accept_prob)
             if random.uniform(0.0, 1.0) <= accept_prob:
-                self.accepts += 1
                 self.accept_deny_history.append(1)
                 current_cost = new_cost
                 current_ranking = new_ranking
                 if new_cost > best_cost:
-                    # current_cost = new_cost
                     best_cost = new_cost
                     best_ranking = copy.copy(current_ranking)
             else:
-                self.fails += 1
                 self.accept_deny_history.append(0)
-            if 0 < self.reduce_after_a <= self.accepts or 0 < self.reduce_after_f <= self.fails:
-                self.mv.reduce_step_size()
-                self.beta *= 1.5
-                current_cost = best_cost
-                current_ranking = copy.copy(best_ranking)
-                self.beta_history[run] = self.beta
-                self.accepts = 0
-                self.fails = 0
         return best_ranking, best_cost
