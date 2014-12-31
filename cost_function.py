@@ -158,8 +158,9 @@ class CostFunction():
             degs = self.deg
             degs = degs[srcs, :]
             degs = degs.multiply(csr_matrix(1 / (degs.sum(axis=1))))
-            if ranking is not None:
-                degs = degs.multiply(ranking_vector)
+            # 100% knowledge of degree
+            # if ranking is not None:
+                # degs = degs.multiply(ranking_vector)
 
             # mix deg and cos
             prob = neigh_cossim * self.cos_weight + degs * self.deg_weight

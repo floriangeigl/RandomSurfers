@@ -91,8 +91,8 @@ class SimulatedAnnealing(Optimizer):
 
     def find_beta(self, target_acceptance_rate=.5, runs=None, ranking=None, init_beta=None):
         beta = self.beta if init_beta is None else init_beta
-        orig_cf_reduce = (self.cf.source_reduce, self.cf.target_reduce)
         runs = self.runs_per_temp if runs is None else runs
+        orig_cf_reduce = (self.cf.source_reduce, self.cf.target_reduce)
         self.cf.source_reduce = 0.1
         self.cf.target_reduce = 0.01
         last_accept_rate = 1
@@ -131,30 +131,35 @@ class SimulatedAnnealing(Optimizer):
         self.prob_history = []
         self.cost_history = []
         self.print_f('find good init beta')
-        beta = self.find_beta(target_acceptance_rate=0.8)
-        beta_07 = self.find_beta(target_acceptance_rate=0.7, init_beta=beta)
-        self.print_f('beta accept rate 0.8:', beta)
-        self.print_f('beta accept rate 0.7:', beta_07)
-        beta_fac = beta_07 / beta
-        self.print_f('beta fac:', beta_fac)
+        # beta = self.find_beta(target_acceptance_rate=0.8)
+        # beta_07 = self.find_beta(target_acceptance_rate=0.7, init_beta=beta)
+        #self.print_f('beta accept rate 0.8:', beta)
+        #self.print_f('beta accept rate 0.7:', beta_07)
+        #beta_fac = beta_07 / beta
+        #self.print_f('beta fac:', beta_fac)
+        beta = self.beta
+        beta_fac = 1.5
         current_ranking = copy.copy(self.init_ranking)
         current_cost = self.cf.calc_cost(current_ranking)
         best_cost = current_cost
         best_ranking = current_ranking
+        best_cost_history = []
         run = 0
         # for run in xrange(self.runs):
+        self.print_f('init cost:', best_cost, '||init beta:', beta, )
+        init_cost = best_cost
         while True:
             run += 1
             if run % self.runs_per_temp == 0:
                 accept_rate = np.mean(self.accept_deny_history[-self.runs_per_temp:])
-                mean_prop = np.mean(self.prob_history[-self.runs_per_temp:])
-                self.print_f('run:', run, '||best cost:', best_cost, '||min prob:', np.min(self.prob_history), '||mean prob:', mean_prop, '||beta:', beta, '||acceptance rate:', accept_rate)
-                self.beta_history[run] = beta
+                self.print_f('run:', run, '||best cost:', best_cost, '|| improvement:', (best_cost / init_cost) - 1, '||beta:', beta, '||acceptance rate:', accept_rate)
                 beta *= beta_fac
+                self.beta_history[run] = beta
                 current_cost = best_cost
                 current_ranking = copy.copy(best_ranking)
-                self.mv.reduce_step_size()
-                if accept_rate <= 0.01:
+                if accept_rate < 0.5:
+                    self.mv.reduce_step_size()
+                if len(best_cost_history) >= self.runs_per_temp * 10 and len(set(best_cost_history[-self.runs_per_temp * 10:])) == 1:
                     break
             if max_runs is not None and run > max_runs:
                 break
@@ -172,4 +177,5 @@ class SimulatedAnnealing(Optimizer):
                     best_ranking = copy.copy(current_ranking)
             else:
                 self.accept_deny_history.append(0)
+            best_cost_history.append(best_cost)
         return best_ranking, best_cost

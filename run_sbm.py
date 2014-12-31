@@ -42,10 +42,10 @@ def main():
     source_reduce = 0.1
 
     # max runs for optimizer
-    runs_per_temp = 100
+    runs_per_temp = 1000
 
     # init beta
-    beta = 1000
+    beta = 100
 
     # percentages of which to calc the correlation between rankings (top x)
     correlation_perc = np.arange(0.1, 1.1, 0.1)
@@ -105,6 +105,8 @@ def main():
         # take best of measurement rankings as init ranking
         init_ranking, max_m_cost = max(measurements_costs.iteritems(), key=lambda x: x[1])
         init_ranking = list(df[init_ranking])
+        for key, val in sorted(measurements_costs.iteritems(), key=lambda x: x[1]):
+            print 'cost', key, ':', val
 
         mover = moves.MoveTravelSM(verbose=0)
 
@@ -115,7 +117,6 @@ def main():
 
         # print accept prob
         accept_prob_df = pd.DataFrame(columns=['accept prob'], data=opt.prob_history)
-        accept_prob_df['accept prob'] = accept_prob_df['accept prob'].apply(lambda x: min(x, 1.5))
         accept_prob_df['rolling mean'] = pd.rolling_mean(accept_prob_df['accept prob'], window=100)
         create_folder_structure('output/prob/')
         accept_prob_df.plot(lw=1)
@@ -128,7 +129,8 @@ def main():
         plt.close('all')
 
         # plot measurements of ranking
-        plot_measurements_of_ranking(ranking, measurements, logx=False)
+        create_folder_structure('output/measurements_of_ranking/')
+        plot_measurements_of_ranking(ranking, measurements, filename='output/measurements_of_ranking/sbm_' + str(self_con) + '.png', logx=False)
 
         # make sure move did not exclude some vals
         assert len(ranking) == network.num_vertices()
@@ -180,8 +182,9 @@ def main():
         plt.close('all')
 
         # calculate correlation, append it to overall results and plot it
+        print 'calc correlation between top:'
         for perc in correlation_perc:
-            print 'calc correlation between top:', perc
+            print perc,
             tmp_df = df.loc[0:int(round((len(df) - 1) * perc))]
             correlations = tmp_df.corr(method='spearman')
             correlation_results[perc].at[self_con, 'deg'] = correlations['deg']['ranked_vertex']

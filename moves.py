@@ -106,7 +106,7 @@ class MoveTravelSM(Mover):
 
     def reduce_step_size(self):
         super(MoveTravelSM, self).reduce_step_size()
-        self.big_move_prob *= 0.9
+        self.big_move_prob *= 0.75
         self.small_moves_prob = (1 - self.big_move_prob) / 2
 
 
