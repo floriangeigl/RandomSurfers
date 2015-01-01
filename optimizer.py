@@ -14,6 +14,7 @@ import numpy as np
 from tools.printing import print_f
 from itertools import cycle
 import pandas as pd
+import datetime
 
 
 class Optimizer(object):
@@ -133,9 +134,9 @@ class SimulatedAnnealing(Optimizer):
         self.print_f('find good init beta')
         # beta = self.find_beta(target_acceptance_rate=0.8)
         # beta_07 = self.find_beta(target_acceptance_rate=0.7, init_beta=beta)
-        #self.print_f('beta accept rate 0.8:', beta)
-        #self.print_f('beta accept rate 0.7:', beta_07)
-        #beta_fac = beta_07 / beta
+        # self.print_f('beta accept rate 0.8:', beta)
+        # self.print_f('beta accept rate 0.7:', beta_07)
+        # beta_fac = beta_07 / beta
         #self.print_f('beta fac:', beta_fac)
         beta = self.beta
         beta_fac = 1.5
@@ -148,11 +149,14 @@ class SimulatedAnnealing(Optimizer):
         # for run in xrange(self.runs):
         self.print_f('init cost:', best_cost, '||init beta:', beta, )
         init_cost = best_cost
+        start = datetime.datetime.now()
         while True:
             run += 1
             if run % self.runs_per_temp == 0:
                 accept_rate = np.mean(self.accept_deny_history[-self.runs_per_temp:])
-                self.print_f('run:', run, '||best cost:', best_cost, '|| improvement:', (best_cost / init_cost) - 1, '||beta:', beta, '||acceptance rate:', accept_rate)
+                now = datetime.datetime.now()
+                self.print_f('run:', run, '||best cost:', best_cost, '|| improvement:', (best_cost / init_cost) - 1, '||beta:', beta, '||acceptance rate:', accept_rate, '||time:', now - start)
+                start = now
                 beta *= beta_fac
                 self.beta_history[run] = beta
                 current_cost = best_cost

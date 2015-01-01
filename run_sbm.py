@@ -53,6 +53,9 @@ def main():
     # the weighting function for the ranking
     ranking_weights_func = lambda x: np.power(x, 4)
 
+    # cpus used for cost calculations
+    cpus = 10
+
     correlation_results = dict()
     for perc in correlation_perc:
         correlation_results[perc] = pd.DataFrame()
@@ -67,7 +70,7 @@ def main():
         network, bm_groups = graph_gen(self_con, other_con, nodes, groups)
 
         # init cost function and print configuration details
-        cf = cost_function.CostFunction(network, target_reduce=target_reduce, source_reduce=source_reduce, ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)
+        cf = cost_function.CostFunction(network, target_reduce=target_reduce, source_reduce=source_reduce, ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)  # , cpus=cpus)
         if network_num == 0:
             plt.clf()
             plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
@@ -83,6 +86,7 @@ def main():
 
         # get ranking of different measurements
         print 'calc cost of measurements rankings'
+        start = datetime.datetime.now()
         df = pd.DataFrame()
         deg_pmap = network.degree_property_map('total')
         measurements['deg'] = deg_pmap
@@ -101,6 +105,9 @@ def main():
         measurements['betweeness'] = bw_pmap
         df['betweeness'] = get_ranking(bw_pmap)
         measurements_costs['betweeness'] = cf.calc_cost(list(df['betweeness']))
+        avg_time_per_cf = datetime.timedelta(microseconds=(datetime.datetime.now() - start).microseconds / 3)
+        print 'avg calc cost time:', avg_time_per_cf
+        print 'calc cost time per', runs_per_temp, ':', datetime.timedelta(microseconds=avg_time_per_cf.microseconds * runs_per_temp)
 
         # take best of measurement rankings as init ranking
         init_ranking, max_m_cost = max(measurements_costs.iteritems(), key=lambda x: x[1])

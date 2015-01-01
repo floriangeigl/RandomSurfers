@@ -185,4 +185,3 @@ class CostFunction():
     def create_ranking_vector(self, ranking):
         num_known_nodes = len(ranking)
         return csr_matrix((self.ranking_weights[:num_known_nodes], ([0] * num_known_nodes, ranking)), shape=(1, self.adj_mat.shape[1]))
-
