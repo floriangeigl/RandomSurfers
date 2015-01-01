@@ -36,16 +36,16 @@ def main():
     max_con = 1
 
     # reduce targets of missions by
-    target_reduce = 0.1
+    target_reduce = 1
 
     # reduce source per target by
-    source_reduce = 0.1
+    source_reduce = 1
 
     # max runs for optimizer
     runs_per_temp = 1000
 
     # init beta
-    beta = 100
+    beta = 1000
 
     # percentages of which to calc the correlation between rankings (top x)
     correlation_perc = np.arange(0.1, 1.1, 0.1)
