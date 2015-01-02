@@ -15,6 +15,7 @@ from tools.printing import print_f
 from itertools import cycle
 import pandas as pd
 import datetime
+import math
 
 
 class Optimizer(object):
@@ -99,6 +100,7 @@ class SimulatedAnnealing(Optimizer):
         self.cf.source_reduce = 0.1
         self.cf.target_reduce = 0.01
         last_accept_rate = 1
+        rand_num = np.random.random
         while True:
             current_ranking = copy.copy(self.init_ranking) if ranking is None else copy.copy(ranking)
             current_cost = self.cf.calc_cost(current_ranking)
@@ -106,8 +108,8 @@ class SimulatedAnnealing(Optimizer):
             for i in range(runs):
                 new_ranking = self.mv.move(current_ranking)
                 new_cost = self.cf.calc_cost(new_ranking)
-                accept_prob = np.exp(- beta * (current_cost - new_cost)) if new_cost < current_cost else 1
-                if random.uniform(0.0, 1.0) <= accept_prob:
+                accept_prob = math.exp(- beta * (current_cost - new_cost)) if new_cost < current_cost else 1
+                if rand_num() <= accept_prob:
                     accept_rate.append(1)
                     current_cost = new_cost
                     current_ranking = new_ranking
@@ -154,13 +156,23 @@ class SimulatedAnnealing(Optimizer):
         start = datetime.datetime.now()
         move_time = 0
         calc_cf_time = 0
+        rand_num = np.random.random
+        exp = math.exp
+        accept_deny_history_ap = self.accept_deny_history.append
+        prob_history_ap = self.prob_history.append
+        cost_history_ap = self.cost_history.append
+        best_cost_history_ap = best_cost_history.append
+        runs_per_temp = self.runs_per_temp
+        costly_func = self.cf.calc_cost
+        move_func = self.mv.move
+        now_func = datetime.datetime.now
         while True:
             run += 1
-            if run % self.runs_per_temp == 0:
-                accept_rate = np.mean(self.accept_deny_history[-self.runs_per_temp:])
-                now = datetime.datetime.now()
+            if run % runs_per_temp == 0:
+                accept_rate = np.mean(self.accept_deny_history[-runs_per_temp:])
+                now = now_func()
                 self.print_f('run:', run, '||best cost:', best_cost, '|| improvement:', (best_cost / init_cost) - 1, '||beta:', beta, '||acceptance rate:', accept_rate, '||time:',
-                             now - start, 'mv-time:', datetime.timedelta(microseconds=move_time), 'cf-time:', datetime.timedelta(microseconds=calc_cf_time), process_name=True)
+                             now - start, 'mvcf-time:', datetime.timedelta(microseconds=move_time), 'cf-time:', datetime.timedelta(microseconds=calc_cf_time), process_name=True)
                 move_time = 0
                 calc_cf_time = 0
                 start = now
@@ -170,27 +182,28 @@ class SimulatedAnnealing(Optimizer):
                 current_ranking = best_ranking
                 if accept_rate < 0.5:
                     self.mv.reduce_step_size()
-                if len(best_cost_history) >= self.runs_per_temp * 10 and len(set(best_cost_history[-self.runs_per_temp * 10:])) == 1:
+                if len(best_cost_history) >= runs_per_temp * 10 and len(set(best_cost_history[-runs_per_temp * 10:])) == 1:
                     break
             if max_runs is not None and run > max_runs:
                 break
-            start_move = datetime.datetime.now()
-            new_ranking = self.mv.move(current_ranking)
-            move_time += (datetime.datetime.now() - start_move).microseconds
-            start_calc_cf = datetime.datetime.now()
-            new_cost = self.cf.calc_cost(new_ranking)
-            calc_cf_time += (datetime.datetime.now() - start_calc_cf).microseconds
-            self.cost_history.append(new_cost)
-            accept_prob = np.exp(- beta * (current_cost - new_cost)) if new_cost < current_cost else 1
-            self.prob_history.append(accept_prob)
-            if random.uniform(0.0, 1.0) <= accept_prob:
-                self.accept_deny_history.append(1)
+            start_move = now_func()
+            new_ranking = move_func(current_ranking)
+            start_calc_cf = now_func()
+            new_cost = costly_func(new_ranking)
+            cost_history_ap(new_cost)
+            move_time += (now_func() - start_move).microseconds
+            calc_cf_time += (now_func() - start_calc_cf).microseconds
+
+            accept_prob = exp(- beta * (current_cost - new_cost)) if new_cost < current_cost else 1
+            prob_history_ap(accept_prob)
+            if rand_num() <= accept_prob:
+                accept_deny_history_ap(1)
                 current_cost = new_cost
                 current_ranking = new_ranking
                 if new_cost > best_cost:
                     best_cost = new_cost
                     best_ranking = new_ranking
             else:
-                self.accept_deny_history.append(0)
-            best_cost_history.append(best_cost)
+                accept_deny_history_ap(0)
+            best_cost_history_ap(best_cost)
         return best_ranking, best_cost

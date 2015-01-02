@@ -109,10 +109,6 @@ class Printer():
         print ' '.join(map(str, args))
 
 
-def init_worker():
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-
 def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduce, source_reduce, ranking_weights_func, runs_per_temp, beta):
     # generate network
     try:
