@@ -171,8 +171,9 @@ class SimulatedAnnealing(Optimizer):
             if run % runs_per_temp == 0:
                 accept_rate = np.mean(self.accept_deny_history[-runs_per_temp:])
                 now = now_func()
-                self.print_f('run:', run, '||best cost:', best_cost, '|| improvement:', (best_cost / init_cost) - 1, '||beta:', beta, '||acceptance rate:', accept_rate, '||time:',
-                             now - start, 'mvcf-time:', datetime.timedelta(microseconds=move_time), 'cf-time:', datetime.timedelta(microseconds=calc_cf_time), process_name=True)
+                self.print_f('run:', str(run) + '||best cost:', str(best_cost) + '|| improvement:', str((best_cost / init_cost) - 1) + '||beta:', str(beta) + '||acceptance rate:',
+                             str(accept_rate) + '||time:', str(now - start) + '||mvcf-time:', str(datetime.timedelta(microseconds=move_time)) + '||cf-time:',
+                             datetime.timedelta(microseconds=calc_cf_time), process_name=True)
                 move_time = 0
                 calc_cf_time = 0
                 start = now
