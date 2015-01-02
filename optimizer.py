@@ -152,26 +152,34 @@ class SimulatedAnnealing(Optimizer):
         self.print_f('init cost:', best_cost, '||init beta:', beta, process_name=True)
         init_cost = best_cost
         start = datetime.datetime.now()
+        move_time = 0
+        calc_cf_time = 0
         while True:
             run += 1
             if run % self.runs_per_temp == 0:
                 accept_rate = np.mean(self.accept_deny_history[-self.runs_per_temp:])
                 now = datetime.datetime.now()
                 self.print_f('run:', run, '||best cost:', best_cost, '|| improvement:', (best_cost / init_cost) - 1, '||beta:', beta, '||acceptance rate:', accept_rate, '||time:',
-                             now - start, process_name=True)
+                             now - start, 'mv-time:', datetime.timedelta(microseconds=move_time), 'cf-time:', datetime.timedelta(microseconds=calc_cf_time), process_name=True)
+                move_time = 0
+                calc_cf_time = 0
                 start = now
                 beta *= beta_fac
                 self.beta_history[run] = beta
                 current_cost = best_cost
-                current_ranking = copy.copy(best_ranking)
+                current_ranking = best_ranking
                 if accept_rate < 0.5:
                     self.mv.reduce_step_size()
                 if len(best_cost_history) >= self.runs_per_temp * 10 and len(set(best_cost_history[-self.runs_per_temp * 10:])) == 1:
                     break
             if max_runs is not None and run > max_runs:
                 break
+            start_move = datetime.datetime.now()
             new_ranking = self.mv.move(current_ranking)
+            move_time += (datetime.datetime.now() - start_move).microseconds
+            start_calc_cf = datetime.datetime.now()
             new_cost = self.cf.calc_cost(new_ranking)
+            calc_cf_time += (datetime.datetime.now() - start_calc_cf).microseconds
             self.cost_history.append(new_cost)
             accept_prob = np.exp(- beta * (current_cost - new_cost)) if new_cost < current_cost else 1
             self.prob_history.append(accept_prob)
@@ -181,7 +189,7 @@ class SimulatedAnnealing(Optimizer):
                 current_ranking = new_ranking
                 if new_cost > best_cost:
                     best_cost = new_cost
-                    best_ranking = copy.copy(current_ranking)
+                    best_ranking = new_ranking
             else:
                 self.accept_deny_history.append(0)
             best_cost_history.append(best_cost)

@@ -3,6 +3,7 @@ from abc import abstractmethod
 import copy
 from tools.printing import print_f
 import random
+import numpy as np
 
 
 class Mover(object):
@@ -84,23 +85,26 @@ class MoveTravelSM(Mover):
         super(MoveTravelSM, self).move(vector)
         vector = copy.copy(vector)
         p = random.uniform(0.0, 1.0)
-        max_idx = len(vector) - 1
+        rand_int = np.random.randint
+        len_vec = len(vector)
         if p < self.big_move_prob:
-            half_idx = int(round(max_idx / 2))
-            i = random.randint(0, half_idx)
+            half_idx = int(len_vec / 2)
+            i = rand_int(half_idx)
             vector = vector[i:] + vector[:i]
-            i = random.randint(0, half_idx)
+            i = rand_int(half_idx)
             a = vector[:i]
             a.reverse()
             vector = a + vector[i:]
         elif p < self.big_move_prob + self.small_moves_prob:
-            i = random.randint(0, max_idx)
-            j = random.randint(0, max_idx)
+            i, j = rand_int(len_vec, size=2)
+            while i == j:
+                i, j = rand_int(len_vec, size=2)
             vector[i], vector[j] = vector[j], vector[i]
         else:
-            i = random.randint(0, max_idx)
-            a = vector.pop(i)
-            j = random.randint(0, max_idx - 1)
+            i = rand_int(len_vec)
+            a = vector[i]
+            del vector[i]
+            j = rand_int(len_vec - 1)
             vector.insert(j, a)
         return vector
 
