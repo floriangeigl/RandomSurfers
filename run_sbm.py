@@ -19,7 +19,12 @@ import operator
 import os
 from utils import *
 import datetime
+from multiprocessing.pool import Pool
+# from multiprocessing.pool import ThreadPool as Pool
 from collections import defaultdict
+import time
+import traceback
+import signal
 
 
 def main():
@@ -50,9 +55,6 @@ def main():
     # percentages of which to calc the correlation between rankings (top x)
     correlation_perc = np.arange(0.1, 1.1, 0.1)
 
-    # the weighting function for the ranking
-    ranking_weights_func = lambda x: np.power(x, 4)
-
     # cpus used for cost calculations
     cpus = 10
 
@@ -61,16 +63,69 @@ def main():
         correlation_results[perc] = pd.DataFrame()
         correlation_results[perc].index = correlation_results[perc].index.astype('float')
     assert groups > 0
-    for network_num, self_con in enumerate(np.arange(0, max_con + (step * 0.9), step)):
+    process_results = []
+    my_pool = Pool(10)
+    num_results = 0
+    try:
+        for network_num, self_con in enumerate(np.arange(0, max_con + (step * 0.9), step)):
+            num_results += 1
+            my_pool.apply_async(func=run_optimization,
+                                args=(network_num, self_con, max_con, groups, nodes, target_reduce, source_reduce, ranking_weights_func, runs_per_temp, beta),
+                                callback=process_results.append)
+            # run_optimization
+    except KeyboardInterrupt:
+        my_pool.terminate()
+    my_pool.close()
+    my_pool.join()
+    if len(process_results) != num_results or any(j is None for i in process_results for j in i):
+        print 'multiprocessing error. exit'
+        exit()
 
-        # generate network
+    print 'calc correlations'
+    for self_con, df in process_results:
+        for perc in correlation_perc:
+            print perc,
+            tmp_df = df.loc[0:int(round((len(df) - 1) * perc))]
+            correlations = tmp_df.corr(method='spearman')
+            correlation_results[perc].at[self_con, 'deg'] = correlations['deg']['ranked_vertex']
+            correlation_results[perc].at[self_con, 'pagerank'] = correlations['pagerank']['ranked_vertex']
+            correlation_results[perc].at[self_con, 'betweeness'] = correlations['betweeness']['ranked_vertex']
+    print 'plot correlations'
+    for perc in correlation_perc:
+        df = correlation_results[perc]
+        df.sort(inplace=True)
+        df.plot(lw=3)
+        plt.xlabel('self connectivity')
+        plt.savefig('output/sbm_correlation_top_' + str(perc) + '.png', dpi=300)
+        plt.close('all')
+
+
+class Printer():
+    def __init__(self, self_con):
+        self.self_con = self_con
+
+    def print_f(self, *args):
+        print '[self-con: ' + str(self.self_con) + ']',
+        print ' '.join(map(str, args))
+
+
+def init_worker():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduce, source_reduce, ranking_weights_func, runs_per_temp, beta):
+    # generate network
+    try:
+        p = Printer(self_con)
         self_con = max_con - self_con
         other_con = (max_con - self_con) / (groups - 1)
-        print 'gen graph with ', nodes, 'nodes and', groups, 'groups.(self:', self_con, ',other:', other_con, ')'
+        p.print_f('start optimization with self-con:', self_con)
+        p.print_f('gen graph with ', nodes, 'nodes and', groups, 'groups.(self:', self_con, ',other:', other_con, ')')
         network, bm_groups = graph_gen(self_con, other_con, nodes, groups)
 
         # init cost function and print configuration details
-        cf = cost_function.CostFunction(network, target_reduce=target_reduce, source_reduce=source_reduce, ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)  # , cpus=cpus)
+        cf = cost_function.CostFunction(network, target_reduce=target_reduce, source_reduce=source_reduce,
+                                        ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)  # , cpus=cpus)
         if network_num == 0:
             plt.clf()
             plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
@@ -85,7 +140,7 @@ def main():
         measurements = dict()
 
         # get ranking of different measurements
-        print 'calc cost of measurements rankings'
+        p.print_f('calc cost of measurements rankings')
         start = datetime.datetime.now()
         df = pd.DataFrame()
         deg_pmap = network.degree_property_map('total')
@@ -106,19 +161,19 @@ def main():
         df['betweeness'] = get_ranking(bw_pmap)
         measurements_costs['betweeness'] = cf.calc_cost(list(df['betweeness']))
         avg_time_per_cf = datetime.timedelta(microseconds=(datetime.datetime.now() - start).microseconds / 3)
-        print 'avg calc cost time:', avg_time_per_cf
-        print 'calc cost time per', runs_per_temp, ':', datetime.timedelta(microseconds=avg_time_per_cf.microseconds * runs_per_temp)
+        p.print_f('avg calc cost time:', avg_time_per_cf)
+        p.print_f('calc cost time per', runs_per_temp, ':', datetime.timedelta(microseconds=avg_time_per_cf.microseconds * runs_per_temp))
 
         # take best of measurement rankings as init ranking
-        init_ranking, max_m_cost = max(measurements_costs.iteritems(), key=lambda x: x[1])
+        init_ranking, init_cost = max(measurements_costs.iteritems(), key=lambda x: x[1])
         init_ranking = list(df[init_ranking])
         for key, val in sorted(measurements_costs.iteritems(), key=lambda x: x[1]):
-            print 'cost', key, ':', val
+            p.print_f('cost', key, ':', val)
 
         mover = moves.MoveTravelSM(verbose=0)
 
         # optimize ranking
-        print 'optimizing...'
+        p.print_f('optimizing...')
         opt = optimizer.SimulatedAnnealing(cf, mover, init_ranking, runs_per_temp=runs_per_temp, beta=beta, verbose=0)
         ranking, cost = opt.optimize()
 
@@ -149,16 +204,16 @@ def main():
             df[key] = ranking_df[key]
         test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
         vp_map = network.new_vertex_property('int')
-        print len(df)
         for v in network.vertices():
             vp_map[v] = test_dict[v]
         df['test'] = get_ranking(vp_map)
 
         # print some stats
-        print 'runs:', opt.runs
-        print 'cost:', cost
-        print df.head()
-        print 'ranking top 50', ranking[:50]
+        p.print_f('runs:', opt.runs)
+        p.print_f('cost:', cost)
+        p.print_f('cost improvement:', cost / init_cost * 100, '%')
+        # print df.head()
+        # print 'ranking top 50', ranking[:50]
 
         # plot cost history
         create_folder_structure('output/cost/')
@@ -187,20 +242,14 @@ def main():
         plt.ylabel('# nodes')
         plt.savefig('output/graph_plots/sbm_' + str(self_con) + '_degdist.png')
         plt.close('all')
+        return self_con, df
+    except:
+        print traceback.print_exc()
+        return None, None
 
-        # calculate correlation, append it to overall results and plot it
-        print 'calc correlation between top:'
-        for perc in correlation_perc:
-            print perc,
-            tmp_df = df.loc[0:int(round((len(df) - 1) * perc))]
-            correlations = tmp_df.corr(method='spearman')
-            correlation_results[perc].at[self_con, 'deg'] = correlations['deg']['ranked_vertex']
-            correlation_results[perc].at[self_con, 'pagerank'] = correlations['pagerank']['ranked_vertex']
-            correlation_results[perc].at[self_con, 'betweeness'] = correlations['betweeness']['ranked_vertex']
-            correlation_results[perc].plot(lw=3)
-            plt.xlabel('self connectivity')
-            plt.savefig('output/sbm_correlation_top_' + str(perc) + '.png', dpi=300)
-            plt.close('all')
+
+def ranking_weights_func(x):
+    return np.power(x, 4)
 
 
 if __name__ == '__main__':

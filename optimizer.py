@@ -76,8 +76,10 @@ class Optimizer(object):
 
 
 class SimulatedAnnealing(Optimizer):
-    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, runs_per_temp=100, *args, **kwargs):
-        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, runs=runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
+    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, runs_per_temp=100, *args,
+                 **kwargs):
+        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, runs=runs, reduce_step_after_fails=reduce_step_after_fails,
+                           reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
         self.beta = beta
         self.prob_history = []
         self.beta_history = {}
@@ -112,7 +114,7 @@ class SimulatedAnnealing(Optimizer):
                 else:
                     accept_rate.append(0)
             accept_rate = np.mean(accept_rate)
-            self.print_f('find beta: current beta: ', beta, '||current accept rate:', accept_rate, '||target:', target_acceptance_rate)
+            self.print_f('find beta: current beta: ', beta, '||current accept rate:', accept_rate, '||target:', target_acceptance_rate, process_name=True)
             if accept_rate > target_acceptance_rate:
                 beta *= 1.1
                 last_accept_rate = accept_rate
@@ -121,7 +123,7 @@ class SimulatedAnnealing(Optimizer):
                     beta /= 1.1
                 break
         self.cf.source_reduce, self.cf.target_reduce = orig_cf_reduce
-        self.print_f('best beta for ', target_acceptance_rate, 'accept rate:', beta)
+        self.print_f('best beta for ', target_acceptance_rate, 'accept rate:', beta, process_name=True)
         return beta
 
     def optimize(self, max_runs=None):
@@ -131,13 +133,13 @@ class SimulatedAnnealing(Optimizer):
         self.beta_history = dict()
         self.prob_history = []
         self.cost_history = []
-        self.print_f('find good init beta')
+        self.print_f('find good init beta', process_name=True)
         # beta = self.find_beta(target_acceptance_rate=0.8)
         # beta_07 = self.find_beta(target_acceptance_rate=0.7, init_beta=beta)
         # self.print_f('beta accept rate 0.8:', beta)
         # self.print_f('beta accept rate 0.7:', beta_07)
         # beta_fac = beta_07 / beta
-        #self.print_f('beta fac:', beta_fac)
+        # self.print_f('beta fac:', beta_fac)
         beta = self.beta
         beta_fac = 1.5
         current_ranking = copy.copy(self.init_ranking)
@@ -147,7 +149,7 @@ class SimulatedAnnealing(Optimizer):
         best_cost_history = []
         run = 0
         # for run in xrange(self.runs):
-        self.print_f('init cost:', best_cost, '||init beta:', beta, )
+        self.print_f('init cost:', best_cost, '||init beta:', beta, process_name=True)
         init_cost = best_cost
         start = datetime.datetime.now()
         while True:
@@ -155,7 +157,8 @@ class SimulatedAnnealing(Optimizer):
             if run % self.runs_per_temp == 0:
                 accept_rate = np.mean(self.accept_deny_history[-self.runs_per_temp:])
                 now = datetime.datetime.now()
-                self.print_f('run:', run, '||best cost:', best_cost, '|| improvement:', (best_cost / init_cost) - 1, '||beta:', beta, '||acceptance rate:', accept_rate, '||time:', now - start)
+                self.print_f('run:', run, '||best cost:', best_cost, '|| improvement:', (best_cost / init_cost) - 1, '||beta:', beta, '||acceptance rate:', accept_rate, '||time:',
+                             now - start, process_name=True)
                 start = now
                 beta *= beta_fac
                 self.beta_history[run] = beta
