@@ -191,8 +191,8 @@ class SimulatedAnnealing(Optimizer):
             start_calc_cf = now_func()
             new_cost = costly_func(new_ranking)
             cost_history_ap(new_cost)
-            move_time += (now_func() - start_move).microseconds
             calc_cf_time += (now_func() - start_calc_cf).microseconds
+            move_time += (now_func() - start_move).microseconds
 
             accept_prob = exp(- beta * (current_cost - new_cost)) if new_cost < current_cost else 1
             prob_history_ap(accept_prob)
