@@ -19,7 +19,7 @@ import operator
 import os
 from utils import *
 import datetime
-from multiprocessing.pool import Pool
+from multiprocessing import Pool
 # from multiprocessing.pool import ThreadPool as Pool
 from collections import defaultdict
 import time
