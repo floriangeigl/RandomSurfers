@@ -42,15 +42,13 @@ class CostFunction():
         self.print_f('\tgenerate cosine similarity matrix', verbose=1)
         self.src = None
         self.src_n = None
-        self.cos_sim = filter(lambda x: x[2] > cos_sim_th,
-                              ((int(src), int(dest), self.calc_cossim(src, dest)) for src in graph.vertices() for dest in graph.vertices() if int(dest) >= int(src)))
+        self.cos_sim = filter(lambda x: x[2] > cos_sim_th, ((int(src), int(dest), self.calc_cossim(src, dest)) for src in graph.vertices() for dest in graph.vertices() if int(dest) >= int(src)))
         i, j, data = zip(*self.cos_sim)
         self.cos_sim = csr_matrix(coo_matrix((data, (i, j)), shape=(graph.num_vertices(), graph.num_vertices())))
         self.cos_sim = self.cos_sim + self.cos_sim.T
         # self.cos_sim.setdiag(1)
         # self.cos_sim = self.cos_sim.multiply(self.adj_mat).T
-        self.print_f('\tcos sim matrix: type:', type(self.cos_sim), 'shape', self.cos_sim.shape, 'filled elements:',
-                     self.cos_sim.nnz / (self.cos_sim.shape[0] * self.cos_sim.shape[1]), verbose=2)
+        self.print_f('\tcos sim matrix: type:', type(self.cos_sim), 'shape', self.cos_sim.shape, 'filled elements:', self.cos_sim.nnz / (self.cos_sim.shape[0] * self.cos_sim.shape[1]), verbose=2)
         self.print_f('\tcalc shortest distances for pairs', verbose=1)
         tmp_pairs = defaultdict(set)
         for dest, srcs in self.pairs:
@@ -87,8 +85,7 @@ class CostFunction():
         # each row: index destination, elements best next neighbour from col-index-node to destination
         self.print_f('\ttranspose and convert adj matrix', verbose=1)
         self.adj_mat = csr_matrix(self.adj_mat.T)
-        self.print_f('\tadj matrix: type:', type(self.adj_mat), 'shape', self.adj_mat.shape, 'filled elements:', self.adj_mat.nnz / (self.adj_mat.shape[0] * self.adj_mat.shape[1]),
-                     verbose=2)
+        self.print_f('\tadj matrix: type:', type(self.adj_mat), 'shape', self.adj_mat.shape, 'filled elements:', self.adj_mat.nnz / (self.adj_mat.shape[0] * self.adj_mat.shape[1]), verbose=2)
 
     def calc_cossim(self, src, dest):
         if src == dest:
@@ -155,8 +152,7 @@ class CostFunction():
             neigh_cossim = self.adj_mat[srcs, :].multiply(cossims)
             neigh_cossim = neigh_cossim.multiply(csr_matrix(1 / (neigh_cossim.sum(axis=1))))
             if ranking is not None:
-                neigh_cossim = neigh_cossim.multiply(ranking_vector)
-                neigh_cossim = neigh_cossim.multiply(ranking_vector[0, dest])
+                neigh_cossim = neigh_cossim.multiply((ranking_vector + ranking_vector[0, dest]).multiply(0.5))
 
             # degree
             degs = self.deg
@@ -173,9 +169,7 @@ class CostFunction():
             best_next_hops = self.best_next_hops[dest]
             best_per_src = [best_next_hops[i] for i in srcs]
             n_best_per_src = np.array([len(i) for i in best_per_src])
-            mask = csr_matrix(
-                ([1] * n_best_per_src.sum(), ([rdx for rdx, (src, n_src) in enumerate(zip(srcs, n_best_per_src)) for i in xrange(n_src)], [j for i in best_per_src for j in i])),
-                shape=prob.shape)
+            mask = csr_matrix(([1] * n_best_per_src.sum(), ([rdx for rdx, (src, n_src) in enumerate(zip(srcs, n_best_per_src)) for i in xrange(n_src)], [j for i in best_per_src for j in i])), shape=prob.shape)
 
             # filter out prob of next best hops and take the max per srcs
             prob_of_best_n = prob.multiply(mask)
