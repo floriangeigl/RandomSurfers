@@ -117,7 +117,7 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         p.print_f('gen graph with ', nodes, 'nodes and', groups, 'groups.(self:', self_con, ',other:', other_con, ')')
         network, bm_groups = graph_gen(self_con, other_con, nodes, groups)
         network.vp['groups'] = bm_groups
-        creat_folder_structure('output/data/')
+        create_folder_structure('output/data/')
         network.save('output/data/network_sbm_' + str(self_con).ljust(4, '0') + '.gt')
 
         # init cost function and print configuration details
