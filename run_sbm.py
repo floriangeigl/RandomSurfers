@@ -69,9 +69,7 @@ def main():
     try:
         for network_num, self_con in enumerate(np.arange(0, max_con + (step * 0.9), step)):
             num_results += 1
-            my_pool.apply_async(func=run_optimization,
-                                args=(network_num, self_con, max_con, groups, nodes, target_reduce, source_reduce, ranking_weights_func, runs_per_temp, beta),
-                                callback=process_results.append)
+            my_pool.apply_async(func=run_optimization, args=(network_num, self_con, max_con, groups, nodes, target_reduce, source_reduce, ranking_weights_func, runs_per_temp, beta), callback=process_results.append)
             # run_optimization
     except KeyboardInterrupt:
         my_pool.terminate()
@@ -96,7 +94,7 @@ def main():
         df.sort(inplace=True)
         df.plot(lw=3)
         plt.xlabel('self connectivity')
-        plt.savefig('output/sbm_correlation_top_' + str(perc) + '.png', dpi=300)
+        plt.savefig('output/sbm_correlation_top_' + str(perc).ljust(4, '0') + '.png', dpi=300)
         plt.close('all')
 
 
@@ -118,10 +116,12 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         p.print_f('start optimization with self-con:', self_con)
         p.print_f('gen graph with ', nodes, 'nodes and', groups, 'groups.(self:', self_con, ',other:', other_con, ')')
         network, bm_groups = graph_gen(self_con, other_con, nodes, groups)
+        network.vp['groups'] = bm_groups
+        creat_folder_structure('output/data/')
+        network.save('output/data/network_sbm_' + str(self_con).ljust(4, '0') + '.gt')
 
         # init cost function and print configuration details
-        cf = cost_function.CostFunction(network, target_reduce=target_reduce, source_reduce=source_reduce,
-                                        ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)  # , cpus=cpus)
+        cf = cost_function.CostFunction(network, target_reduce=target_reduce, source_reduce=source_reduce, ranking_weights=[ranking_weights_func(i) for i in reversed(range(network.num_vertices()))], verbose=0)  # , cpus=cpus)
         if network_num == 0:
             plt.clf()
             plt.plot(cf.ranking_weights, lw=4, label='ranking weights')
@@ -156,7 +156,11 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         measurements['betweeness'] = bw_pmap
         df['betweeness'] = get_ranking(bw_pmap)
         measurements_costs['betweeness'] = cf.calc_cost(list(df['betweeness']))
-        avg_time_per_cf = datetime.timedelta(microseconds=(datetime.datetime.now() - start).microseconds / 3)
+        clust = local_clustering(network)
+        measurements['clustering coef.'] = clust
+        df['clustering coef.'] = get_ranking(clust)
+        measurements_costs['clustering coef.'] = cf.calc_cost(list(df['clustering coef.']))
+        avg_time_per_cf = datetime.timedelta(microseconds=(datetime.datetime.now() - start).microseconds / 4)
         p.print_f('avg calc cost time:', avg_time_per_cf)
         p.print_f('calc cost time per', runs_per_temp, ':', datetime.timedelta(microseconds=avg_time_per_cf.microseconds * runs_per_temp))
 
@@ -183,19 +187,21 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         for run, betaval in opt.beta_history.iteritems():
             plt.annotate(str(betaval), xy=(run, prob_quad), rotation=90)
         plt.legend()
-        plt.savefig('output/prob/sbm_' + str(self_con) + '.png', dpi=150)
+        plt.savefig('output/prob/sbm_' + str(self_con).ljust(4, '0') + '.png', dpi=150)
         plt.close('all')
 
         # plot measurements of ranking
         create_folder_structure('output/measurements_of_ranking/')
-        plot_measurements_of_ranking(ranking, measurements, filename='output/measurements_of_ranking/sbm_' + str(self_con) + '.png', logx=False)
+        plot_measurements_of_ranking(ranking, measurements, filename='output/measurements_of_ranking/sbm_' + str(self_con).ljust(4, '0') + '.png', logx=False)
 
         # make sure move did not exclude some vals
         assert len(ranking) == network.num_vertices()
         assert set(ranking) == set(map(int, network.vertices()))
 
         # create ranking dataframe
+        creat_folder_structure('output/data/')
         ranking_df = get_ranking_df(ranking, cf.ranking_weights)
+        ranking_df.to_pickle('output/data/ranking_sbm_' + str(self_con).ljust(4, '0') + '.df')
         for key in ranking_df.columns:
             df[key] = ranking_df[key]
         test_dict = {network.vertex(v): idx for idx, v in enumerate(reversed(ranking))}
@@ -203,6 +209,7 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         for v in network.vertices():
             vp_map[v] = test_dict[v]
         df['test'] = get_ranking(vp_map)
+        df.to_pickle('output/data/ranking_and_cmeasures_sbm_' + str(self_con).ljust(4, '0') + '.df')
 
         # print some stats
         p.print_f('runs:', opt.runs)
@@ -213,7 +220,7 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
 
         # plot cost history
         create_folder_structure('output/cost/')
-        opt.draw_cost_history(filename='output/cost/sbm_' + str(self_con) + '.png', compare_dict=measurements_costs)
+        opt.draw_cost_history(filename='output/cost/sbm_' + str(self_con).ljust(4, '0') + '.png', compare_dict=measurements_costs)
 
         # plot networks
         create_folder_structure('output/graph_plots/')
@@ -221,9 +228,9 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         for e in network.edges():
             eweight[e] = 1 if bm_groups[e.source()] == bm_groups[e.target()] else 0
         pos = sfdp_layout(network, groups=bm_groups, mu=1)
-        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=bm_groups, output='output/graph_plots/sbm_' + str(self_con) + '.png')
-        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=deg_pmap, output='output/graph_plots/sbm_' + str(self_con) + '_deg.png')
-        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=bw_pmap, output='output/graph_plots/sbm_' + str(self_con) + '_betwe.png')
+        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=bm_groups, output='output/graph_plots/sbm_' + str(self_con).ljust(4, '0') + '.png')
+        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=deg_pmap, output='output/graph_plots/sbm_' + str(self_con).ljust(4, '0') + '_deg.png')
+        graph_draw(network, pos=pos, vertex_size=prop_to_size(deg_pmap), vertex_fill_color=bw_pmap, output='output/graph_plots/sbm_' + str(self_con).ljust(4, '0') + '_betwe.png')
 
         # plot degree distribution
         deg_dist = defaultdict(float)
@@ -236,7 +243,7 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         plt.yscale('log')
         plt.xlabel('degree')
         plt.ylabel('# nodes')
-        plt.savefig('output/graph_plots/sbm_' + str(self_con) + '_degdist.png')
+        plt.savefig('output/graph_plots/sbm_' + str(self_con).ljust(4, '0') + '_degdist.png')
         plt.close('all')
         return self_con, df
     except:
