@@ -7,6 +7,7 @@ from collections import defaultdict
 import random
 import operator
 import scipy
+import copy
 
 
 class CostFunction():
@@ -152,7 +153,9 @@ class CostFunction():
             neigh_cossim = self.adj_mat[srcs, :].multiply(cossims)
             neigh_cossim = neigh_cossim.multiply(csr_matrix(1 / (neigh_cossim.sum(axis=1))))
             if ranking is not None:
-                neigh_cossim = neigh_cossim.multiply((ranking_vector + ranking_vector[0, dest]).multiply(0.5))
+                tmp_ranking_vector = copy.deepcopy(ranking_vector)
+                tmp_ranking_vector.data += ranking_vector[0, dest]
+                neigh_cossim = neigh_cossim.multiply(tmp_ranking_vector.multiply(0.5))
 
             # degree
             degs = self.deg
