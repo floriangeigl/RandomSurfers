@@ -199,7 +199,7 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         assert set(ranking) == set(map(int, network.vertices()))
 
         # create ranking dataframe
-        creat_folder_structure('output/data/')
+        create_folder_structure('output/data/')
         ranking_df = get_ranking_df(ranking, cf.ranking_weights)
         ranking_df.to_pickle('output/data/ranking_sbm_' + str(self_con).ljust(4, '0') + '.df')
         for key in ranking_df.columns:
