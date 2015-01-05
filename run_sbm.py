@@ -214,7 +214,7 @@ def run_optimization(network_num, self_con, max_con, groups, nodes, target_reduc
         # print some stats
         p.print_f('runs:', opt.runs)
         p.print_f('cost:', cost)
-        p.print_f('cost improvement:', cost / init_cost * 100, '%')
+        p.print_f('cost improvement:', ((cost / init_cost) - 1) * 100, '%')
         # print df.head()
         # print 'ranking top 50', ranking[:50]
 
