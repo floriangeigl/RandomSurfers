@@ -35,7 +35,7 @@ class Optimizer(object):
         self.cost_history = []
 
     def draw_cost_history(self, filename='output/cost.png', compare_dict=None):
-        colors = ['blue', 'red', 'yellow']
+        colors = ['blue', 'red', 'yellow', 'green', 'pink']
         f, ax = plt.subplots()
         ax.plot(self.cost_history, lw=1, c='black', label='cost', alpha=0.8)
         df = pd.DataFrame(columns=['rolling mean'], data=self.cost_history)
@@ -77,10 +77,8 @@ class Optimizer(object):
 
 
 class SimulatedAnnealing(Optimizer):
-    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, runs_per_temp=100, *args,
-                 **kwargs):
-        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, runs=runs, reduce_step_after_fails=reduce_step_after_fails,
-                           reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
+    def __init__(self, cost_function, mover, init_nodes_ranking, known=0.1, runs=100, reduce_step_after_fails=0, reduce_step_after_accepts=0, beta=1.0, runs_per_temp=100, *args, **kwargs):
+        Optimizer.__init__(self, cost_function, mover, init_nodes_ranking, known=known, runs=runs, reduce_step_after_fails=reduce_step_after_fails, reduce_step_after_accepts=reduce_step_after_accepts, *args, **kwargs)
         self.beta = beta
         self.prob_history = []
         self.beta_history = {}
@@ -171,9 +169,8 @@ class SimulatedAnnealing(Optimizer):
             if run % runs_per_temp == 0:
                 accept_rate = np.mean(self.accept_deny_history[-runs_per_temp:])
                 now = now_func()
-                self.print_f('run:', str(run) + '||best cost:', str(best_cost) + '|| improvement:', str((best_cost / init_cost) - 1) + '||beta:', str(beta) + '||acceptance rate:',
-                             str(accept_rate) + '||time:', str(now - start) + '||mvcf-time:', str(datetime.timedelta(microseconds=move_time)) + '||cf-time:',
-                             datetime.timedelta(microseconds=calc_cf_time), process_name=True)
+                self.print_f('run:', str(run) + '||best cost:', str(best_cost) + '|| improvement:', str((best_cost / init_cost) - 1) + '||beta:', str(beta) + '||acceptance rate:', str(accept_rate) + '||time:', str(now - start) + '||mvcf-time:',
+                             str(datetime.timedelta(microseconds=move_time)) + '||cf-time:', datetime.timedelta(microseconds=calc_cf_time), process_name=True)
                 move_time = 0
                 calc_cf_time = 0
                 start = now
