@@ -1,12 +1,10 @@
 from __future__ import division
 import unittest
-import moves
-import copy
-import cost_function
-from tools.gt_tools import GraphGenerator
-import timeit
 import random
-from optimizer import Optimizer, SimulatedAnnealing
+
+from tools.gt_tools import GraphGenerator
+from old_version import moves, cost_function
+from old_version.optimizer import Optimizer, SimulatedAnnealing
 from utils import *
 
 

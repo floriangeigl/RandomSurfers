@@ -1,18 +1,16 @@
 from __future__ import division
 from sys import platform as _platform
+
 import matplotlib
+
 
 if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')
 import matplotlib.pylab as plt
 from tools.gt_tools import GraphGenerator
-import cost_function
-import moves
-import optimizer
+from old_version import optimizer, moves, cost_function
 import random
 import pandas as pd
-from graph_tool.all import *
-import seaborn as sns
 import numpy as np
 
 network = GraphGenerator(200)

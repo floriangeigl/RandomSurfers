@@ -1,18 +1,17 @@
 from __future__ import division
 from sys import platform as _platform
+
 import matplotlib
+
 
 if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')
 import matplotlib.pylab as plt
-from abc import abstractmethod
-from cost_function import CostFunction
-from moves import Mover
-import random
+from old_version.cost_function import CostFunction
+from old_version.moves import Mover
 import copy
 import numpy as np
 from tools.printing import print_f
-from itertools import cycle
 import pandas as pd
 import datetime
 import math

@@ -1,30 +1,19 @@
 from __future__ import division
 from sys import platform as _platform
+
 import matplotlib
+
 
 if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')
-import matplotlib.pylab as plt
-from tools.gt_tools import GraphGenerator
-import cost_function
-import moves
-import optimizer
-import pandas as pd
+from old_version import optimizer, moves, cost_function
 from tools.basics import *
-from graph_tool.all import *
-import seaborn as sns
-import numpy as np
-import random
-import operator
-import os
 from utils import *
 import datetime
 from multiprocessing import Pool
 # from multiprocessing.pool import ThreadPool as Pool
 from collections import defaultdict
-import time
 import traceback
-import signal
 
 
 def main():
