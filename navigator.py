@@ -58,11 +58,12 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
             if current_node == tar:
                 num_success += 1
             stretch.append(hops / sd)
-    print p_name, 'average stretch:', np.mean(stretch)
     try:
         sr = num_success/num_pairs
     except ZeroDivisionError:
         sr = 0
+    print p_name, 'average stretch:', np.mean(stretch)
+    print p_name, 'success rate:', sr
     return sr, stretch
 
 
