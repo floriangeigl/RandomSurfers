@@ -16,13 +16,12 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
     p_name = ut.color_string('[Worker ' + str(p_id) + ']', type=c)
     print p_name, 'init random walk'
     print p_name, 'reduce network to largest component'
-    assert net.is_directed() is False
+    assert isinstance(network, gt.Graph)
+    assert network.is_directed() is False
     lc = gt.label_largest_component(network)
     network = gt.GraphView(network, vfilt=lc)
-    assert isinstance(network, gt.Graph)
-    net = network
 
-    vertices = list(net.vertices())
+    vertices = list(network.vertices())
     pairs = defaultdict(set)
     print p_name, 'gen pairs'
     for i in xrange(num_pairs):
@@ -34,7 +33,7 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
     print p_name, 'calc shortest distances'
     sys.stdout.flush()
     for src, targets in pairs.iteritems():
-        sd = gt.topology.shortest_distance(net, src)
+        sd = gt.topology.shortest_distance(network, src)
         for tar in targets:
             shortest_distances[src][tar] = sd[tar]
     print p_name, 'random walk'
