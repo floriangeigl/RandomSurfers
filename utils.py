@@ -1,16 +1,16 @@
 from __future__ import division
 from sys import platform as _platform
+import matplotlib
+
+if _platform == "linux" or _platform == "linux2":
+    matplotlib.use('Agg')
+import matplotlib.pylab as plt
 from graph_tool.all import *
 from scipy.stats import poisson, powerlaw
 import operator
 import pandas as pd
 import numpy as np
-import matplotlib
 
-
-if _platform == "linux" or _platform == "linux2":
-    matplotlib.use('Agg')
-import matplotlib.pylab as plt
 
 
 def graph_gen(self_con, other_con, nodes=100, groups=10):
@@ -44,3 +44,38 @@ def get_ranking_df(ranking, weights):
     data = [(val, vertex) for val, vertex in zip(weights, ranking)]
     df = pd.DataFrame(columns=['values', 'ranked_vertex'], data=data)
     return df
+
+class bcolors:
+    prefix = '\33'
+    ENDC = prefix + '[0m'
+    gen_c = lambda x, ENDC=ENDC, prefix=prefix: ENDC + prefix + '[' + str(x) + 'm'
+    HEADER = gen_c(95)
+    WARNING = gen_c(93)
+    FAIL = gen_c(91)
+
+    BLACK = gen_c('0;30')
+    WHITE = gen_c('1;37')
+
+    BLUE = gen_c('0;34')
+    GREEN = gen_c('0;32')
+    PURPLE = gen_c('0;35')
+    RED = gen_c('0;31')
+    YELLOW = gen_c('1;33')
+    CYAN = gen_c('0;36')
+
+    DARK_GRAY = gen_c('1;30')
+
+    LIGHT_BLUE = gen_c('1;34')
+    LIGHT_GREEN = gen_c('1;32')
+    LIGHT_CYAN = gen_c('1;36')
+    LIGHT_RED = gen_c('1;31')
+    LIGHT_PURPLE = gen_c('1;35')
+    LIGHT_GRAY = gen_c('0;37')
+
+
+def color_string(string, type=bcolors.BLUE):
+    return type + str(string) + bcolors.ENDC
+
+
+def get_colors_list():
+    return [bcolors.BLUE, bcolors.CYAN, bcolors.GREEN, bcolors.LIGHT_RED, bcolors.PURPLE]
