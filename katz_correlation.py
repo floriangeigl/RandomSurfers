@@ -279,6 +279,7 @@ def main():
                      c=colors[idx % len(colors)], marker=marker[idx % len(marker)], s=50, alpha=0.75, lw=0)
     ax.set_ylabel('stretch')
     ax.set_xlabel('gpearson')
+    plt.legend(loc=0)
     plt.savefig(dir + 'scatter.png', dpi=150)
 
     print 'plot lineplots'
