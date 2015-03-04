@@ -18,7 +18,7 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
     print p_name, 'reduce network to largest component'
     assert isinstance(network, gt.Graph)
     assert network.is_directed() is False
-    lc = gt.label_largest_component(network)
+    lc = gt.topology.label_largest_component(network)
     network = gt.GraphView(network, vfilt=lc)
 
     vertices = list(network.vertices())
