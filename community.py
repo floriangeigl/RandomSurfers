@@ -411,7 +411,7 @@ class SBMGenerator:
         #degree correction
         for i in range(n):
             for j in range(n):
-                block_random[i][j] *= degree_sequence[i] * degree_sequence[j] * 10000
+                block_random[i][j] *= degree_sequence[i] * degree_sequence[j] * 45000
 
         #print block_random
 

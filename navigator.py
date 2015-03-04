@@ -39,6 +39,7 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
     print p_name, 'random walk'
     stretch = []
     num_success = 0
+    rev_nodes = 0
     for src, targets in pairs.iteritems():
         current_node = src
         for tar in targets:
@@ -52,7 +53,7 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
                 if avoid_revisits:
                     neighb -= visited_nodes
                     if not neighb:
-                        print p_name, 'Warn: all neighbours already visited'
+                        rev_nodes += 1
                         neighb = set(current_node.out_neighbours())
                 if tar in neighb:
                     current_node = tar
@@ -65,6 +66,8 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
         sr = num_success/num_pairs
     except ZeroDivisionError:
         sr = 0
+    if rev_nodes:
+        print p_name, 'revisited nodes:', rev_nodes
     print p_name, 'average stretch:', np.mean(stretch)
     print p_name, 'success rate:', sr
     return sr, stretch
