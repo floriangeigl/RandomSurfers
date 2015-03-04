@@ -140,7 +140,8 @@ def do_calc(i, blocks, blockp, num_pairs, legend, plot, id):
         l, v = matrix_spectrum(A)
         kappa_1 = l[0].real
         alpha_max = 1.0 / kappa_1
-        print p_name, 'nodes:', g.num_vertices(), '||edges:', g.num_edges()
+        gt.stats.remove_parallel_edges(g)
+        print p_name, legend[i], 'nodes:', g.num_vertices(), '||edges:', g.num_edges()
         print p_name, 'kappa1:', kappa_1
         print p_name, 'alpha max:', alpha_max
 
@@ -182,7 +183,8 @@ def do_calc(i, blocks, blockp, num_pairs, legend, plot, id):
         stretch_avg = np.mean(stretch)
         res_dict = dict()
         res_dict['type'] = legend[i]
-        res_dict['m'] = sum(sum(A)) / 2
+        res_dict['n'] = g.num_vertices()
+        res_dict['m'] = g.num_edges()
         res_dict['kappa_1'] = kappa_1
         res_dict['alpha_max'] = 1/kappa_1
         res_dict['gpearson'] = gpearson[0]
