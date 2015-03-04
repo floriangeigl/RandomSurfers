@@ -14,26 +14,26 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
     p_id = multiprocessing.current_process()._identity[0]
     c = c_list[p_id % len(c_list)]
     p_name = ut.color_string('[Worker ' + str(p_id) + ']', type=c)
-    print '\t', p_name, 'init random walk'
+    print p_name, 'init random walk'
     assert isinstance(network, gt.Graph)
     net = network
     assert net.is_directed() is False
     vertices = list(net.vertices())
     pairs = defaultdict(set)
-    print '\t', p_name, 'gen pairs'
+    print p_name, 'gen pairs'
     for i in xrange(num_pairs):
         src, targets = random.sample(vertices, 2)
         while targets in pairs[src]:
             src, targets = random.sample(vertices, 2)
         pairs[src].add(targets)
     shortest_distances = defaultdict(dict)
-    print '\t', p_name, 'calc shortest distances'
+    print p_name, 'calc shortest distances'
     sys.stdout.flush()
     for src, targets in pairs.iteritems():
         sd = gt.topology.shortest_distance(net, src)
         for tar in targets:
             shortest_distances[src][tar] = sd[tar]
-    print '\t', p_name, 'random walk'
+    print p_name, 'random walk'
     stretch = []
     num_success = 0
     for src, targets in pairs.iteritems():
@@ -49,7 +49,7 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
                 if avoid_revisits:
                     neighb -= visited_nodes
                     if not neighb:
-                        print '\t', p_name, 'Warn: all neighbours already visited'
+                        print p_name, 'Warn: all neighbours already visited'
                         neighb = set(current_node.out_neighbours())
                 if tar in neighb:
                     current_node = tar
@@ -58,7 +58,7 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
             if current_node == tar:
                 num_success += 1
             stretch.append(hops / sd)
-    print '\t', p_name, 'average stretch:', np.mean(stretch)
+    print p_name, 'average stretch:', np.mean(stretch)
     try:
         sr = num_success/num_pairs
     except ZeroDivisionError:
