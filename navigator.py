@@ -15,9 +15,13 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
     c = c_list[p_id % len(c_list)]
     p_name = ut.color_string('[Worker ' + str(p_id) + ']', type=c)
     print p_name, 'init random walk'
+    print p_name, 'reduce network to largest component'
+    assert net.is_directed() is False
+    lc = gt.label_largest_component(network)
+    network = gt.GraphView(network, vfilt=lc)
     assert isinstance(network, gt.Graph)
     net = network
-    assert net.is_directed() is False
+
     vertices = list(net.vertices())
     pairs = defaultdict(set)
     print p_name, 'gen pairs'
