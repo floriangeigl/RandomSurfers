@@ -232,7 +232,9 @@ worker_pool.close()
 while True:
     time.sleep(60)
     remaining_processes = len(worker_pool._cache)
-    print str(' overall process status:' + str((id - remaining_processes) / id * 100) + '% ').center(100, '-')
+    print ut.color_string(
+        str(' overall process status:' + str((id - remaining_processes) / id * 100) + '% ').center(100, '-'),
+        ut.bcolors.LIGHT_BLUE)
     if remaining_processes == 0:
         break
 worker_pool.join()
