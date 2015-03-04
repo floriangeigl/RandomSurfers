@@ -220,7 +220,7 @@ plot = True
 results = []
 res_appender = results.append
 
-worker_pool = Pool(processes=5)
+worker_pool = Pool(processes=12)
 id = 0
 for count in range(n_exper):
     for i in range(len(blockp) + 2):
