@@ -365,7 +365,7 @@ class SBMGenerator:
         self.block_prob = block_prob
         self.indices = []
 
-    def generate(self, rindices=True):
+    def generate(self, rindices=False):
         n = sum(self.blocks)
         block_count = len(self.blocks)
         if rindices:

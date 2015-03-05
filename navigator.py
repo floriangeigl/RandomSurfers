@@ -9,7 +9,8 @@ import os
 import sys
 import utils as ut
 
-def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
+
+def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000, com=None):
     c_list = ut.get_colors_list()
     p_id = multiprocessing.current_process()._identity[0]
     c = c_list[p_id % len(c_list)]
@@ -43,6 +44,8 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
     for src, targets in pairs.iteritems():
         current_node = src
         for tar in targets:
+            if com is not None:
+                tar_com = com[tar]
             visited_nodes = set()
             sd = shortest_distances[src][tar]
             hops = 0
@@ -57,8 +60,14 @@ def random_walk(network, max_steps, avoid_revisits=True, num_pairs=1000):
                         neighb = set(current_node.out_neighbours())
                 if tar in neighb:
                     current_node = tar
+                elif com is not None:
+                    try:
+                        current_node = random.sample(list(filter(lambda x: com[x] == tar_com, neighb)), 1)[0]
+                    except ValueError:
+                        current_node = random.sample(neighb, 1)[0]
                 else:
                     current_node = random.sample(neighb, 1)[0]
+
             if current_node == tar:
                 num_success += 1
             stretch.append(hops / sd)

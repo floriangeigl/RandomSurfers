@@ -95,47 +95,71 @@ def graph_gen(self_con, other_con, nodes=500, groups=5):
     return g, bm
 
 
-def do_calc(i, blocks, blockp, num_pairs, legend, plot, id):
+def gen_com_pmap(net,blocks):
+    com = net.new_vertex_property('int')
+    current_node_id = 0
+    for com_id, i in enumerate(blocks):
+        for j in range(i):
+            com[net.vertex(current_node_id)] = com_id
+            current_node_id += 1
+    return com
+
+
+def do_calc(i, blocks, blockp, num_pairs, com_greedy, legend, plot, plot_dir, id):
     try:
         c_list = ut.get_colors_list()
         p_id = multiprocessing.current_process()._identity[0]
         c = c_list[p_id % len(c_list)]
         p_name = ut.color_string('[Worker ' + str(p_id) + ']', type=c)
         print p_name, 'start calc of id:', id
+        mi = 5
+        ma = 15
+        power = 1
         if i < len(blockp):
             A = generate_blocks(blocks, 4 * np.matrix(blockp[i]))
             g = gt.Graph(directed=False)
+            for node_id in range(A.shape[0]):
+                g.add_vertex()
             g.add_edge_list(np.transpose(A.nonzero()))
+            com = gen_com_pmap(g, blocks)
             if plot:
                 pos = gt.draw.sfdp_layout(g)
                 deg = g.degree_property_map("total")
-                gt.draw.graph_draw(g, pos=pos, vertex_size=deg, output=dir + "blocks%d.png" % i)
+                gt.draw.graph_draw(g, pos=pos, vertex_size=prop_to_size(deg, mi=mi, ma=ma, power=power),
+                                   vertex_fill_color=com, output=plot_dir + "blocks%d.png" % i)
         elif i == len(blockp):
             g = gt.generation.price_network(500, m=20, directed=False)
+            com = g.new_vertex_property('int')
             A = np.zeros((500, 500))
             gt.spectral.adjacency(g).todense(out=A)
             if plot:
                 pos = gt.draw.sfdp_layout(g)
                 deg = g.degree_property_map("total")
-                gt.draw.graph_draw(g, pos=pos, vertex_size=deg, output=dir + "power-law.png")
+                gt.draw.graph_draw(g, pos=pos, vertex_size=prop_to_size(deg, mi=mi, ma=ma, power=power),
+                                   output=plot_dir + "power-law.png")
         else:
             degree_sequence = (1 - stats.powerlaw.rvs(2.7, size=500)) * 80 + 5
             # print degree_sequence
             A = generate_blocks_degree_corrected(blocks, np.matrix(blockp[i - 2]), degree_sequence)
             g = gt.Graph(directed=False)
             g.add_edge_list(np.transpose(A.nonzero()))
+            com = gen_com_pmap(g, blocks)
             if plot:
                 pos = gt.draw.sfdp_layout(g)
                 deg = g.degree_property_map("total")
-                gt.draw.graph_draw(g, pos=pos, vertex_fill_color=deg, vcmap=matplotlib.cm.gist_heat_r,
-                                   output=dir + "power-law-blocks.png")
+                gt.draw.graph_draw(g, pos=pos, vertex_fill_color=com,
+                                   vertex_size=prop_to_size(deg, mi=mi, ma=ma, power=power),
+                                   vcmap=matplotlib.cm.gist_heat_r,
+                                   output=plot_dir + "power-law-blocks.png")
 
                 #plot the largest component
                 l = gt.topology.label_largest_component(g)
                 u = gt.GraphView(g, vfilt=l)
                 pos = gt.draw.sfdp_layout(u)
                 deg = u.degree_property_map("total")
-                gt.draw.graph_draw(u, pos=pos, vertex_size=deg, output=dir + "power-law-blocks-lcc.png")
+                gt.draw.graph_draw(u, pos=pos, vertex_fill_color=com,
+                                   vertex_size=prop_to_size(deg, mi=mi, ma=ma, power=power),
+                                   output=plot_dir + "power-law-blocks-lcc.png")
 
         l, v = matrix_spectrum(A)
         kappa_1 = l[0].real
@@ -179,7 +203,9 @@ def do_calc(i, blocks, blockp, num_pairs, legend, plot, id):
             data.append(pearson[0])
             # print "global vs %e"%alpha
             #print pearson[0]
-        sr, stretch = nav.random_walk(g, max_steps=0, avoid_revisits=True, num_pairs=num_pairs)
+        if not com_greedy:
+            com = None
+        sr, stretch = nav.random_walk(g, max_steps=0, avoid_revisits=True, num_pairs=num_pairs, com=com)
         stretch_avg = np.mean(stretch)
         res_dict = dict()
         res_dict['type'] = legend[i]
@@ -200,8 +226,9 @@ def do_calc(i, blocks, blockp, num_pairs, legend, plot, id):
 
 def main():
     n_exper = 15
-    plot = False
+    plot = True
     num_pairs = 1000
+    com_greedy = True
     blocks = np.array([100, 100, 100, 100, 100])
     blockp = [
         "0.02, 0.02, 0.02, 0.02, 0.02; 0.02, 0.02, 0.02, 0.02, 0.02; 0.02, 0.02, 0.02, 0.02, 0.02; 0.02, 0.02, 0.02, 0.02, 0.02; 0.02, 0.02, 0.02, 0.02, 0.02",
@@ -209,10 +236,10 @@ def main():
         "0.099, 0.00025, 0.00025, 0.00025, 0.00025; 0.00025, 0.099, 0.00025, 0.00025, 0.00025; 0.00025, 0.00025, 0.099, 0.00025, 0.00025; 0.00025, 0.00025, 0.00025, 0.099, 0.00025; 0.00025, 0.00025, 0.00025, 0.00025, 0.099"]
     legend = ["Random", "Weak Comm.", "Strong Comm.", "Power-Law", "Deg. Stoch. Blocks"]
 
-    dir = "output/"
-    rfile = dir + "/gvsl.txt"
-    if not os.path.isdir(dir):
-        os.mkdir(dir)
+    output_dir = "output/"
+    rfile = output_dir + "/gvsl.txt"
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
 
     # A = blocks2()
     #A = blocks3()
@@ -228,7 +255,9 @@ def main():
     id = 0
     for count in range(n_exper):
         for i in range(len(blockp) + 2):
-            worker_pool.apply_async(func=do_calc, args=(i, blocks, blockp, num_pairs,legend, plot, id), callback=res_appender)
+            worker_pool.apply_async(func=do_calc,
+                                    args=(i, blocks, blockp, num_pairs, com_greedy, legend, plot, output_dir, id),
+                                    callback=res_appender)
             if i > len(blockp):
                 plot = False
             id += 1
@@ -280,7 +309,7 @@ def main():
     ax.set_ylabel('stretch')
     ax.set_xlabel('gpearson')
     plt.legend(loc='upper left')
-    plt.savefig(dir + 'scatter.png', dpi=150)
+    plt.savefig(output_dir + 'scatter.png', dpi=150)
     plt.close('all')
 
     print 'plot lineplots'
@@ -308,7 +337,7 @@ def main():
     plt.ylabel("$\\rho$")
     plt.ylim([0, 1])
     plt.xlim([0, 1])
-    plt.savefig(dir + 'corr.png', dpi=150)
+    plt.savefig(output_dir + 'corr.png', dpi=150)
     plt.close('all')
 
 if __name__ == '__main__':
