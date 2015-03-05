@@ -279,8 +279,9 @@ def main():
                      c=colors[idx % len(colors)], marker=marker[idx % len(marker)], s=50, alpha=0.75, lw=0)
     ax.set_ylabel('stretch')
     ax.set_xlabel('gpearson')
-    plt.legend(loc=0)
+    plt.legend(loc='upper left')
     plt.savefig(dir + 'scatter.png', dpi=150)
+    plt.close('all')
 
     print 'plot lineplots'
     for i in range(len(blockp) + 2):
@@ -308,6 +309,7 @@ def main():
     plt.ylim([0, 1])
     plt.xlim([0, 1])
     plt.savefig(dir + 'corr.png', dpi=150)
+    plt.close('all')
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
