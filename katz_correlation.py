@@ -105,6 +105,41 @@ def gen_com_pmap(net,blocks):
     return com
 
 
+def calc_entropy(graph, A, sigma):
+    total_entropy = 0
+    AT = A.T
+    selection_range = set(map(int, graph.vertices()))
+    for v in selection_range:
+        # exclude loop
+        current_selection = list(selection_range - {v})
+        # stack the katz row of the target vertex N-1 times
+        stacked_row_sigma = sigma[[v] * (sigma.shape[0] - 1), :]
+        # multiply katz with transposed A -> only katz values on real links
+        res = np.multiply(stacked_row_sigma, AT[current_selection, :])
+        # calc entropy per row and add it to the overall entropy
+        ent = stats.entropy(res.T)
+        total_entropy += ent.sum()
+        if False:
+            print 'target vertex:', int(v)
+            print 'Katz row'
+            print katz_mat[int(v), :]
+            print 'AT'
+            print AT[current_selection, :]
+            print 'KATZ*AT'
+            # res = res[]
+            print res
+            print 'entropy'
+            print ent
+            # print entropy(res_trim.T)
+            #break
+    max_entropy = np.log(AT.sum(0)).sum() / g.num_vertices()
+    num_v = graph.num_vertices()
+    avg_entropy = total_entropy / (num_v * (num_v - 1))
+    return avg_entropy, max_entropy
+
+
+
+
 def do_calc(i, blocks, blockp, num_pairs, com_greedy, legend, plot, plot_dir, id):
     try:
         c_list = ut.get_colors_list()
@@ -172,6 +207,7 @@ def do_calc(i, blocks, blockp, num_pairs, com_greedy, legend, plot, plot_dir, id
         alpha_max *= 0.99
         alpha = alpha_max
         sigma_global = katz_sim_matrix(A, alpha)
+        avg_entropy, max_entropy = calc_entropy(g, A, sigma_global)
         np.fill_diagonal(sigma_global, 0.0)
         gpearson = stats.pearsonr(A.flatten(), sigma_global.flatten())
         print p_name, "global vs adjacency"
@@ -218,6 +254,8 @@ def do_calc(i, blocks, blockp, num_pairs, com_greedy, legend, plot, plot_dir, id
         res_dict['alpha80'] = pearson80 / kappa_1
         res_dict['stretch'] = stretch_avg
         res_dict['sr'] = sr
+        res_dict['entropy_avg'] = avg_entropy
+        res_dict['entropy_max'] = max_entropy
     except:
         print str(traceback.format_exc())
         exit()
@@ -308,7 +346,7 @@ def main():
                      c=colors[idx % len(colors)], marker=marker[idx % len(marker)], s=50, alpha=0.75, lw=0)
     ax.set_ylabel('stretch')
     ax.set_xlabel('gpearson')
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper right')
     plt.savefig(output_dir + 'scatter.png', dpi=150)
     plt.close('all')
 
