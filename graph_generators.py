@@ -13,8 +13,8 @@ import scipy.stats as stats
 import numpy as np
 
 
-def gen_stock_blockmodel(num_nodes=100, blocks=3, self_con=1, other_con=0.2, directed=False, powerlaw_exp=2.1,
-                         num_links=300, loops=False):
+def gen_stock_blockmodel(num_nodes=100, blocks=3, self_con=1, other_con=0.2, directed=False, degree_corrected=True,
+                         powerlaw_exp=2.1, num_links=300, loops=False):
     g = Graph(directed=directed)
     com_pmap = g.new_vertex_property('int')
     for idx in range(num_nodes):
@@ -28,11 +28,12 @@ def gen_stock_blockmodel(num_nodes=100, blocks=3, self_con=1, other_con=0.2, dir
     for i in range(blocks):
         vertices_in_block = list(filter(lambda x: com_pmap[x] == i, g.vertices()))
         block_to_vertices[i] = vertices_in_block
-        powerlaw_dist = 1 - stats.powerlaw.rvs(powerlaw_exp, size=len(vertices_in_block))
+        if degree_corrected:
+            powerlaw_dist = 1 - stats.powerlaw.rvs(powerlaw_exp, size=len(vertices_in_block))
+        else:
+            powerlaw_dist = np.random.random(size=len(vertices_in_block))
         powerlaw_dist /= powerlaw_dist.sum()
-        # print powerlaw_dist
         cum_sum = np.cumsum(powerlaw_dist)
-        #print cum_sum.sum()
         assert np.allclose(cum_sum[-1], 1)
         block_to_cumsum[i] = cum_sum
         for v, p in zip(vertices_in_block, powerlaw_dist):
@@ -66,6 +67,7 @@ def gen_stock_blockmodel(num_nodes=100, blocks=3, self_con=1, other_con=0.2, dir
 
     for link_idx in range(num_links - links_created):
         edge = 1
+        src_v, dest_v = None, None
         while edge is not None:
             src_b, dest_b = get_random_blocks(cum_sum, blocks)
             src_v = block_to_vertices[src_b][get_random_node(block_to_cumsum[src_b])]
