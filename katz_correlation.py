@@ -132,7 +132,7 @@ def calc_entropy(graph, A, sigma):
             print ent
             # print entropy(res_trim.T)
             #break
-    max_entropy = np.log(AT.sum(0)).sum() / g.num_vertices()
+    max_entropy = np.log(AT.sum(0)).sum() / A.shape[0]
     num_v = graph.num_vertices()
     avg_entropy = total_entropy / (num_v * (num_v - 1))
     return avg_entropy, max_entropy
@@ -262,6 +262,33 @@ def do_calc(i, blocks, blockp, num_pairs, com_greedy, legend, plot, plot_dir, id
     return ([a * kappa_1 for a in alphas], data, res_dict), id
 
 
+def plot_scatter(data_dict, first_prop, second_prop, output_dir):
+    print 'plot scatter:', first_prop, 'vs', second_prop,
+    scatter_df = None
+    x = list()
+    y = list()
+
+    for idx, (key, val) in enumerate(data_dict.iteritems()):
+        if scatter_df is None:
+            scatter_df = pd.DataFrame(columns=[key + '_' + first_prop, key + '_' + second_prop], data=val)
+        else:
+            scatter_df[key + '_' + first_prop], scatter_df[key + '_' + second_prop] = zip(*val)
+        x.append(key + '_' + first_prop)
+        y.append(key + '_' + second_prop)
+    ax = None
+    colors = ['blue', 'green', 'yellow', 'black', 'pink']
+    marker = ['^', 'D', 's', 'p', 'o']
+    for idx, (i, j) in enumerate(zip(x, y)):
+        ax = scatter_df.plot(x=i, y=j, legend=True, label=i.replace('_' + first_prop, ''), kind='scatter', ax=ax,
+                             c=colors[idx % len(colors)], marker=marker[idx % len(marker)], s=50, alpha=0.75, lw=0)
+    ax.set_ylabel(second_prop)
+    ax.set_xlabel(first_prop)
+    plt.legend(loc='upper right')
+    plt.savefig(output_dir + first_prop + '_' + second_prop + '_scatter.png', dpi=150)
+    plt.close('all')
+    print '[OK]'
+
+
 def main():
     n_exper = 15
     plot = True
@@ -314,11 +341,15 @@ def main():
     results.sort(key=operator.itemgetter(1))
     results, result_ids = zip(*results)
     aalphas, adata, file_cont = zip(*results)
-    scatter_df = defaultdict(list)
+    gpearson_stretch_data = defaultdict(list)
+    entropyavg_stretch_data = defaultdict(list)
+    entropymax_stretch_data = defaultdict(list)
     with open(rfile, 'w') as f:
         for i in file_cont:
             net_type = i['type']
-            scatter_df[net_type].append((i['gpearson'], i['stretch']))
+            gpearson_stretch_data[net_type].append((i['gpearson'], i['stretch']))
+            entropyavg_stretch_data[net_type].append((i['entropy_avg'], i['stretch']))
+            entropymax_stretch_data[net_type].append((i['entropy_max'], i['stretch']))
             f.write(net_type + '\n')
             del i['type']
             for key, val in sorted(i.iteritems(), key=operator.itemgetter(0)):
@@ -326,29 +357,9 @@ def main():
             f.write('-' * 80)
             f.write('\n')
 
-    print 'plot scatter'
-    df = None
-    x = list()
-    y = list()
-
-    for idx, (key, val) in enumerate(scatter_df.iteritems()):
-        if df is None:
-            df = pd.DataFrame(columns=[key + '_gpearson', key + '_stretch'], data=val)
-        else:
-            df[key + '_gpearson'], df[key + '_stretch'] = zip(*val)
-        x.append(key + '_gpearson')
-        y.append(key + '_stretch')
-    ax = None
-    colors = ['blue', 'green', 'yellow', 'black', 'pink']
-    marker = ['^', 'D', 's', 'p', 'o']
-    for idx, (i, j) in enumerate(zip(x, y)):
-        ax = df.plot(x=i, y=j, legend=True, label=i.replace('_gpearson', ''), kind='scatter', ax=ax,
-                     c=colors[idx % len(colors)], marker=marker[idx % len(marker)], s=50, alpha=0.75, lw=0)
-    ax.set_ylabel('stretch')
-    ax.set_xlabel('gpearson')
-    plt.legend(loc='upper right')
-    plt.savefig(output_dir + 'scatter.png', dpi=150)
-    plt.close('all')
+    plot_scatter(gpearson_stretch_data, 'gpearson', 'stretch', output_dir)
+    plot_scatter(entropyavg_stretch_data, 'entropy_avg', 'stretch', output_dir)
+    plot_scatter(entropymax_stretch_data, 'entropy_max', 'stretch', output_dir)
 
     print 'plot lineplots'
     for i in range(len(blockp) + 2):
