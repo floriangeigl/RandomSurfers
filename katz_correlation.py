@@ -95,6 +95,11 @@ def graph_gen(self_con, other_con, nodes=500, groups=5):
     return g, bm
 
 
+def gen_stock_blockmodel(num_nodes=100, blocks=10, self_con=1, other_con=0.2, directed=False):
+    g = Graph(directed=directed)
+
+
+
 def gen_com_pmap(net,blocks):
     com = net.new_vertex_property('int')
     current_node_id = 0
@@ -136,8 +141,6 @@ def calc_entropy(graph, A, sigma):
     num_v = graph.num_vertices()
     avg_entropy = total_entropy / (num_v * (num_v - 1))
     return avg_entropy, max_entropy
-
-
 
 
 def do_calc(i, blocks, blockp, num_pairs, com_greedy, legend, plot, plot_dir, id):
