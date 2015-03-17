@@ -110,10 +110,13 @@ def gen_com_pmap(net,blocks):
     return com
 
 
-def calc_entropy(graph, A, sigma):
+def calc_entropy(A, sigma, graph=None, max_entropy=True):
     total_entropy = 0
     AT = A.T
-    selection_range = set(map(int, graph.vertices()))
+    if graph is None:
+        selection_range = set(range(AT.shape[0]))
+    else:
+        selection_range = set(map(int, graph.vertices()))
     for v in selection_range:
         # exclude loop
         current_selection = list(selection_range - {v})
@@ -137,10 +140,16 @@ def calc_entropy(graph, A, sigma):
             print ent
             # print entropy(res_trim.T)
             #break
-    max_entropy = np.log(AT.sum(0)).sum() / A.shape[0]
-    num_v = graph.num_vertices()
+    if graph is None:
+        num_v = A.shape[0]
+    else:
+        num_v = graph.num_vertices()
     avg_entropy = total_entropy / (num_v * (num_v - 1))
-    return avg_entropy, max_entropy
+    if max_entropy:
+        max_entropy = np.log(AT.sum(0)).sum() / A.shape[0]
+        return avg_entropy, max_entropy
+    else:
+        return avg_entropy
 
 
 def do_calc(i, blocks, blockp, num_pairs, com_greedy, legend, plot, plot_dir, id):
@@ -210,7 +219,7 @@ def do_calc(i, blocks, blockp, num_pairs, com_greedy, legend, plot, plot_dir, id
         alpha_max *= 0.99
         alpha = alpha_max
         sigma_global = katz_sim_matrix(A, alpha)
-        avg_entropy, max_entropy = calc_entropy(g, A, sigma_global)
+        avg_entropy, max_entropy = calc_entropy(A, sigma_global, g)
         np.fill_diagonal(sigma_global, 0.0)
         gpearson = stats.pearsonr(A.flatten(), sigma_global.flatten())
         print p_name, "global vs adjacency"
