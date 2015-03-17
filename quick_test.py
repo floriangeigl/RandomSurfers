@@ -8,7 +8,7 @@ from graph_tool.all import *
 import matplotlib.pylab as plt
 
 import sys
-from tools.gt_tools import SBMGenerator
+from tools.gt_tools import SBMGenerator, load_edge_list
 import numpy as np
 from linalg import *
 import scipy.stats as stats
@@ -18,24 +18,24 @@ import random
 
 # np.set_printoptions(linewidth=1200, precision=1)
 
-
 def calc_entropy(A, sigma_in=None, known_nodes=None):
-    total_entropy = 0
     if sigma_in is None:
-        return stats.entropy(A).sum() / A.shape[0]
+        sigma_in = np.ones(A.shape, dtype=np.float)
     AT = A.T
     selection_range = set(range(AT.shape[0]))
     if known_nodes is None:
         sigma = sigma_in
+        sigma /= sigma.sum(axis=1)
     else:
-        sigma = np.ones(sigma_in.shape, dtype=sigma_in.dtype)
+        sigma = np.ones(A.shape, dtype=np.float)
+        sigma /= sigma.sum(axis=1)
         # sigma *= sigma_in.min()
         # print 'known nodes:', known_nodes
         for v in map(int, known_nodes):
             sigma[v, :] = sigma_in[v, :]
             sigma[:, v] = sigma_in[:, v]
     # print 'sigma:\n', sigma
-
+    total_entropy = 0
     for v in selection_range:
         # exclude loop
         current_selection = list(selection_range - {v})
@@ -47,9 +47,9 @@ def calc_entropy(A, sigma_in=None, known_nodes=None):
         ent = stats.entropy(res.T)
         # if np.isinf(ent.sum()):
         # print ent
-        #    print res.sum(axis=1)
+        # print res.sum(axis=1)
         #    exit()
-        total_entropy += ent[np.isfinite(ent)].sum()
+        total_entropy += ent.sum()
     num_v = A.shape[0]
     total_entropy = total_entropy / (num_v * (num_v - 1))
     return total_entropy
@@ -64,18 +64,23 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
     except KeyError:
         fill_color = 'blue'
     graph_draw(net, vertex_size=prop_to_size(deg_map, mi=2, ma=15, power=1), vertex_fill_color=fill_color,
-               output=out_dir + name + '_net.png')
+               output=out_dir + name + '_net.png', bg_color=[1, 1, 1, 1])
     plt.close('all')
     print 'calc katz'
-    A = adjacency(net)
-    l, v = matrix_spectrum(A)
+    A = adjacency(net).todense()
+    A /= A.sum(axis=1)
+    try:
+        l, v = matrix_spectrum(A, sparse=True)
+    except:
+        l, v = matrix_spectrum(A, sparse=False)
     kappa_1 = l[0].real
     alpha_max = 1.0 / kappa_1
     alpha_max *= 0.99
     alpha = alpha_max
     sigma_global = katz_sim_matrix(A, alpha)
+    #sigma_global = np.multiply(sigma_global, A.T)
+    sigma_global /= sigma_global.sum(axis=1)
     print 'calc baselines'
-    A = A.todense()
     adj_entropy = calc_entropy(A)
     print 'A entropy:', adj_entropy
     sigma_entropy = calc_entropy(A, sigma_global)
@@ -100,7 +105,7 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
     df['sigma'] = sigma_entropy
     df.plot(lw=2, color=['black', 'blue', 'green'], alpha=0.7)
     # print 'min'.center(20, '=')
-    #print df.min()
+    # print df.min()
     #print 'max'.center(20, '=')
     #print df.max()
     plt.savefig(out_dir + name + '.png')
@@ -127,5 +132,20 @@ test_entropy(net, granularity=granularity, name='complete_graph_n300')
 print 'circular graph'.center(80, '=')
 net = circular_graph(300, k=2, directed=False)
 test_entropy(net, granularity=granularity, name='circular_graph_n300')
+print 'facebook'.center(80, '=')
+net = load_edge_list('/opt/datasets/facebook/facebook')
+test_entropy(net, granularity=granularity, name='facebook')
+print 'wiki4schools'.center(80, '=')
+net = load_edge_list('/opt/datasets/wikiforschools/graph')
+test_entropy(net, granularity=granularity, name='wiki4schools')
+print 'dblp'.center(80, '=')
+net = load_edge_list('/opt/datasets/dblp/dblp')
+test_entropy(net, granularity=granularity, name='dblp')
+print 'youtube'.center(80, '=')
+net = load_edge_list('/opt/datasets/youtube/youtube')
+test_entropy(net, granularity=granularity, name='youtube')
+print 'karate'.center(80, '=')
+net = load_edge_list('/opt/datasets/karate/karate.edgelist')
+test_entropy(net, granularity=granularity, name='karate')
 
 
