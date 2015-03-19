@@ -15,6 +15,9 @@ import scipy.stats as stats
 import pandas as pd
 import operator
 import random
+np.set_printoptions(linewidth=225)
+import seaborn
+#np.set_printoptions(precision=2)
 
 # np.set_printoptions(linewidth=1200, precision=1)
 
@@ -29,11 +32,14 @@ def calc_entropy(A, sigma_in=None, known_nodes=None):
     else:
         sigma = np.ones(A.shape, dtype=np.float)
         sigma /= sigma.sum(axis=1)
+        sigma_in = sigma_in.copy()
+        sigma_in /= sigma_in.sum(axis=1)
         # sigma *= sigma_in.min()
         # print 'known nodes:', known_nodes
         for v in map(int, known_nodes):
             sigma[v, :] = sigma_in[v, :]
             sigma[:, v] = sigma_in[:, v]
+        sigma /= sigma.sum(axis=1)
     # print 'sigma:\n', sigma
     total_entropy = 0
     for v in selection_range:
@@ -48,14 +54,40 @@ def calc_entropy(A, sigma_in=None, known_nodes=None):
         # if np.isinf(ent.sum()):
         # print ent
         # print res.sum(axis=1)
-        #    exit()
+        # exit()
         total_entropy += ent.sum()
     num_v = A.shape[0]
     total_entropy = total_entropy / (num_v * (num_v - 1))
     return total_entropy
 
 
-def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity=10):
+def calc_katz_iterative(A, alpha, max_iter=100, filename='katz_range', out_dir='output/tests/'):
+    print 'calc katz iterative'
+    sigma = np.identity(A.shape[0])
+    A_max, alphas = list(), list()
+    print 'alpha:', alpha
+    for i in range(1, max_iter):
+        if i > 1:
+            A *= A
+            alpha *= alpha
+        M = np.multiply(A, alpha)
+        sigma += M
+        A_max.append(M.max())
+        alphas.append(alpha)
+        if np.allclose(A_max[-1], 0):
+            print '\tbreak after length:', i
+            break
+    df = pd.DataFrame(columns=['max matrix value'], data=A_max)
+    df['alpha'] = alphas
+    df.plot(alpha=0.75, lw=2)
+    plt.xlabel('path length')
+    plt.ylabel('value')
+    plt.savefig(out_dir + filename + '.png', bbox='tight')
+    plt.close('all')
+    return sigma
+
+
+def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity=10, num_samples=20):
     print net
     print 'draw network'
     deg_map = net.degree_property_map('total')
@@ -77,9 +109,16 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
     alpha_max = 1.0 / kappa_1
     alpha_max *= 0.99
     alpha = alpha_max
-    sigma_global = katz_sim_matrix(A, alpha)
-    #sigma_global = np.multiply(sigma_global, A.T)
-    sigma_global /= sigma_global.sum(axis=1)
+    #sigma_global = katz_sim_matrix(A, alpha)
+    sigma_global_iter = calc_katz_iterative(A, alpha, filename='katz_range' + name, out_dir=out_dir)
+    if False and not np.allclose(sigma_global, sigma_global_iter):
+        print 'inverse calc:'
+        print sigma_global / sigma_global.max(axis=0)
+        print 'iterative calc:'
+        print sigma_global_iter / sigma_global_iter.max(axis=0)
+        exit()
+    sigma_global = sigma_global_iter
+    sigma_global /= sigma_global.sum(axis=0)
     print 'calc baselines'
     adj_entropy = calc_entropy(A)
     print 'A entropy:', adj_entropy
@@ -96,24 +135,37 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
         if i % 100 == 99:
             print '+', 100 * int((i + 1) / 100), '\n'
         sys.stdout.flush()
-        known_nodes = set(random.sample(vertice_range, i))
-        entropies.append((calc_entropy(A, sigma_global, known_nodes=known_nodes), len(known_nodes)))
+        for j in range(num_samples):
+            known_nodes = set(random.sample(vertice_range, i))
+            entropies.append((calc_entropy(A, sigma_global, known_nodes=known_nodes), len(known_nodes)))
     print 'plot'
     data, idx = map(list, zip(*sorted(entropies, key=operator.itemgetter(1))))
-    df = pd.DataFrame(columns=['random tests'], data=data, index=idx)
+    df = pd.DataFrame(columns=['random tests'], data=data)
+    df['num_nodes'] = idx
+    df_max = df.groupby('num_nodes').describe()
+    df = df_max.unstack().reset_index()
+    df = pd.concat([df['num_nodes'], df['random tests']],axis=1)
     df['adj'] = adj_entropy
     df['sigma'] = sigma_entropy
-    df.plot(lw=2, color=['black', 'blue', 'green'], alpha=0.7)
+    df.plot(x='num_nodes', y=['adj', 'sigma', 'mean', 'min', 'max'], lw=2,
+            color=['black', 'green', 'blue', 'lightblue', 'darkblue'], alpha=0.7,
+            label=['adj', 'sigma'])
+    plt.xlabel('#known nodes')
+    plt.ylabel('entropy (#random samples: ' + str(num_samples) * ')')
     # print 'min'.center(20, '=')
     # print df.min()
-    #print 'max'.center(20, '=')
+    # print 'max'.center(20, '=')
     #print df.max()
-    plt.savefig(out_dir + name + '.png')
+    plt.savefig(out_dir + name + '.png', bbox='tight')
     plt.close('all')
 
 
 generator = SBMGenerator()
 granularity = 10
+
+print 'sbm'.center(80, '=')
+net = generator.gen_stock_blockmodel(num_nodes=10, blocks=2, num_links=30)
+test_entropy(net, granularity=granularity, name='sbm_n10_m30')
 print 'sbm'.center(80, '=')
 net = generator.gen_stock_blockmodel(num_nodes=300, blocks=3, num_links=500)
 test_entropy(net, granularity=granularity, name='sbm_n300_m500')
@@ -132,20 +184,22 @@ test_entropy(net, granularity=granularity, name='complete_graph_n300')
 print 'circular graph'.center(80, '=')
 net = circular_graph(300, k=2, directed=False)
 test_entropy(net, granularity=granularity, name='circular_graph_n300')
-print 'facebook'.center(80, '=')
-net = load_edge_list('/opt/datasets/facebook/facebook')
-test_entropy(net, granularity=granularity, name='facebook')
-print 'wiki4schools'.center(80, '=')
-net = load_edge_list('/opt/datasets/wikiforschools/graph')
-test_entropy(net, granularity=granularity, name='wiki4schools')
-print 'dblp'.center(80, '=')
-net = load_edge_list('/opt/datasets/dblp/dblp')
-test_entropy(net, granularity=granularity, name='dblp')
-print 'youtube'.center(80, '=')
-net = load_edge_list('/opt/datasets/youtube/youtube')
-test_entropy(net, granularity=granularity, name='youtube')
 print 'karate'.center(80, '=')
 net = load_edge_list('/opt/datasets/karate/karate.edgelist')
 test_entropy(net, granularity=granularity, name='karate')
+print 'wiki4schools'.center(80, '=')
+net = load_edge_list('/opt/datasets/wikiforschools/graph')
+test_entropy(net, granularity=granularity, name='wiki4schools')
+print 'facebook'.center(80, '=')
+net = load_edge_list('/opt/datasets/facebook/facebook')
+test_entropy(net, granularity=granularity, name='facebook')
+print 'youtube'.center(80, '=')
+net = load_edge_list('/opt/datasets/youtube/youtube')
+test_entropy(net, granularity=granularity, name='youtube')
+print 'dblp'.center(80, '=')
+net = load_edge_list('/opt/datasets/dblp/dblp')
+test_entropy(net, granularity=granularity, name='dblp')
+
+
 
 
