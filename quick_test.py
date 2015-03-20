@@ -137,10 +137,10 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
     sigma_entropy = calc_entropy(AT, norm_sigma)
     print '\tsigma entropy', sigma_entropy
     entropies = list()
-    print 'start tests with granularity:', granularity
+    print 'start tests with granularity', granularity, 'a', num_samples, 'samples'
     step_size = (net.num_vertices() / granularity)
     vertice_range = set(range(A.shape[0]))
-    worker_pool = multiprocessing.Pool(processes=8)
+    worker_pool = multiprocessing.Pool(processes=12)
     for num_known_nodes in range(granularity + 1):
         print '.',
         num_known_nodes *= step_size
@@ -188,7 +188,7 @@ granularity = 10
 num_samples = 10
 outdir = 'output/'
 
-test = True
+test = False
 
 if test:
     outdir += 'tests/'
