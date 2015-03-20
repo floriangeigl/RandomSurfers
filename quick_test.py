@@ -17,13 +17,19 @@ import pandas as pd
 import operator
 import random
 from collections import defaultdict
-
+import multiprocessing
+import traceback
 np.set_printoptions(linewidth=225)
 import seaborn
 from timeit import Timer
 np.set_printoptions(precision=2)
+import copy
 
 # np.set_printoptions(linewidth=1200, precision=1)
+
+def calc_entropy_mp(AT, sigma, known_nodes):
+    return calc_entropy(AT, sigma=sigma, known_nodes=known_nodes)
+
 
 def calc_entropy(AT, sigma=None, known_nodes=None, entropy_base=2):
     if sigma is None:
@@ -67,6 +73,8 @@ def calc_entropy(AT, sigma=None, known_nodes=None, entropy_base=2):
     num_v = AT.shape[0]
     total_entropy /= (num_v * (num_v - 1))
     #print 'total entropy:', total_entropy
+    if known_nodes is not None:
+        return total_entropy, int(len(known_nodes) / AT.shape[0] * 100)
     return total_entropy
 
 
@@ -132,13 +140,11 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
     print 'start tests with granularity:', granularity
     step_size = (net.num_vertices() / granularity)
     vertice_range = set(range(A.shape[0]))
+    worker_pool = multiprocessing.Pool(processes=8)
     for num_known_nodes in range(granularity + 1):
-        print num_known_nodes,
+        print '.',
         num_known_nodes *= step_size
         num_known_nodes = int(num_known_nodes)
-        if num_known_nodes % 100 == 99:
-            print '+', 100 * int((num_known_nodes + 1) / 100), '\n'
-        sys.stdout.flush()
         for j in range(num_samples):
             known_nodes = set(random.sample(vertice_range, num_known_nodes))
             if False and num_known_nodes > net.num_vertices() / 2:
@@ -146,9 +152,12 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
                 time = t.timeit(number=100)
                 print 'calc entropy time:', time
                 exit()
-            entropies.append((calc_entropy(AT, norm_sigma, known_nodes=known_nodes), len(known_nodes)))
+            worker_pool.apply_async(calc_entropy_mp, (AT, norm_sigma, known_nodes,), callback=entropies.append)
+            # entropies.append((calc_entropy(AT, norm_sigma, known_nodes=known_nodes), len(known_nodes)))
         for key, val in rankings.iteritems():
-            ranking_res[key].append(calc_entropy(AT, norm_sigma, known_nodes=val[:num_known_nodes]))
+            ranking_res[key].append(calc_entropy(AT, norm_sigma, known_nodes=val[:num_known_nodes])[0])
+    worker_pool.close()
+    worker_pool.join()
     print 'plot'
     data, idx = map(list, zip(*sorted(entropies, key=operator.itemgetter(1))))
     df = pd.DataFrame(columns=['random tests'], data=data)
@@ -161,12 +170,10 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
     for key, val in ranking_res.iteritems():
         df[key] = val
     ax = df.plot(x='num_nodes', y=['adj', 'sigma', 'mean'], lw=1,
-            color=['black', 'green', 'blue', 'lightblue', 'darkblue'], alpha=0.3,
-            label=['adj', 'sigma'])
+                 color=['black', 'green', 'blue', 'lightblue', 'darkblue'], alpha=0.3)
     df.plot(x='num_nodes', y=ranking_res.keys(), lw=3,
-            color=['black', 'green', 'blue', 'lightblue', 'darkblue'], alpha=0.7,
-            label=['adj', 'sigma'], ax=ax)
-    plt.xlabel('#known nodes')
+            color=['black', 'green', 'blue', 'lightblue', 'darkblue'], alpha=0.7, ax=ax)
+    plt.xlabel('known nodes in %')
     plt.ylabel('entropy (#random samples: ' + str(num_samples) + ')')
     # print 'min'.center(20, '=')
     # print df.min()
@@ -181,7 +188,7 @@ granularity = 10
 num_samples = 10
 outdir = 'output/'
 
-test = False
+test = True
 
 if test:
     outdir += 'tests/'
