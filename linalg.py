@@ -1,4 +1,11 @@
 from __future__ import division
+from sys import platform as _platform
+import matplotlib
+
+if _platform == "linux" or _platform == "linux2":
+    matplotlib.use('Agg')
+from graph_tool.all import *
+import matplotlib.pylab as plt
 
 import numpy as np
 import networkx as nx
@@ -49,6 +56,34 @@ def katz_matrix(A, alpha):
     m, n = A.shape
     katz = np.eye(n) - alpha * A
     return katz
+
+def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir='output/tests/', plot=True):
+    print 'calc katz iterative'
+    print 'alpha:', alpha
+    sigma = np.identity(A.shape[0])
+    A_max, alphas = list(), list()
+    orig_A = A.copy()
+    orig_alpha = alpha
+    for i in range(1, max_iter):
+        if i > 1:
+            A *= orig_A
+            alpha *= orig_alpha
+        M = np.multiply(A, alpha)
+        sigma += M
+        A_max.append(M.max())
+        alphas.append(alpha)
+        if np.allclose(A_max[-1], 0):
+            print '\tbreak after length:', i
+            break
+    if plot:
+        df = pd.DataFrame(columns=['max matrix value'], data=A_max)
+        df['alpha'] = alphas
+        df.plot(secondary_y=['alpha'], alpha=0.75, lw=2)
+        plt.xlabel('path length')
+        plt.ylabel('value')
+        plt.savefig(out_dir + filename + '.png', bbox='tight')
+        plt.close('all')
+    return sigma
 
 def lmax(M):
     l,v = matrix_spectrum(M)

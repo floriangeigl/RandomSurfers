@@ -12,6 +12,7 @@ from tools.gt_tools import SBMGenerator, load_edge_list
 import numpy as np
 from linalg import *
 import scipy.stats as stats
+import scipy
 import pandas as pd
 import operator
 import random
@@ -19,77 +20,53 @@ import random
 np.set_printoptions(linewidth=225)
 import seaborn
 from timeit import Timer
-# np.set_printoptions(precision=2)
+np.set_printoptions(precision=2)
 
 # np.set_printoptions(linewidth=1200, precision=1)
 
-def calc_entropy(A, sigma_in=None, known_nodes=None):
-    if sigma_in is None:
-        sigma_in = np.ones(A.shape, dtype=np.float)
-    AT = A.T
+def calc_entropy(AT, norm_sigma_in=None, known_nodes=None):
+    #print 'AT\n', AT.todense(), type(AT)
+    #print 'norm_sigma_in in\n', norm_sigma_in, type(norm_sigma_in)
+    #print '=' * 80
     selection_range = set(range(AT.shape[0]))
-    if known_nodes is None:
-        sigma = sigma_in
-        sigma /= sigma.mean(axis=1)
-    else:
-        sigma = np.ones(A.shape, dtype=np.float)
-        sigma /= sigma.mean(axis=1)
-        sigma_in = sigma_in.copy()
-        sigma_in /= sigma_in.mean(axis=1)
-        # sigma *= sigma_in.min()
-        # print 'known nodes:', known_nodes
+    if norm_sigma_in is None:
+        norm_sigma_in = scipy.sparse.csr_matrix(np.ones(AT.shape, dtype=np.float))
+
+    if known_nodes is not None:
+        norm_sigma_in = scipy.sparse.csr_matrix(np.ones(AT.shape, dtype=np.float))
+        #print 'ones:\n', norm_sigma_in.todense(), type(norm_sigma_in)
+        #print 'orig norm_sigma_in:\n', norm_sigma_in, type(norm_sigma_in)
         for v in map(int, known_nodes):
-            sigma[v, :] = sigma_in[v, :]
-            sigma[:, v] = sigma_in[:, v]
-    sigma /= sigma.sum(axis=1)
-    # print 'sigma:\n', sigma
+            norm_sigma_in[v, :] = norm_sigma_in[v, :]
+            norm_sigma_in[:, v] = norm_sigma_in[:, v]
+        #print 'mixed norm_sigma_in at:', sorted(known_nodes),'\n',norm_sigma_in.todense()
+    #print 'norm_sigma_in:\n', norm_sigma_in.todense(), type(norm_sigma_in)
     total_entropy = 0
     for v in selection_range:
         # exclude loop
         current_selection = list(selection_range - {v})
         # stack the katz row of the target vertex N-1 times
-        stacked_row_sigma = sigma[[v] * (sigma.shape[0] - 1), :]
+        sigma_row = norm_sigma_in[v, :]
         # multiply katz with transposed A -> only katz values on real links
-        res = np.multiply(stacked_row_sigma, AT[current_selection, :])
+        #print 'stacked norm_sigma_in:\n', sigma_row.todense()
+        #print 'sliced AT:\n', AT[current_selection,:].todense(), type(AT[current_selection,:])
+        if norm_sigma_in is not None:
+            #print sigma_row.shape
+            res = AT[current_selection, :].multiply(sigma_row)
+            #print res.todense(), type(res)
+        else:
+            res = AT[current_selection, :]
         # calc entropy per row and add it to the overall entropy
-        ent = stats.entropy(res.T)
+        ent = stats.entropy(res.T.todense())
+        #print ent
         # if np.isinf(ent.sum()):
         # print ent
         # print res.sum(axis=1)
         # exit()
         total_entropy += ent.sum()
-    num_v = A.shape[0]
-    total_entropy = total_entropy / (num_v * (num_v - 1))
+    num_v = AT.shape[0]
+    total_entropy /= (num_v * (num_v - 1))
     return total_entropy
-
-
-def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir='output/tests/', plot=True):
-    print 'calc katz iterative'
-    print 'alpha:', alpha
-    sigma = np.identity(A.shape[0])
-    A_max, alphas = list(), list()
-    orig_A = A.copy()
-    orig_alpha = alpha
-    for i in range(1, max_iter):
-        if i > 1:
-            A *= orig_A
-            alpha *= orig_alpha
-        M = np.multiply(A, alpha)
-        sigma += M
-        A_max.append(M.max())
-        alphas.append(alpha)
-        if np.allclose(A_max[-1], 0):
-            print '\tbreak after length:', i
-            break
-    if plot:
-        df = pd.DataFrame(columns=['max matrix value'], data=A_max)
-        df['alpha'] = alphas
-        df.plot(secondary_y=['alpha'], alpha=0.75, lw=2)
-        plt.xlabel('path length')
-        plt.ylabel('value')
-        plt.savefig(out_dir + filename + '.png', bbox='tight')
-        plt.close('all')
-    return sigma
 
 
 def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity=10, num_samples=20):
@@ -104,8 +81,8 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
                output=out_dir + name + '_net.png', bg_color=[1, 1, 1, 1])
     plt.close('all')
     print 'calc katz'
-    A = adjacency(net).todense()
-    A /= A.sum(axis=1)
+    A = adjacency(net)
+    AT = A.T.tocsr()
     try:
         l, v = matrix_spectrum(A, sparse=True)
     except:
@@ -114,29 +91,15 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
     alpha_max = 1.0 / kappa_1
     alpha_max *= 0.99
     alpha = alpha_max
-    sigma_global_iter = calc_katz_iterative(A, alpha, filename='katz_range' + name, out_dir=out_dir)
-    if False:
-        t = Timer(lambda: katz_sim_matrix(A, alpha))
-        inverse = t.timeit(number=10)
-        t = Timer(lambda: calc_katz_iterative(A, alpha, filename='katz_range' + name, out_dir=out_dir))
-        iterative = t.timeit(number=10)
-        print 'iterative:', iterative
-        print 'inverse:', inverse
-        exit()
-    if False:
-        sigma_global = katz_sim_matrix(A, alpha)
-        print 'inverse calc:'
-        print sigma_global
-        print 'iterative calc:'
-        print sigma_global_iter
-        exit()
-    sigma_global = sigma_global_iter
+    sigma_global = katz_sim_matrix(A, alpha)
+    normalized_sigma = sigma_global / sigma_global.mean(axis=0).T
+    #sigma_global = scipy.sparse.csr_matrix(sigma_global)
     #sigma_global /= sigma_global.sum(axis=1)
     print 'calc baselines'
-    adj_entropy = calc_entropy(A)
-    print 'A entropy:', adj_entropy
-    sigma_entropy = calc_entropy(A, sigma_global)
-    print 'sigma entropy', sigma_entropy
+    adj_entropy = calc_entropy(AT)
+    print '\tA entropy:', adj_entropy
+    sigma_entropy = calc_entropy(AT, normalized_sigma)
+    print '\tsigma entropy', sigma_entropy
     entropies = list()
     print 'start tests'
     step_size = (net.num_vertices() / granularity)
@@ -150,7 +113,12 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
         sys.stdout.flush()
         for j in range(num_samples):
             known_nodes = set(random.sample(vertice_range, i))
-            entropies.append((calc_entropy(A, sigma_global, known_nodes=known_nodes), len(known_nodes)))
+            if i > net.num_vertices() / 2:
+                t = Timer(lambda: calc_entropy(AT, normalized_sigma, known_nodes=known_nodes))
+                time = t.timeit(number=100)
+                print 'calc entropy time:', time
+                exit()
+            entropies.append((calc_entropy(AT, normalized_sigma, known_nodes=known_nodes), len(known_nodes)))
     print 'plot'
     data, idx = map(list, zip(*sorted(entropies, key=operator.itemgetter(1))))
     df = pd.DataFrame(columns=['random tests'], data=data)
@@ -176,14 +144,14 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
 generator = SBMGenerator()
 granularity = 10
 num_samples = 10
-outdir = 'output/'
+outdir = './output/'
 
 test = True
 
 if test:
     print 'sbm'.center(80, '=')
     name = 'sbm_n10_m30'
-    net = generator.gen_stock_blockmodel(num_nodes=1000, blocks=10, num_links=2000)
+    net = generator.gen_stock_blockmodel(num_nodes=10, blocks=1, num_links=20)
     generator.analyse_graph(net, outdir + name, draw_net=False)
     test_entropy(net, granularity=granularity, name=name, num_samples=num_samples)
     print 'price network'.center(80, '=')
