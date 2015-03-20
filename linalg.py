@@ -11,7 +11,7 @@ import numpy as np
 import networkx as nx
 import scipy.linalg as lalg
 import scipy.sparse.linalg as linalg
-
+import pandas as pd
 import vector as vc
 
 
@@ -57,7 +57,7 @@ def katz_matrix(A, alpha):
     katz = np.eye(n) - alpha * A
     return katz
 
-def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir='output/tests/', plot=True):
+def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir='output/', plot=True):
     print 'calc katz iterative'
     print 'alpha:', alpha
     sigma = np.identity(A.shape[0])
@@ -78,7 +78,7 @@ def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir=
     if plot:
         df = pd.DataFrame(columns=['max matrix value'], data=A_max)
         df['alpha'] = alphas
-        df.plot(secondary_y=['alpha'], alpha=0.75, lw=2)
+        df.plot(secondary_y=['alpha'], alpha=0.75, lw=2, logx=True, logy=True)
         plt.xlabel('path length')
         plt.ylabel('value')
         plt.savefig(out_dir + filename + '.png', bbox='tight')
