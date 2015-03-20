@@ -129,11 +129,11 @@ def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity
     sigma_entropy = calc_entropy(AT, norm_sigma)
     print '\tsigma entropy', sigma_entropy
     entropies = list()
-    print 'start tests'
+    print 'start tests with granularity:', granularity
     step_size = (net.num_vertices() / granularity)
     vertice_range = set(range(A.shape[0]))
     for num_known_nodes in range(granularity + 1):
-        print '.',
+        print num_known_nodes,
         num_known_nodes *= step_size
         num_known_nodes = int(num_known_nodes)
         if num_known_nodes % 100 == 99:
