@@ -31,9 +31,17 @@ def calc_entropy_mp(AT, sigma, known_nodes):
     return calc_entropy(AT, sigma=sigma, known_nodes=known_nodes)
 
 
-def calc_entropy(AT, sigma=None, known_nodes=None, entropy_base=2):
+def calc_entropy(AT, sigma=None, weights=None, known_nodes=None, entropy_base=2):
+    if weights is not None:
+        weights = np.array(weights)
+        if weights.sum() != 1.0:
+            weights /= weights.sum()
     if sigma is None:
-        return stats.entropy(AT.T, base=entropy_base).mean()
+        entropy = stats.entropy(AT.T, base=entropy_base)
+        if weights is not None:
+            entropy *= weights
+        return entropy.mean()
+
     selection_range = set(range(AT.shape[0]))
     # print 'sigma:\n', sigma
     if known_nodes is not None:
@@ -68,17 +76,21 @@ def calc_entropy(AT, sigma=None, known_nodes=None, entropy_base=2):
         #print res
         # calc entropy per row and add it to the overall entropy
         ent = stats.entropy(res.T, base=entropy_base)
+        if weights is not None:
+            ent *= weights[current_selection]
         #print ent
         total_entropy += ent.sum()
     num_v = AT.shape[0]
     total_entropy /= (num_v * (num_v - 1))
+    print 'total entropy:', total_entropy
+
     #print 'total entropy:', total_entropy
     if known_nodes is not None:
         return total_entropy, int(len(known_nodes) / AT.shape[0] * 100)
     return total_entropy
 
 
-def test_entropy(net, name='entropy_tests', out_dir='output/tests/', granularity=10, num_samples=20):
+def entropy_to_all_targets(net, name='entropy_tests', out_dir='output/tests/', granularity=10, num_samples=20):
     print net
     print 'draw network'
     deg_map = net.degree_property_map('total')
@@ -188,7 +200,7 @@ granularity = 10
 num_samples = 10
 outdir = 'output/'
 
-test = False
+test = True
 
 if test:
     outdir += 'tests/'
@@ -196,17 +208,17 @@ if test:
     name = 'sbm_n10_m30'
     net = generator.gen_stock_blockmodel(num_nodes=100, blocks=3, num_links=200)
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     print 'price network'.center(80, '=')
     name = 'price_net_n50_m1_g2_1'
     net = price_network(30, m=1, gamma=1, directed=False)
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     print 'complete graph'.center(80, '=')
     name = 'complete_graph_n50'
     net = complete_graph(30)
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     print 'quick tests done'.center(80, '=')
 else:
     num_links = 2000
@@ -216,45 +228,45 @@ else:
     name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)
     net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.1)
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     print 'sbm'.center(80, '=')
     name = 'sbm_weak_n' + str(num_nodes) + '_m' + str(num_links)
     net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.7)
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     print 'powerlaw'.center(80, '=')
     name = 'powerlaw_n' + str(num_nodes) + '_m' + str(num_links)
     net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=1, num_links=num_links)
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     print 'price network'.center(80, '=')
-    name = 'price_net_n' + str(num_nodes) + '_m' + str(net.num_vertices)
+    name = 'price_net_n' + str(num_nodes) + '_m' + str(net.num_edges())
     net = price_network(num_nodes, m=2, gamma=1, directed=False)
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     print 'complete graph'.center(80, '=')
     name = 'complete_graph_n' + str(num_nodes)
     net = complete_graph(num_nodes)
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     print 'karate'.center(80, '=')
     name = 'karate'
     net = load_edge_list('/opt/datasets/karate/karate.edgelist')
     generator.analyse_graph(net, outdir + name, draw_net=False)
-    test_entropy(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
+    entropy_to_all_targets(net, granularity=granularity, name=name, out_dir=outdir, num_samples=num_samples)
     exit()
     print 'wiki4schools'.center(80, '=')
     net = load_edge_list('/opt/datasets/wikiforschools/graph')
-    test_entropy(net, granularity=granularity, name='wiki4schools')
+    entropy_to_all_targets(net, granularity=granularity, name='wiki4schools')
     print 'facebook'.center(80, '=')
     net = load_edge_list('/opt/datasets/facebook/facebook')
-    test_entropy(net, granularity=granularity, name='facebook')
+    entropy_to_all_targets(net, granularity=granularity, name='facebook')
     print 'youtube'.center(80, '=')
     net = load_edge_list('/opt/datasets/youtube/youtube')
-    test_entropy(net, granularity=granularity, name='youtube')
+    entropy_to_all_targets(net, granularity=granularity, name='youtube')
     print 'dblp'.center(80, '=')
     net = load_edge_list('/opt/datasets/dblp/dblp')
-    test_entropy(net, granularity=granularity, name='dblp')
+    entropy_to_all_targets(net, granularity=granularity, name='dblp')
 
 
 
