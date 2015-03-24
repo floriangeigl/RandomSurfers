@@ -136,11 +136,12 @@ def self_sim_entropy(network, name, out_dir):
     l, v = la.leading_eigenvector(P.T)
 
 
-
+    entropy_df = pd.DataFrame()
     for key, weight in weights.iteritems():
         print key.center(80, '=')
         ent, stat_dist = calc_entropy_and_stat_dist(A.todense(), weight)
         print 'entropy rate:', ent
+        entropy_df.at[0, key] = ent
         if False:
             if weight is not None and weight.shape != A.shape:
                 weight = np.diag(weight)
@@ -148,7 +149,7 @@ def self_sim_entropy(network, name, out_dir):
                 np.dot(np.array(A.todense()), weight))
             print 'denis calc:', d_erate
             assert np.allclose(d_erate, ent)
-            P = la.transition_matrix(np.dot(A.todense(),weight) if weight is not None else A.todense())
+            P = la.transition_matrix(np.dot(A.todense(), weight) if weight is not None else A.todense())
             l1, v1 = la.leading_eigenvector(P.T)
             print 'denis calc:', v1
             assert np.allclose(v1, stat_dist)
@@ -157,6 +158,11 @@ def self_sim_entropy(network, name, out_dir):
         if pos is None:
             pos = sfdp_layout(network)
         draw_graph(network, color=stat_dist, sizep=deg_map, shape='com', output=out_dir + name + '_' + key, pos=pos)
+    print entropy_df
+    entropy_df.plot(kind='bar')
+    plt.ylabel('entropy rate')
+    plt.savefig(out_dir + name + '_entropy_rates.png')
+    plt.close('all')
 
 #=======================================================================================================================
 
