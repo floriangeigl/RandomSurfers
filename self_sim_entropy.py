@@ -69,7 +69,7 @@ def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', m
     elif isinstance(shape, str):
         try:
             shape = network.vp[shape]
-            shape.a %= 15
+            shape.a %= 14
         except KeyError:
             shape = 'circle'
             print 'cannot find shape property:', shape
