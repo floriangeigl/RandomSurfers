@@ -11,6 +11,8 @@ import numpy as np
 import networkx as nx
 import scipy.linalg as lalg
 import scipy.sparse.linalg as linalg
+import scipy
+import scipy.stats as stats
 import pandas as pd
 import vector as vc
 
@@ -34,6 +36,29 @@ def deg_matrix(A):
 def laplacian_matrix(A, D):
     return D - A
 
+def transition_matrix(M):
+    n, n = M.shape
+    P = np.copy(M)
+    for i in range(n):
+        row_sum = sum(P[i, :])
+        if row_sum > 0:
+            P[i, :] /= float(row_sum)
+    return P
+
+
+def leading_eigenvector(M):
+    if scipy.sparse.issparse(M):
+         l, v = linalg.eigs(M, k=1, which="LR")
+         l1 = l.real
+         u = [x[0] for x in v]
+         u = vc.real_part(u)
+         return l1, vc.normalize(u)
+    else:
+        l, v = lalg.eig(M)
+        l1index = largest_eigenvalue_index(l)
+        u = vc.real_part(v[:, l1index])
+        return l[l1index].real, vc.normalize(u)
+
 def deg_matrix_inv(A):
     d = deg_vector(A)
     di = [1/float(a) for a in d]
@@ -56,6 +81,12 @@ def katz_matrix(A, alpha):
     m, n = A.shape
     katz = np.eye(n) - alpha * A
     return katz
+
+def largest_eigenvalue_index(l):
+    lreal = [a.real for a in l]
+    l1index = np.argmax(lreal)
+    return l1index
+
 
 def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir='output/', plot=True):
     print 'calc katz iterative'
@@ -135,6 +166,17 @@ def modularity_matrix(A):
     B = A - Dp
     B_max = deg_matrix(A) - Dp
     return B, B_max
+
+def rw_entropy_rate(M):
+    n, n = M.shape
+    P = transition_matrix(M)
+    l, v = leading_eigenvector(P.T)
+    entropy = 0.
+    for i in range(n):
+        row_sum = sum(M[i, :])
+        if row_sum > 0:
+            entropy += v[i] * stats.entropy(P[i, :], base=2)
+    return entropy
 
 def degree_product_matrix(A):
     d = deg_vector(A)

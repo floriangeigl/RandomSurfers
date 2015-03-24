@@ -11,6 +11,13 @@ def squared_error(x, y):
 def unit_vector(x):
     return x / vlength(x)
 
+def real_part(x):
+    u = [v.real for v in x]
+    return np.array(u)
+
+def normalize(x):
+    return x / float(sum(x))
+
 def vlength(x):
     length = math.sqrt(np.dot(x, x))
     return length
@@ -25,3 +32,11 @@ def kronecker_delta(x):
     for v in x:
         y.append(x == v)
     return np.array(y)
+
+def row_vector(M, index):
+    x = M[index, :]
+    return x
+
+def column_vector(M, index):
+    x = M[:, index]
+    return x
