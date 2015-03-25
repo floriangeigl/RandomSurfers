@@ -117,22 +117,29 @@ def calc_entropy_and_stat_dist(A, M=None):
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
 
 
-def normalize_mat(M, copy=False):
+def normalize_mat(M, copy=False, replace_nans_with=0):
     if copy:
         M = M.copy()
-    return M / M.sum(axis=1)
+    M /= M.sum(axis=1)
+    if replace_nans_with is not None:
+        sum = M.sum()
+        if np.isnan(sum) or np.isinf(sum):
+            print 'warn replacing nans with zero'
+            M[np.invert(np.isfinite(M))] = replace_nans_with
+    return M
 
 
 def stationary_dist(M):
     M = normalize_mat(M, copy=True)
     return la.leading_eigenvector(M.T)[1]
 
-def calc_cosine(A,weight_direct_link=False):
+
+def calc_cosine(A, weight_direct_link=False):
     if weight_direct_link:
         A = A.copy() + np.eye(A.shape[0])
     com_neigh = A.dot(A)
-    deg = A.sum(axis=0)
-    deg_norm = np.sqrt(deg.T * deg)
+    deg = A.sum(axis=1).astype('float')
+    deg_norm = np.sqrt(deg * deg.T)
     com_neigh /= deg_norm
     return com_neigh
 
@@ -210,7 +217,7 @@ def main():
             self_sim_entropy(net, name=name, out_dir=outdir)
         print 'price network'.center(80, '=')
         name = 'price_net_n50_m1_g2_1'
-        net = price_network(30, m=1, gamma=1, directed=False)
+        net = price_network(30, m=2, gamma=1, directed=False)
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
