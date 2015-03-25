@@ -39,10 +39,7 @@ def laplacian_matrix(A, D):
 def transition_matrix(M):
     n, n = M.shape
     P = np.copy(M)
-    for i in range(n):
-        row_sum = sum(P[i, :])
-        if row_sum > 0:
-            P[i, :] /= float(row_sum)
+    P /= P.sum(axis=1)
     return P
 
 

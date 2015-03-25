@@ -71,8 +71,8 @@ def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', m
             shape = network.vp[shape]
             shape.a %= 14
         except KeyError:
-            shape = 'circle'
             print 'cannot find shape property:', shape
+            shape = 'circle'
 
     output_size = (output_size, output_size)
     cmap = colormap.get_cmap(colormap_name)
@@ -102,8 +102,10 @@ def calc_entropy_and_stat_dist(A, M=None):
     if M is not None:
         if not A.shape == M.shape:
             M = np.diag(M)
-        assert A.shape == M.shape
-        weighted_trans = A.dot(M)
+            assert A.shape == M.shape
+            weighted_trans = A.dot(M)
+        else:
+            weighted_trans = np.multiply(A, M)
     else:
         weighted_trans = A.copy()
     weighted_trans = normalize_mat(weighted_trans)
@@ -122,7 +124,7 @@ def stationary_dist(M):
     return la.leading_eigenvector(M.T)[1]
 
 def self_sim_entropy(network, name, out_dir):
-    A = adjacency(network)
+    A = adjacency(network).todense()
     A_eigvalue, A_eigvector = eigenvector(network)
     A_eigvector = A_eigvector.a
     weights = dict()
@@ -132,34 +134,27 @@ def self_sim_entropy(network, name, out_dir):
     pos = None
     deg_map = network.degree_property_map('total')
 
-    P = la.transition_matrix(A.todense())
-    l, v = la.leading_eigenvector(P.T)
-
+    #P = la.transition_matrix(A.todense())
+    #l, v = la.leading_eigenvector(P.T)
 
     entropy_df = pd.DataFrame()
+    print 'calc graph-layout'
+    pos = sfdp_layout(network)
     for key, weight in weights.iteritems():
         print key.center(80, '=')
-        ent, stat_dist = calc_entropy_and_stat_dist(A.todense(), weight)
+        ent, stat_dist = calc_entropy_and_stat_dist(A, weight)
         print 'entropy rate:', ent
         entropy_df.at[0, key] = ent
-        if False:
-            if weight is not None and weight.shape != A.shape:
-                weight = np.diag(weight)
-            d_erate = la.rw_entropy_rate(np.array(A.todense())) if weight is None else la.rw_entropy_rate(
-                np.dot(np.array(A.todense()), weight))
-            print 'denis calc:', d_erate
-            assert np.allclose(d_erate, ent)
-            P = la.transition_matrix(np.dot(A.todense(), weight) if weight is not None else A.todense())
-            l1, v1 = la.leading_eigenvector(P.T)
-            print 'denis calc:', v1
-            assert np.allclose(v1, stat_dist)
-            print 'stationary dist:', stat_dist
+        stat_dist_ser = pd.Series(data=stat_dist)
+        stat_dist_ser.plot(kind='hist', bins=100, lw=0)
+        plt.savefig(out_dir + name + '_stat_dist_' + key + '.png')
+        plt.close('all')
         print 'draw graph:', out_dir + name + '_' + key
-        if pos is None:
-            pos = sfdp_layout(network)
         draw_graph(network, color=stat_dist, sizep=deg_map, shape='com', output=out_dir + name + '_' + key, pos=pos)
     print entropy_df
-    entropy_df.plot(kind='bar')
+    ax = entropy_df.plot(kind='bar')
+    min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
+    ax.set_ylim([min_e * 0.99, max_e * 1.01])
     plt.ylabel('entropy rate')
     plt.savefig(out_dir + name + '_entropy_rates.png')
     plt.close('all')
@@ -179,7 +174,7 @@ def main():
         outdir += 'tests/'
         print 'sbm'.center(80, '=')
         name = 'sbm_n10_m30'
-        net = generator.gen_stock_blockmodel(num_nodes=100, blocks=3, num_links=400, self_con=1, other_con=0.01)
+        net = generator.gen_stock_blockmodel(num_nodes=10, blocks=2, num_links=40, self_con=1, other_con=0.1)
         generator.analyse_graph(net, outdir + name, draw_net=False)
         self_sim_entropy(net, name=name, out_dir=outdir)
         print 'price network'.center(80, '=')
