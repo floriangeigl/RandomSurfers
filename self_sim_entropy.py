@@ -180,6 +180,7 @@ def self_sim_entropy(network, name, out_dir):
         #print 'draw graph:', out_dir + name + '_' + key
         draw_graph(network, color=stat_dist, sizep=deg_map, shape='com', output=out_dir + name + '_graph_' + key,
                    pos=pos)
+    entropy_df.sort(axis=1, inplace=True)
     print entropy_df
     ax = entropy_df.plot(kind='bar', label=sorted([i.replace('_', ' ') for i in entropy_df.columns]))
     min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
