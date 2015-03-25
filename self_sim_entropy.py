@@ -8,7 +8,9 @@ from graph_tool.all import *
 import matplotlib.pylab as plt
 
 import sys
+import os
 from tools.gt_tools import SBMGenerator, load_edge_list
+import tools.basics as basics
 import numpy as np
 import linalg as la
 import scipy.linalg as lalg
@@ -50,7 +52,8 @@ def entropy_rate(M, stat_dist=None, base=2):
 
 
 def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', min_vertex_size_shrinking_factor=4,
-               output='graph.png', output_size=2048, **kwargs):
+               output='graph.png', output_size=800, **kwargs):
+    print 'draw graph ||',
     num_nodes = network.num_vertices()
     min_vertex_size_shrinking_factor = min_vertex_size_shrinking_factor
     if num_nodes < 10:
@@ -71,7 +74,7 @@ def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', m
             shape = network.vp[shape]
             shape.a %= 14
         except KeyError:
-            print 'cannot find shape property:', shape
+            print 'cannot find shape property:', shape, '||',
             shape = 'circle'
 
     output_size = (output_size, output_size)
@@ -96,16 +99,17 @@ def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', m
                bg_color=[1, 1, 1, 1], edge_color=[0.179, 0.203, 0.210, 0.1], vertex_size=sizep, output_size=output_size,
                output=output, **kwargs)
     plt.close('all')
+    print 'done'
 
 
 def calc_entropy_and_stat_dist(A, M=None):
     if M is not None:
-        if not A.shape == M.shape:
-            M = np.diag(M)
-            assert A.shape == M.shape
-            weighted_trans = A.dot(M)
-        else:
-            weighted_trans = np.multiply(A, M)
+        #if A.shape != M.shape:
+        #    M = np.diag(M)
+        #    assert A.shape == M.shape
+        #    weighted_trans = A.dot(M)
+        #else:
+        weighted_trans = A.multiply(M)
     else:
         weighted_trans = A.copy()
     weighted_trans = normalize_mat(weighted_trans)
@@ -123,19 +127,33 @@ def stationary_dist(M):
     M = normalize_mat(M, copy=True)
     return la.leading_eigenvector(M.T)[1]
 
+def calc_cosine(A,weight_direct_link=False):
+    if weight_direct_link:
+        A = A.copy() + np.eye(A.shape[0])
+    com_neigh = A.dot(A)
+    deg = A.sum(axis=0)
+    deg_norm = np.sqrt(deg.T * deg)
+    com_neigh /= deg_norm
+    return com_neigh
+
+
 def self_sim_entropy(network, name, out_dir):
-    A = adjacency(network).todense()
+    A = adjacency(network)
     A_eigvalue, A_eigvector = eigenvector(network)
     A_eigvector = A_eigvector.a
+    deg_map = network.degree_property_map('total')
     weights = dict()
     weights['adjacency'] = None
     weights['eigenvector'] = A_eigvector
     weights['sigma'] = katz_sim_network(network, largest_eigenvalue=A_eigvalue)
-    pos = None
-    deg_map = network.degree_property_map('total')
+    weights['deg_corrected_sigma'] = weights['sigma'] / deg_map.a
+    weights['log_deg_corrected_sigma'] = weights['sigma'] / np.log(deg_map.a)
+    weights['pagerank'] = pagerank(network).a
+    weights['betweenness'] = betweenness(network)[0].a
+    weights['katz'] = katz(network).a
+    weights['cosine'] = calc_cosine(A)
+    weights['cosine_direct_links'] = calc_cosine(A, weight_direct_link=True)
 
-    #P = la.transition_matrix(A.todense())
-    #l, v = la.leading_eigenvector(P.T)
 
     entropy_df = pd.DataFrame()
     print 'calc graph-layout'
@@ -146,16 +164,21 @@ def self_sim_entropy(network, name, out_dir):
         print 'entropy rate:', ent
         entropy_df.at[0, key] = ent
         stat_dist_ser = pd.Series(data=stat_dist)
-        stat_dist_ser.plot(kind='hist', bins=100, lw=0)
-        plt.savefig(out_dir + name + '_stat_dist_' + key + '.png')
+        stat_dist_ser.plot(kind='hist', bins=100, lw=0, normed=True)
+        plt.title(key)
+        plt.ylabel('#nodes')
+        plt.xlabel('stationary value')
+        plt.savefig(out_dir + name + '_stat_dist_' + key + '.png', bbox_tight=True)
         plt.close('all')
-        print 'draw graph:', out_dir + name + '_' + key
-        draw_graph(network, color=stat_dist, sizep=deg_map, shape='com', output=out_dir + name + '_' + key, pos=pos)
+        #print 'draw graph:', out_dir + name + '_' + key
+        draw_graph(network, color=stat_dist, sizep=deg_map, shape='com', output=out_dir + name + '_graph_' + key,
+                   pos=pos)
     print entropy_df
-    ax = entropy_df.plot(kind='bar')
+    ax = entropy_df.plot(kind='bar', label=sorted([i.replace('_', ' ') for i in entropy_df.columns]))
     min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
     ax.set_ylim([min_e * 0.99, max_e * 1.01])
     plt.ylabel('entropy rate')
+    plt.legend(loc='upper left')
     plt.savefig(out_dir + name + '_entropy_rates.png')
     plt.close('all')
 
@@ -167,26 +190,42 @@ def main():
     granularity = 10
     num_samples = 10
     outdir = 'output/'
+    basics.create_folder_structure(outdir)
 
     test = False
-
+    multip = True
+    worker_pool = multiprocessing.Pool(processes=14)
     if test:
         outdir += 'tests/'
+        basics.create_folder_structure(outdir)
+
         print 'sbm'.center(80, '=')
         name = 'sbm_n10_m30'
         net = generator.gen_stock_blockmodel(num_nodes=10, blocks=2, num_links=40, self_con=1, other_con=0.1)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net, name=name, out_dir=outdir)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
         print 'price network'.center(80, '=')
         name = 'price_net_n50_m1_g2_1'
         net = price_network(30, m=1, gamma=1, directed=False)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net, name=name, out_dir=outdir)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
         print 'complete graph'.center(80, '=')
         name = 'complete_graph_n50'
         net = complete_graph(30)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net, name=name, out_dir=outdir)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
         print 'quick tests done'.center(80, '=')
     else:
         num_links = 2000
@@ -196,45 +235,93 @@ def main():
         name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.05)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net, name=name, out_dir=outdir)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
         print 'sbm'.center(80, '=')
         name = 'sbm_weak_n' + str(num_nodes) + '_m' + str(num_links)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.5)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net,name=name, out_dir=outdir)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
         print 'powerlaw'.center(80, '=')
         name = 'powerlaw_n' + str(num_nodes) + '_m' + str(num_links)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=1, num_links=num_links)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net,  name=name, out_dir=outdir)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
         print 'price network'.center(80, '=')
         name = 'price_net_n' + str(num_nodes) + '_m' + str(net.num_edges())
         net = price_network(num_nodes, m=2, gamma=1, directed=False)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net,  name=name, out_dir=outdir)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
         print 'complete graph'.center(80, '=')
         name = 'complete_graph_n' + str(num_nodes)
         net = complete_graph(num_nodes)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net, name=name, out_dir=outdir)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
         print 'karate'.center(80, '=')
         name = 'karate'
         net = load_edge_list('/opt/datasets/karate/karate.edgelist')
         generator.analyse_graph(net, outdir + name, draw_net=False)
-        self_sim_entropy(net,  name=name, out_dir=outdir)
-        exit()
-        print 'wiki4schools'.center(80, '=')
-        net = load_edge_list('/opt/datasets/wikiforschools/graph')
-        self_sim_entropy(net,  name='wiki4schools')
-        print 'facebook'.center(80, '=')
-        net = load_edge_list('/opt/datasets/facebook/facebook')
-        self_sim_entropy(net, name='facebook')
-        print 'youtube'.center(80, '=')
-        net = load_edge_list('/opt/datasets/youtube/youtube')
-        self_sim_entropy(net,  name='youtube')
-        print 'dblp'.center(80, '=')
-        net = load_edge_list('/opt/datasets/dblp/dblp')
-        self_sim_entropy(net,  name='dblp')
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
+        if True:
+            print 'wiki4schools'.center(80, '=')
+            name = 'wiki4schools'
+            net = load_edge_list('/opt/datasets/wikiforschools/graph')
+            if multip:
+                worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                        callback=None)
+            else:
+                self_sim_entropy(net, name=name, out_dir=outdir)
+            print 'facebook'.center(80, '=')
+            name = 'facebook'
+            net = load_edge_list('/opt/datasets/facebook/facebook')
+            if multip:
+                worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                        callback=None)
+            else:
+                self_sim_entropy(net, name=name, out_dir=outdir)
+            print 'youtube'.center(80, '=')
+            name = 'youtube'
+            net = load_edge_list('/opt/datasets/youtube/youtube')
+            if multip:
+                worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                        callback=None)
+            else:
+                self_sim_entropy(net, name=name, out_dir=outdir)
+            print 'dblp'.center(80, '=')
+            name = 'dblp'
+            net = load_edge_list('/opt/datasets/dblp/dblp')
+            if multip:
+                worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                        callback=None)
+            else:
+                self_sim_entropy(net, name=name, out_dir=outdir)
+
+    if multip:
+        worker_pool.close()
+        worker_pool.join()
 
 
 if __name__ == '__main__':
