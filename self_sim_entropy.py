@@ -9,7 +9,7 @@ import matplotlib.pylab as plt
 
 import sys
 import os
-from tools.gt_tools import SBMGenerator, load_edge_list
+from tools.gt_tools import SBMGenerator, load_edge_list, load_property
 import tools.basics as basics
 import numpy as np
 import linalg as la
@@ -52,7 +52,7 @@ def entropy_rate(M, stat_dist=None, base=2):
 
 
 def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', min_vertex_size_shrinking_factor=4,
-               output='graph.png', output_size=800, **kwargs):
+               output='graph.png', output_size=800,standardize=False, **kwargs):
     print 'draw graph ||',
     num_nodes = network.num_vertices()
     min_vertex_size_shrinking_factor = min_vertex_size_shrinking_factor
@@ -86,10 +86,14 @@ def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', m
         c = network.new_vertex_property('float')
         c.a = color
         color = c
-    color.a -= color.a.mean()
-    color.a /= color.a.var()
-    color.a += 1
-    color.a /= 2
+    if standardize:
+        color.a -= color.a.mean()
+        color.a /= color.a.var()
+        color.a += 1
+        color.a /= 2
+    else:
+        color.a -= color.a.min()
+        color.a /= color.a.max()
     if not output.endswith('.png'):
         output += '.png'
     color_pmap = network.new_vertex_property('vector<float>')
@@ -297,6 +301,7 @@ def main():
             print 'wiki4schools'.center(80, '=')
             name = 'wiki4schools'
             net = load_edge_list('/opt/datasets/wikiforschools/graph')
+            net['com'] = load_property(net, '/opt/datasets/wikiforschools/artid_catid', type='int')
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
@@ -305,6 +310,7 @@ def main():
             print 'facebook'.center(80, '=')
             name = 'facebook'
             net = load_edge_list('/opt/datasets/facebook/facebook')
+            net['com'] = load_property(net, '/opt/datasets/facebook/facebook_com', type='int')
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
@@ -313,6 +319,7 @@ def main():
             print 'youtube'.center(80, '=')
             name = 'youtube'
             net = load_edge_list('/opt/datasets/youtube/youtube')
+            net['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int')
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
@@ -321,6 +328,7 @@ def main():
             print 'dblp'.center(80, '=')
             name = 'dblp'
             net = load_edge_list('/opt/datasets/dblp/dblp')
+            net['com'] = load_property(net, '/opt/datasets/dblp/dblp_com', type='int')
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
