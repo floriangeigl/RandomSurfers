@@ -159,11 +159,16 @@ def self_sim_entropy(network, name, out_dir):
     weights['sigma'] = katz_sim_network(network, largest_eigenvalue=A_eigvalue)
     weights['deg_corrected_sigma'] = weights['sigma'] / np.array(deg_map.a)
     weights['log_deg_corrected_sigma'] = weights['sigma'] / np.log(np.array(deg_map.a))
-    weights['pagerank'] = np.array(pagerank(network).a)
+    weights['pagerank_d85'] = np.array(pagerank(network).a)
+    weights['pagerank_d100'] = np.array(pagerank(network, damping=1.).a)
+    weights['pagerank_d50'] = np.array(pagerank(network, damping=0.5).a)
+    weights['pagerank_d25'] = np.array(pagerank(network, damping=0.25).a)
     weights['betweenness'] = np.array(betweenness(network)[0].a)
     weights['katz'] = np.array(katz(network).a)
     weights['cosine'] = calc_cosine(A)
     weights['cosine_direct_links'] = calc_cosine(A, weight_direct_link=True)
+    weights['common neighbours'] = A.dot(A).todense()
+
 
     # filter out metrics containing nans or infs
     if False:
@@ -173,8 +178,10 @@ def self_sim_entropy(network, name, out_dir):
         # replace nans and infs with zero
         for key, val in weights.iteritems():
             if val is not None:
-                if np.isnan(val).sum() > 0 or np.isinf(val).sum() > 0:
-                    print '[', name, '] ', key, ':', 'replace nans and infs of metric with zero'
+                num_nans = np.isnan(val).sum()
+                num_infs = np.isinf(val).sum()
+                if num_nans > 0 or num_infs > 0:
+                    print '[', name, '] ', key, ': shape:', val.shape, '|replace nans(', num_nans, ') and infs (', num_infs, ') of metric with zero'
                     val[np.isnan(val) | np.isinf(val)] = 0
                     weights[key] = val
 
