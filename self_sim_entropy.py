@@ -165,6 +165,21 @@ def self_sim_entropy(network, name, out_dir):
     weights['cosine'] = calc_cosine(A)
     weights['cosine_direct_links'] = calc_cosine(A, weight_direct_link=True)
 
+    # filter out metrics containing nans or infs
+    if False:
+        # filter out metrics containing nans or infs
+        weights = {key: val for key, val in weights.iteritems() if np.isnan(val).sum() == 0 and np.isinf(val).sum() == 0}
+    else:
+        # replace nans and infs with zero
+        for key, val in weights.iteritems():
+            if np.isnan(val).sum() > 0 or np.isinf(val).sum() > 0:
+                print key, ':', 'replace nans and infs of metric with zero'
+                val[np.isnan(val) | np.isinf(val)] = 0
+                weights[key] = val
+
+
+
+
 
     entropy_df = pd.DataFrame()
     print 'calc graph-layout'
