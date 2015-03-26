@@ -157,38 +157,37 @@ def self_sim_entropy(network, name, out_dir):
     weights['adjacency'] = None
     weights['eigenvector'] = A_eigvector
     weights['sigma'] = katz_sim_network(network, largest_eigenvalue=A_eigvalue)
-    weights['deg_corrected_sigma'] = weights['sigma'] / deg_map.a
-    weights['log_deg_corrected_sigma'] = weights['sigma'] / np.log(deg_map.a)
-    weights['pagerank'] = pagerank(network).a
-    weights['betweenness'] = betweenness(network)[0].a
-    weights['katz'] = katz(network).a
+    weights['deg_corrected_sigma'] = weights['sigma'] / np.array(deg_map.a)
+    weights['log_deg_corrected_sigma'] = weights['sigma'] / np.log(np.array(deg_map.a))
+    weights['pagerank'] = np.array(pagerank(network).a)
+    weights['betweenness'] = np.array(betweenness(network)[0].a)
+    weights['katz'] = np.array(katz(network).a)
     weights['cosine'] = calc_cosine(A)
     weights['cosine_direct_links'] = calc_cosine(A, weight_direct_link=True)
 
     # filter out metrics containing nans or infs
     if False:
         # filter out metrics containing nans or infs
-        weights = {key: val for key, val in weights.iteritems() if np.isnan(val).sum() == 0 and np.isinf(val).sum() == 0}
+        weights = {key: val for key, val in weights.iteritems() if val is not None and np.isnan(val).sum() == 0 and np.isinf(val).sum() == 0}
     else:
         # replace nans and infs with zero
         for key, val in weights.iteritems():
-            if np.isnan(val).sum() > 0 or np.isinf(val).sum() > 0:
-                print key, ':', 'replace nans and infs of metric with zero'
-                val[np.isnan(val) | np.isinf(val)] = 0
-                weights[key] = val
-
-
-
-
+            if val is not None:
+                if np.isnan(val).sum() > 0 or np.isinf(val).sum() > 0:
+                    print '[', name, '] ', key, ':', 'replace nans and infs of metric with zero'
+                    val[np.isnan(val) | np.isinf(val)] = 0
+                    weights[key] = val
 
     entropy_df = pd.DataFrame()
-    print 'calc graph-layout'
+    sort_df = []
+    print '[', name, '] calc graph-layout'
     pos = sfdp_layout(network)
     for key, weight in weights.iteritems():
         print key.center(80, '=')
         ent, stat_dist = calc_entropy_and_stat_dist(A, weight)
-        print 'entropy rate:', ent
+        print '[', name, '] entropy rate:', ent
         entropy_df.at[0, key] = ent
+        sort_df.append((key, ent))
         stat_dist_ser = pd.Series(data=stat_dist)
         stat_dist_ser.plot(kind='hist', bins=100, lw=0, normed=True)
         plt.title(key)
@@ -199,14 +198,19 @@ def self_sim_entropy(network, name, out_dir):
         #print 'draw graph:', out_dir + name + '_' + key
         draw_graph(network, color=stat_dist, sizep=deg_map, shape='com', output=out_dir + name + '_graph_' + key,
                    pos=pos)
-    entropy_df.sort(axis=1, inplace=True)
+    #entropy_df.sort(axis=1, inplace=True)
+    sorted_keys = zip(*sorted(sort_df, key=lambda x: x[1], reverse=True))[0]
+    entropy_df = entropy_df[list(sorted_keys)]
+    print '[', name, '] entropy rates:'
     print entropy_df
-    ax = entropy_df.plot(kind='bar', label=sorted([i.replace('_', ' ') for i in entropy_df.columns]))
+    ax = entropy_df.plot(kind='bar', label=[i.replace('_', ' ') for i in entropy_df.columns])
     min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
     ax.set_ylim([min_e * 0.99, max_e * 1.01])
     plt.ylabel('entropy rate')
     plt.legend(loc='upper left')
-    plt.savefig(out_dir + name + '_entropy_rates.png')
+    plt.xlim([-1, 0.4])
+    plt.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off')
+    plt.savefig(out_dir + name + '_entropy_rates.png', bbox_tight=True)
     plt.close('all')
 
 #=======================================================================================================================
@@ -258,6 +262,16 @@ def main():
         num_links = 2000
         num_nodes = 1000
         num_blocks = 5
+        print 'karate'.center(80, '=')
+        name = 'karate'
+        net = load_edge_list('/opt/datasets/karate/karate.edgelist')
+        generator.analyse_graph(net, outdir + name, draw_net=False)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
+
         print 'sbm'.center(80, '=')
         name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.05)
@@ -303,20 +317,11 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
-        print 'karate'.center(80, '=')
-        name = 'karate'
-        net = load_edge_list('/opt/datasets/karate/karate.edgelist')
-        generator.analyse_graph(net, outdir + name, draw_net=False)
-        if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                    callback=None)
-        else:
-            self_sim_entropy(net, name=name, out_dir=outdir)
         if True:
             print 'wiki4schools'.center(80, '=')
             name = 'wiki4schools'
             net = load_edge_list('/opt/datasets/wikiforschools/graph')
-            net['com'] = load_property(net, '/opt/datasets/wikiforschools/artid_catid', type='int')
+            net.vp['com'] = load_property(net, '/opt/datasets/wikiforschools/artid_catid', type='int')
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
@@ -325,7 +330,7 @@ def main():
             print 'facebook'.center(80, '=')
             name = 'facebook'
             net = load_edge_list('/opt/datasets/facebook/facebook')
-            net['com'] = load_property(net, '/opt/datasets/facebook/facebook_com', type='int')
+            net.vp['com'] = load_property(net, '/opt/datasets/facebook/facebook_com', type='int', line_groups=True)
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
@@ -334,7 +339,7 @@ def main():
             print 'youtube'.center(80, '=')
             name = 'youtube'
             net = load_edge_list('/opt/datasets/youtube/youtube')
-            net['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int')
+            net.vp['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int', line_groups=True)
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
@@ -343,7 +348,7 @@ def main():
             print 'dblp'.center(80, '=')
             name = 'dblp'
             net = load_edge_list('/opt/datasets/dblp/dblp')
-            net['com'] = load_property(net, '/opt/datasets/dblp/dblp_com', type='int')
+            net.vp['com'] = load_property(net, '/opt/datasets/dblp/dblp_com', type='int', line_groups=True)
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
