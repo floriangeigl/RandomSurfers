@@ -32,24 +32,6 @@ np.set_printoptions(precision=2)
 import copy
 import matplotlib.cm as colormap
 
-def katz_sim_network(net,largest_eigenvalue=None, gamma=0.99):
-    if largest_eigenvalue is None:
-        largest_eigenvalue, _ = eigenvector(net)
-    #kappa_1 = l[0].real
-    alpha_max = 1.0 / largest_eigenvalue
-    alpha = gamma * alpha_max
-    katz = la.katz_matrix(adjacency(net), alpha)
-    sigma = lalg.inv(katz)
-    return sigma
-
-
-def entropy_rate(M, stat_dist=None, base=2):
-    if stat_dist is None:
-        stat_dist = stationary_dist(M)
-    if scipy.sparse.issparse(M):
-        M = M.todense()
-    return (stats.entropy(M.T, base=base) * stat_dist).sum()
-
 
 def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', min_vertex_size_shrinking_factor=4,
                output='graph.png', output_size=800,standardize=False, **kwargs):
@@ -106,6 +88,26 @@ def draw_graph(network, color, shape=None, sizep=None, colormap_name='spring', m
     print 'done'
 
 
+def katz_sim_network(net, largest_eigenvalue=None, gamma=0.99):
+    if largest_eigenvalue is None:
+        largest_eigenvalue, _ = eigenvector(net)
+    # kappa_1 = l[0].real
+    alpha_max = 1.0 / largest_eigenvalue
+    alpha = gamma * alpha_max
+    katz = la.katz_matrix(adjacency(net), alpha)
+    sigma = lalg.inv(katz)
+    return sigma
+
+
+def entropy_rate(M, stat_dist=None, base=2):
+    if stat_dist is None:
+        stat_dist = stationary_dist(M)
+    if scipy.sparse.issparse(M):
+        M = M.todense()
+    entropy_rate = np.nansum((stats.entropy(M.T, base=base) * stat_dist))
+    assert np.isfinite(entropy_rate)
+    return entropy_rate
+
 def calc_entropy_and_stat_dist(A, M=None):
     if M is not None:
         #if A.shape != M.shape:
@@ -118,24 +120,33 @@ def calc_entropy_and_stat_dist(A, M=None):
         weighted_trans = A.copy()
     weighted_trans = normalize_mat(weighted_trans)
     stat_dist = stationary_dist(weighted_trans)
+    print 'entropy rate'
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
 
 
 def normalize_mat(M, copy=False, replace_nans_with=0):
     if copy:
         M = M.copy()
+    if np.count_nonzero(M) == 0:
+        print '\tnormalize all zero matrix -> set to all 1 before normalization'
+        if scipy.sparse.issparse(M):
+            M = M.todense()
+        M += 1.0
     M /= M.sum(axis=1)
     if replace_nans_with is not None:
         sum = M.sum()
         if np.isnan(sum) or np.isinf(sum):
             print 'warn replacing nans with zero'
             M[np.invert(np.isfinite(M))] = replace_nans_with
+    assert np.all(np.isfinite(M))
     return M
 
 
 def stationary_dist(M):
     M = normalize_mat(M, copy=True)
-    return la.leading_eigenvector(M.T)[1]
+    stat_dist = la.leading_eigenvector(M.T)[1]
+    assert np.all(np.isfinite(stat_dist))
+    return stat_dist
 
 
 def calc_cosine(A, weight_direct_link=False):
@@ -145,6 +156,7 @@ def calc_cosine(A, weight_direct_link=False):
     deg = A.sum(axis=1).astype('float')
     deg_norm = np.sqrt(deg * deg.T)
     com_neigh /= deg_norm
+    assert np.all(np.isfinite(com_neigh))
     return com_neigh
 
 
@@ -156,18 +168,20 @@ def self_sim_entropy(network, name, out_dir):
     weights = dict()
     weights['adjacency'] = None
     weights['eigenvector'] = A_eigvector
+    weights['eigenvector_inverse'] = 1 / A_eigvector
     weights['sigma'] = katz_sim_network(network, largest_eigenvalue=A_eigvalue)
-    weights['deg_corrected_sigma'] = weights['sigma'] / np.array(deg_map.a)
-    weights['log_deg_corrected_sigma'] = weights['sigma'] / np.log(np.array(deg_map.a))
-    weights['pagerank_d85'] = np.array(pagerank(network).a)
+    weights['sigma_deg_corrected'] = weights['sigma'] / np.array(deg_map.a)
+    weights['sigma_log_deg_corrected'] = weights['sigma'] / np.log(np.array(deg_map.a))
     weights['pagerank_d100'] = np.array(pagerank(network, damping=1.).a)
+    weights['pagerank_d85'] = np.array(pagerank(network).a, damping=0.85)
     weights['pagerank_d50'] = np.array(pagerank(network, damping=0.5).a)
     weights['pagerank_d25'] = np.array(pagerank(network, damping=0.25).a)
+    weights['pagerank_d0'] = np.array(pagerank(network, damping=0.0).a)
     weights['betweenness'] = np.array(betweenness(network)[0].a)
     weights['katz'] = np.array(katz(network).a)
     weights['cosine'] = calc_cosine(A)
     weights['cosine_direct_links'] = calc_cosine(A, weight_direct_link=True)
-    weights['common neighbours'] = A.dot(A).todense()
+    weights['common_neighbours'] = A.dot(A).todense()
 
 
     # filter out metrics containing nans or infs
@@ -185,18 +199,20 @@ def self_sim_entropy(network, name, out_dir):
                     val[np.isnan(val) | np.isinf(val)] = 0
                     weights[key] = val
 
+    weights = {key.replace(' ', '_'): val for key, val in weights.iteritems()}
+
     entropy_df = pd.DataFrame()
     sort_df = []
     print '[', name, '] calc graph-layout'
     pos = sfdp_layout(network)
-    for key, weight in weights.iteritems():
-        print key.center(80, '=')
+    for key, weight in sorted(weights.iteritems(), key=operator.itemgetter(0)):
+        print '[', name, '||', key, '] start calc'
         ent, stat_dist = calc_entropy_and_stat_dist(A, weight)
-        print '[', name, '] entropy rate:', ent
+        print '[', name, '||', key, '] entropy rate:', ent
         entropy_df.at[0, key] = ent
         sort_df.append((key, ent))
         stat_dist_ser = pd.Series(data=stat_dist)
-        stat_dist_ser.plot(kind='hist', bins=100, lw=0, normed=True)
+        stat_dist_ser.plot(kind='hist', bins=25, lw=0, normed=True)
         plt.title(key)
         plt.ylabel('#nodes')
         plt.xlabel('stationary value')
@@ -266,12 +282,22 @@ def main():
             self_sim_entropy(net, name=name, out_dir=outdir)
         print 'quick tests done'.center(80, '=')
     else:
-        num_links = 2000
-        num_nodes = 1000
-        num_blocks = 5
+        num_links = 300
+        num_nodes = 100
+        num_blocks = 3
         print 'karate'.center(80, '=')
         name = 'karate'
         net = load_edge_list('/opt/datasets/karate/karate.edgelist')
+        generator.analyse_graph(net, outdir + name, draw_net=False)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
+
+        print 'complete graph'.center(80, '=')
+        name = 'complete_graph_n' + str(num_nodes)
+        net = complete_graph(num_nodes)
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
@@ -315,16 +341,7 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
-        print 'complete graph'.center(80, '=')
-        name = 'complete_graph_n' + str(num_nodes)
-        net = complete_graph(num_nodes)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
-        if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                    callback=None)
-        else:
-            self_sim_entropy(net, name=name, out_dir=outdir)
-        if True:
+        if False:
             print 'wiki4schools'.center(80, '=')
             name = 'wiki4schools'
             net = load_edge_list('/opt/datasets/wikiforschools/graph')
