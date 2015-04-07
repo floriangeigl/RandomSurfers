@@ -173,7 +173,7 @@ def self_sim_entropy(network, name, out_dir):
     weights['sigma_deg_corrected'] = weights['sigma'] / np.array(deg_map.a)
     weights['sigma_log_deg_corrected'] = weights['sigma'] / np.log(np.array(deg_map.a))
     weights['pagerank_d100'] = np.array(pagerank(network, damping=1.).a)
-    weights['pagerank_d85'] = np.array(pagerank(network).a, damping=0.85)
+    weights['pagerank_d85'] = np.array(pagerank(network, damping=0.85).a)
     weights['pagerank_d50'] = np.array(pagerank(network, damping=0.5).a)
     weights['pagerank_d25'] = np.array(pagerank(network, damping=0.25).a)
     weights['pagerank_d0'] = np.array(pagerank(network, damping=0.0).a)
