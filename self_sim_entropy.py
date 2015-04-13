@@ -33,9 +33,9 @@ import copy
 import matplotlib.cm as colormap
 
 
-def draw_graph(network, color, min_color=None, max_color=None, shape=None, sizep=None, colormap_name='spring',
+def draw_graph(network, color, min_color=None, max_color=None, groups=None, sizep=None, colormap_name='bwr',
                min_vertex_size_shrinking_factor=4,
-               output='graph.png', output_size=(15, 15), dpi=80, standardize=False, **kwargs):
+               output='graph.png', output_size=(15, 15), dpi=80, standardize=False,color_bar=True, **kwargs):
     print 'draw graph ||',
     num_nodes = network.num_vertices()
     min_vertex_size_shrinking_factor = min_vertex_size_shrinking_factor
@@ -50,15 +50,23 @@ def draw_graph(network, color, min_color=None, max_color=None, shape=None, sizep
         sizep /= 3
     else:
         sizep = prop_to_size(sizep, mi=min_vertex_size / 3 * 2, ma=max_vertex_size / 3 * 2, power=2)
-    if shape is None:
-        shape = 'circle'
-    elif isinstance(shape, str):
+    v_shape = 'circle'
+    if isinstance(groups, str):
         try:
-            shape = network.vp[shape]
-            shape.a %= 14
+            v_shape = network.vp[groups].copy()
+            #groups = network.vp[groups]
+            #unique_groups = set(np.array(groups.a))
+            #num_groups = len(unique_groups)
+            #groups_c_map = colormap.get_cmap('gist_rainbow')
+            #groups_c_map = {i: groups_c_map(idx / (num_groups - 1)) for idx, i in enumerate(unique_groups)}
+            #v_pen_color = network.new_vertex_property('vector<float>')
+            #for v in network.vertices():
+            #    v_pen_color = groups_c_map[groups[v]]
+
+            v_shape.a %= 14
         except KeyError:
-            print 'cannot find shape property:', shape, '||',
-            shape = 'circle'
+            print 'cannot find groups property:', groups, '||',
+            v_shape = 'circle'
 
     cmap = colormap.get_cmap(colormap_name)
     color = color.copy()
@@ -72,15 +80,20 @@ def draw_graph(network, color, min_color=None, max_color=None, shape=None, sizep
         color = c
     min_color = color.a.min() if min_color is None else min_color
     max_color = color.a.max() if max_color is None else max_color
-    orig_color = np.array(color.a)
+
+    #orig_color = np.array(color.a)
     if standardize:
         color.a -= color.a.mean()
         color.a /= color.a.var()
         color.a += 1
         color.a /= 2
     else:
-        color.a -= color.a.min()
-        color.a /= color.a.max()
+        #color.a -= min_color
+        #color.a /= max_color
+        tmp = np.array(color.a)
+        tmp[tmp > 100] = 100 + (tmp[tmp > 100] / (max_color/100))
+        color.a = tmp
+        color.a /= 200
     if not output.endswith('.png'):
         output += '.png'
     color_pmap = network.new_vertex_property('vector<float>')
@@ -89,24 +102,30 @@ def draw_graph(network, color, min_color=None, max_color=None, shape=None, sizep
     plt.switch_backend('cairo')
     f, ax = plt.subplots(figsize=(15, 15))
     output_size = (output_size[0] * 0.8, output_size[1])
-    graph_draw(network, vertex_fill_color=color_pmap, mplfig=ax, vertex_shape=shape,
-               edge_color=[0.179, 0.203, 0.210, 0.1], vertex_size=sizep, output_size=output_size,
-               output=output, **kwargs)
-    cmap = plt.cm.ScalarMappable(cmap=cmap)
-    cmap.set_array([min_color, max_color])
-    cbar = f.colorbar(cmap, drawedges=False)
-    #cbar.set_ticks([min_color, np.mean([min_color, max_color]), max_color])
-    #cbar.ax.set_yticklabels([min_color,np.mean([min_color, max_color]), max_color])
-        #cbar.set_ticks([min_color, np.mean([min_color, max_color]), max_color])
-    cbar.ax.set_yticklabels([])
-    #if min_color == 0.0:
-    #    eps = np.finfo(float).eps
-    #    min_color += eps
-    #    max_color += eps
-    #cbar.set_label('Sample Variance: ' + str(max_color / min_color))
-
-    var = stats.tvar(orig_color)
-    cbar.set_label('Sample Variance: ' + "{:2.10f}".format(var))
+    edge_alpha = 0.3 if network.num_vertices() < 1000 else 0.01
+    pen_width = 0.8 if network.num_vertices() < 1000 else 0.1
+    v_pen_color = [0., 0., 0., 1] if network.num_vertices() < 1000 else [0.0, 0.0, 0.0, edge_alpha]
+    graph_draw(network, vertex_fill_color=color_pmap, mplfig=ax, vertex_pen_width=pen_width, vertex_shape=v_shape,
+               vertex_color=v_pen_color, edge_color=[0.179, 0.203, 0.210, edge_alpha], vertex_size=sizep,
+               output_size=output_size, output=output, **kwargs)
+    if color_bar:
+        cmap = plt.cm.ScalarMappable(cmap=cmap)
+        cmap.set_array([0, 200])
+        cbar = f.colorbar(cmap, drawedges=False)
+        ticks = [0, 1.0, max_color / 100]
+        cbar.set_ticks([0, 100.0, 200.0])
+        tick_labels = None
+        non_zero_dig = 1
+        for digi in range(10):
+            tick_labels = [str("{:2." + str(digi) + "f}").format(i) for i in ticks]
+            if any([len(i.replace('.', '').replace('0', '').replace(' ', '').replace('-', '').replace('+', '')) > 0 for
+                    i in tick_labels]):
+                non_zero_dig -= 1
+                if non_zero_dig == 0:
+                    break
+        cbar.ax.set_yticklabels(tick_labels)
+        #var = stats.tvar(orig_color)
+        #cbar.set_label('')
     plt.axis('off')
     plt.savefig(output, bbox_inches='tight', dpi=dpi)
     plt.close('all')
@@ -200,17 +219,17 @@ def self_sim_entropy(network, name, out_dir):
     weights['eigenvector_inverse'] = 1 / A_eigvector
     weights['sigma'] = katz_sim_network(network, largest_eigenvalue=A_eigvalue)
     weights['sigma_deg_corrected'] = weights['sigma'] / np.array(deg_map.a)
-    weights['sigma_log_deg_corrected'] = weights['sigma'] / np.log(np.array(deg_map.a))
-    weights['pagerank_d100'] = np.array(pagerank(network, damping=1.).a)
-    weights['pagerank_d85'] = np.array(pagerank(network, damping=0.85).a)
-    weights['pagerank_d50'] = np.array(pagerank(network, damping=0.5).a)
-    weights['pagerank_d25'] = np.array(pagerank(network, damping=0.25).a)
-    #weights['pagerank_d0'] = np.array(pagerank(network, damping=0.0).a) #equal adj. mat.
+    weights['cosine'] = calc_cosine(A, weight_direct_link=True)
     weights['betweenness'] = np.array(betweenness(network)[0].a)
-    weights['katz'] = np.array(katz(network).a)
-    weights['cosine'] = calc_cosine(A)
-    weights['cosine_direct_links'] = calc_cosine(A, weight_direct_link=True)
-    weights['common_neighbours'] = calc_common_neigh(A)
+    #weights['sigma_log_deg_corrected'] = weights['sigma'] / np.log(np.array(deg_map.a))
+    #weights['pagerank_d100'] = np.array(pagerank(network, damping=1.).a)
+    #weights['pagerank_d85'] = np.array(pagerank(network, damping=0.85).a)
+    #weights['pagerank_d50'] = np.array(pagerank(network, damping=0.5).a)
+    #weights['pagerank_d25'] = np.array(pagerank(network, damping=0.25).a)
+    #weights['pagerank_d0'] = np.array(pagerank(network, damping=0.0).a) #equal adj. mat.
+    #weights['katz'] = np.array(katz(network).a)
+    #weights['cosine'] = calc_cosine(A)
+    #weights['common_neighbours'] = calc_common_neigh(A)
 
 
     # filter out metrics containing nans or infs
@@ -233,7 +252,11 @@ def self_sim_entropy(network, name, out_dir):
     entropy_df = pd.DataFrame()
     sort_df = []
     print '[', name, '] calc graph-layout'
-    pos = sfdp_layout(network)
+    try:
+        pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
+    except KeyError:
+        pos = sfdp_layout(network)
+
     corr_df = pd.DataFrame(columns=['deg'], data=deg_map.a)
     stat_distributions = {}
     for key, weight in sorted(weights.iteritems(), key=operator.itemgetter(0)):
@@ -244,20 +267,28 @@ def self_sim_entropy(network, name, out_dir):
         print '[', name, '||', key, '] entropy rate:', ent
         entropy_df.at[0, key] = ent
         sort_df.append((key, ent))
+        #print 'draw graph:', out_dir + name + '_' + key
+        corr_df[key] = stat_dist
+    adj_val = stat_distributions['adjacency'] / 100 # /100 for percent
+    min_stat_dist = min([min(i) for i in stat_distributions.values()])
+    max_stat_dist = max([max(i) for i in stat_distributions.values()])
+    min_val = min([min(i/adj_val) for i in stat_distributions.values()])
+    max_val = max([max(i/adj_val) for i in stat_distributions.values()])
+    if True:
+        all_vals = [j for i in stat_distributions.values() for j in i / adj_val]
+        max_val = np.mean(all_vals) + (2 * np.std(all_vals))
+    for key, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
+        stat_dist /= adj_val
+        stat_dist[np.isclose(stat_dist, 100.0)] = 100.0
+        draw_graph(network, color=stat_dist, min_color=min_val, max_color=max_val, sizep=deg_map,
+                   groups='com', output=out_dir + name + '_graph_' + key, pos=pos)
         stat_dist_ser = pd.Series(data=stat_dist)
-        stat_dist_ser.plot(kind='hist', bins=25, lw=0, normed=True)
+        stat_dist_ser.plot(kind='hist', bins=25, range=(min_stat_dist, max_stat_dist), lw=0, normed=True)
         plt.title(key)
         plt.ylabel('#nodes')
         plt.xlabel('stationary value')
         plt.savefig(out_dir + name + '_stat_dist_' + key + '.png', bbox_tight=True)
         plt.close('all')
-        #print 'draw graph:', out_dir + name + '_' + key
-        corr_df[key] = stat_dist
-    min_stat_dist = min([min(i) for i in stat_distributions.values()])
-    max_stat_dist = max([max(i) for i in stat_distributions.values()])
-    for key, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
-        draw_graph(network, color=stat_dist, min_color=min_stat_dist, max_color=max_stat_dist, sizep=deg_map,
-                   shape='com', output=out_dir + name + '_graph_' + key, pos=pos)
 
     try:
         num_cols = len(corr_df.columns) * 3
@@ -334,25 +365,25 @@ def main():
         num_links = 300
         num_nodes = 100
         num_blocks = 3
-        print 'karate'.center(80, '=')
-        name = 'karate'
-        net = load_edge_list('/opt/datasets/karate/karate.edgelist')
-        generator.analyse_graph(net, outdir + name, draw_net=False)
-        if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                    callback=None)
-        else:
-            self_sim_entropy(net, name=name, out_dir=outdir)
+        #print 'karate'.center(80, '=')
+        #name = 'karate'
+        #net = load_edge_list('/opt/datasets/karate/karate.edgelist')
+        #generator.analyse_graph(net, outdir + name, draw_net=False)
+        #if multip:
+        #    worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+        #                            callback=None)
+        #else:
+        #    self_sim_entropy(net, name=name, out_dir=outdir)
 
-        print 'complete graph'.center(80, '=')
-        name = 'complete_graph_n' + str(num_nodes)
-        net = complete_graph(num_nodes)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
-        if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                    callback=None)
-        else:
-            self_sim_entropy(net, name=name, out_dir=outdir)
+        #print 'complete graph'.center(80, '=')
+        #name = 'complete_graph_n' + str(num_nodes)
+        #net = complete_graph(num_nodes)
+        #generator.analyse_graph(net, outdir + name, draw_net=False)
+        #if multip:
+        #    worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+        #                            callback=None)
+        #else:
+        #    self_sim_entropy(net, name=name, out_dir=outdir)
 
         print 'sbm'.center(80, '=')
         name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)
@@ -372,15 +403,17 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
-        print 'powerlaw'.center(80, '=')
-        name = 'powerlaw_n' + str(num_nodes) + '_m' + str(num_links)
-        net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=1, num_links=num_links)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
-        if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                    callback=None)
-        else:
-            self_sim_entropy(net, name=name, out_dir=outdir)
+
+        #print 'powerlaw'.center(80, '=')
+        #name = 'powerlaw_n' + str(num_nodes) + '_m' + str(num_links)
+        #net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=1, num_links=num_links)
+        #generator.analyse_graph(net, outdir + name, draw_net=False)
+        #if multip:
+        #    worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+        #                            callback=None)
+        #else:
+        #    self_sim_entropy(net, name=name, out_dir=outdir)
+
         print 'price network'.center(80, '=')
         name = 'price_net_n' + str(num_nodes) + '_m' + str(net.num_edges())
         net = price_network(num_nodes, m=2, gamma=1, directed=False)
