@@ -301,18 +301,26 @@ def self_sim_entropy(network, name, out_dir):
         trapped_df[key] /= trapped_df[key].max()
     trapped_df['uniform'] = np.array([1]*len(trapped_df)).cumsum()
     trapped_df['uniform'] /= trapped_df['uniform'].max()
-    trapped_df.index = trapped_df.index.astype('float') / len(trapped_df)
-    trapped_df.plot(lw=3, alpha=0.7, style=['-o', '-v', '-^', '-s', '-*', '-D'], logx=True)
-    x_max = len(trapped_df)
-    ticks = [.01, .1, 1]
+    trapped_df.index += 1
+    trapped_df['idx'] = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
+    if len(trapped_df) > 20:
+        trapped_df['idx'] = trapped_df['idx'].astype('int')
+        trapped_df['idx'] = trapped_df['idx'].apply(lambda x: int(x / 10) * 10 if x > 10 else x)
+        trapped_df.drop_duplicates(subset=['idx'], inplace=True)
+        #trapped_df.drop('idx', axis=1, inplace=True)
+    #trapped_df.index = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
+
+    trapped_df.plot(x='idx',lw=2, alpha=0.5, style=['-o', '-v', '-^', '-s', '-*', '-D'], logx=True)
+    ticks = [1, 3, 5, 10, 30, 50, 100]
     #plt.xscale('log')
-    plt.xticks(ticks, ['1%', '10%', '100%'])
-    plt.xlim([1, 100])
+    plt.xticks(ticks, [i + '%' for i in map(str, ticks)])
+    plt.xlim([0.9, 110])
     plt.yticks([0, .25, .5, .75, 1], ['0', '25%', '50%', '75%', '100%'])
     plt.xlabel('percent of nodes')
     plt.ylim([0, 1])
     plt.ylabel('cumulative sum of stationary distribution values')
     plt.savefig(out_dir + name + '_trapped.png', bbox_tight=True)
+    plt.close('all')
 
     try:
         num_cols = len(corr_df.columns) * 3
@@ -349,7 +357,6 @@ def main():
     basics.create_folder_structure(outdir)
     font_size = 12
     matplotlib.rcParams.update({'font.size': font_size})
-
 
     test = False
     multip = True
@@ -401,7 +408,6 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
-#        exit()
         #print 'complete graph'.center(80, '=')
         #name = 'complete_graph_n' + str(num_nodes)
         #net = complete_graph(num_nodes)
@@ -421,6 +427,7 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
+        #exit()
         print 'sbm'.center(80, '=')
         name = 'sbm_weak_n' + str(num_nodes) + '_m' + str(num_links)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.5)
