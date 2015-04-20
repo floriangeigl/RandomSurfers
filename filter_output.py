@@ -12,7 +12,7 @@ os.system('mkdir -p ' + steady_state_dir)
 os.system('mkdir -p ' + ent_rate_dir)
 os.system('mkdir -p ' + steady_state_hist_dir)
 
-graphs = ['weak', 'strong', 'price_net', 'facebook', 'wiki4schools']
+graphs = ['weak', 'strong', 'price_net', 'facebook', 'wiki4schools', 'karate']
 properties = ['adjacency', 'betweenness', 'eigenvector', 'eigenvector_inverse', 'sigma', 'sigma_deg_corrected']
 for g in graphs:
     for p in properties:

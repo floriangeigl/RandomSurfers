@@ -269,18 +269,24 @@ def self_sim_entropy(network, name, out_dir):
         sort_df.append((key, ent))
         #print 'draw graph:', out_dir + name + '_' + key
         corr_df[key] = stat_dist
-    adj_val = stat_distributions['adjacency'] / 100 # /100 for percent
+    base_line = stat_distributions['adjacency']
+    #base_line = np.array([[1. / network.num_vertices()]])
+    base_line /= 100  # /100 for percent
+    #vertex_size = deg_map
+    vertex_size = network.new_vertex_property('float')
+    vertex_size.a = base_line
     min_stat_dist = min([min(i) for i in stat_distributions.values()])
     max_stat_dist = max([max(i) for i in stat_distributions.values()])
-    min_val = min([min(i/adj_val) for i in stat_distributions.values()])
-    max_val = max([max(i/adj_val) for i in stat_distributions.values()])
+    min_val = min([min(i/base_line) for i in stat_distributions.values()])
+    max_val = max([max(i/base_line) for i in stat_distributions.values()])
+    trapped_df = pd.DataFrame(index=range(network.num_vertices()))
     if True:
-        all_vals = [j for i in stat_distributions.values() for j in i / adj_val]
+        all_vals = [j for i in stat_distributions.values() for j in i / base_line]
         max_val = np.mean(all_vals) + (2 * np.std(all_vals))
     for key, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
-        stat_dist /= adj_val
-        stat_dist[np.isclose(stat_dist, 100.0)] = 100.0
-        draw_graph(network, color=stat_dist, min_color=min_val, max_color=max_val, sizep=deg_map,
+        stat_dist_diff = stat_dist / base_line
+        stat_dist_diff[np.isclose(stat_dist_diff, 100.0)] = 100.0
+        draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=deg_map,
                    groups='com', output=out_dir + name + '_graph_' + key, pos=pos)
         stat_dist_ser = pd.Series(data=stat_dist)
         stat_dist_ser.plot(kind='hist', bins=25, range=(min_stat_dist, max_stat_dist), lw=0, normed=True)
@@ -289,6 +295,24 @@ def self_sim_entropy(network, name, out_dir):
         plt.xlabel('stationary value')
         plt.savefig(out_dir + name + '_stat_dist_' + key + '.png', bbox_tight=True)
         plt.close('all')
+        stat_dist_ser.sort(ascending=False)
+        stat_dist_ser.index = range(len(stat_dist_ser))
+        trapped_df[key] = stat_dist_ser.cumsum()
+        trapped_df[key] /= trapped_df[key].max()
+    trapped_df['uniform'] = np.array([1]*len(trapped_df)).cumsum()
+    trapped_df['uniform'] /= trapped_df['uniform'].max()
+    trapped_df.index = trapped_df.index.astype('float') / len(trapped_df)
+    trapped_df.plot(lw=3, alpha=0.7, style=['-o', '-v', '-^', '-s', '-*', '-D'], logx=True)
+    x_max = len(trapped_df)
+    ticks = [.01, .1, 1]
+    #plt.xscale('log')
+    plt.xticks(ticks, ['1%', '10%', '100%'])
+    plt.xlim([1, 100])
+    plt.yticks([0, .25, .5, .75, 1], ['0', '25%', '50%', '75%', '100%'])
+    plt.xlabel('percent of nodes')
+    plt.ylim([0, 1])
+    plt.ylabel('cumulative sum of stationary distribution values')
+    plt.savefig(out_dir + name + '_trapped.png', bbox_tight=True)
 
     try:
         num_cols = len(corr_df.columns) * 3
@@ -323,6 +347,9 @@ def main():
     num_samples = 10
     outdir = 'output/'
     basics.create_folder_structure(outdir)
+    font_size = 12
+    matplotlib.rcParams.update({'font.size': font_size})
+
 
     test = False
     multip = True
@@ -365,16 +392,16 @@ def main():
         num_links = 300
         num_nodes = 100
         num_blocks = 3
-        #print 'karate'.center(80, '=')
-        #name = 'karate'
-        #net = load_edge_list('/opt/datasets/karate/karate.edgelist')
-        #generator.analyse_graph(net, outdir + name, draw_net=False)
-        #if multip:
-        #    worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-        #                            callback=None)
-        #else:
-        #    self_sim_entropy(net, name=name, out_dir=outdir)
-
+        print 'karate'.center(80, '=')
+        name = 'karate'
+        net = load_edge_list('/opt/datasets/karate/karate.edgelist')
+        generator.analyse_graph(net, outdir + name, draw_net=False)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
+#        exit()
         #print 'complete graph'.center(80, '=')
         #name = 'complete_graph_n' + str(num_nodes)
         #net = complete_graph(num_nodes)
