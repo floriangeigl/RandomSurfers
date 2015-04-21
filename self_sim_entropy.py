@@ -224,6 +224,24 @@ def calc_common_neigh(A):
     return M
 
 
+def gini_coeff(y):
+    if not isinstance(y, np.ndarray):
+        y = np.array(y)
+    n = len(y)
+    if n <= 1:
+        return 0
+    y.sort()
+    #yidx = np.array(range(len(y)))
+    y_sum = y.sum()
+    if np.isclose(y_sum, 0.0):
+        return 0.
+    #gini = (n + 1) / (n - 1)
+    #gini -= ((2 / (n * (n - 1) * y.mean())) * (yidx * y).sum())
+
+    gini = 1 - 2 / (n - 1) * (n - sum((i + 1) * yi for i, yi in enumerate(y)) / y_sum)
+    #print (y, gini)
+    return gini
+"""
 def gini_coeff(x):
     if not isinstance(x, np.ndarray):
         x = np.array(x)
@@ -233,6 +251,7 @@ def gini_coeff(x):
     s = x.sum()
     r = np.argsort(np.argsort(-x))  # calculates zero-based ranks
     return 1 - (2.0 * (r * x).sum() + s) / (n * s)
+"""
 
 def self_sim_entropy(network, name, out_dir):
     A = adjacency(network)
@@ -306,10 +325,12 @@ def self_sim_entropy(network, name, out_dir):
     min_val = min([min(i/base_line) for i in stat_distributions.values()])
     max_val = max([max(i/base_line) for i in stat_distributions.values()])
     trapped_df = pd.DataFrame(index=range(network.num_vertices()))
-    if True:
-        all_vals = [j for i in stat_distributions.values() for j in i / base_line]
-        max_val = np.mean(all_vals) + (2 * np.std(all_vals))
 
+    # calc max vals for graph-coloring
+    all_vals = [j for i in stat_distributions.values() for j in i / base_line]
+    max_val = np.mean(all_vals) + (2 * np.std(all_vals))
+
+    # plot all biased graphs and add biases to trapped plot
     for key, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
         weight = weights[key]
         stat_dist_diff = stat_dist / base_line
@@ -330,36 +351,36 @@ def self_sim_entropy(network, name, out_dir):
         create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_between_' + key, c=weight)
 
         # plot stationary distribution
-        #stat_dist_ser.plot(kind='hist', bins=25, range=(min_stat_dist, max_stat_dist), lw=0, normed=True)
-        #plt.title(key)
-        #plt.ylabel('#nodes')
-        #plt.xlabel('stationary value')
-        #plt.savefig(out_dir + name + '_stat_dist_' + key + '.png', bbox_tight=True)
-        #plt.close('all')
+        if False:
+            stat_dist_ser.plot(kind='hist', bins=25, range=(min_stat_dist, max_stat_dist), lw=0, normed=True)
+            plt.title(key)
+            plt.ylabel('#nodes')
+            plt.xlabel('stationary value')
+            plt.savefig(out_dir + name + '_stat_dist_' + key + '.png', bbox_tight=True)
+            plt.close('all')
+
+        # calc gini coef and trapped values
         stat_dist_ser.sort(ascending=True)
         stat_dist_ser.index = range(len(stat_dist_ser))
+        key += ' gc:' + ('%.4f' % gini_coeff(stat_dist_ser))
         trapped_df[key] = stat_dist_ser.cumsum()
         trapped_df[key] /= trapped_df[key].max()
-    trapped_df['uniform'] = np.array([1]*len(trapped_df)).cumsum()
-    trapped_df['uniform'] /= trapped_df['uniform'].max()
+
+    # add uniform to trapped plot
+    key = 'uniform'
+    uniform = np.array([1]*len(trapped_df))
+    key += ' gc:' + ('%.4f' % gini_coeff(uniform))
+    trapped_df[key] = uniform.cumsum()
+    trapped_df[key] /= trapped_df[key].max()
+
     trapped_df.index += 1
     trapped_df['idx'] = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
 
-    #trapped_df.index = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
-
-    labels = [i + ' gc:' + ('%.4f' % gini_coeff(np.array(trapped_df[i]))) if not i == 'idx' else i for i in
-              trapped_df.columns]
-    trapped_df.columns = labels
     if len(trapped_df) > 50:
         trapped_df['idx'] = trapped_df['idx'].astype('int')
         trapped_df['idx'] = trapped_df['idx'].apply(lambda x: int(x / 5) * 5)
         trapped_df.drop_duplicates(subset=['idx'], inplace=True)
-        #trapped_df.drop('idx', axis=1, inplace=True)
     trapped_df.plot(x='idx', lw=2, alpha=0.5, style=['-o', '-v', '-^', '-s', '-*', '-D'])
-    #ticks = [1, 3, 5, 10, 30, 50, 100]
-    #plt.xscale('log')
-    #plt.xticks(ticks, [i + '%' for i in map(str, ticks)])
-    #plt.xlim([0.9, 110])
     plt.yticks([0, .25, .5, .75, 1], ['0', '25%', '50%', '75%', '100%'])
     plt.xlabel('percent of nodes')
     plt.ylim([0, 1])
@@ -405,7 +426,7 @@ def main():
 
     test = False  # basic test flag
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    first_two_only = False  # quick test flag
+    first_two_only = True  # quick test flag
     if first_two_only:
         multip = False
     worker_pool = multiprocessing.Pool(processes=14)
@@ -448,6 +469,8 @@ def main():
         num_links = 300
         num_nodes = 100
         num_blocks = 3
+
+        # karate ninja bam bam ============================================
         print 'karate'.center(80, '=')
         name = 'karate'
         outdir = base_outdir + name + '/'
@@ -469,6 +492,7 @@ def main():
         #else:
         #    self_sim_entropy(net, name=name, out_dir=outdir)
 
+        # strong sbm ============================================
         print 'sbm'.center(80, '=')
         name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)
         outdir = base_outdir + name + '/'
@@ -482,6 +506,7 @@ def main():
             self_sim_entropy(net, name=name, out_dir=outdir)
         if first_two_only:
             exit()
+        # weak sbm ============================================
         print 'sbm'.center(80, '=')
         name = 'sbm_weak_n' + str(num_nodes) + '_m' + str(num_links)
         outdir = base_outdir + name + '/'
@@ -503,7 +528,7 @@ def main():
         #                            callback=None)
         #else:
         #    self_sim_entropy(net, name=name, out_dir=outdir)
-
+        # price network ============================================
         print 'price network'.center(80, '=')
         name = 'price_net_n' + str(num_nodes) + '_m' + str(net.num_edges())
         outdir = base_outdir + name + '/'
@@ -516,6 +541,7 @@ def main():
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
         if True:
+            # wiki4schools ============================================
             print 'wiki4schools'.center(80, '=')
             name = 'wiki4schools'
             outdir = base_outdir + name + '/'
@@ -527,6 +553,7 @@ def main():
                                         callback=None)
             else:
                 self_sim_entropy(net, name=name, out_dir=outdir)
+            # facebook ============================================
             print 'facebook'.center(80, '=')
             name = 'facebook'
             outdir = base_outdir + name + '/'
@@ -538,28 +565,20 @@ def main():
                                         callback=None)
             else:
                 self_sim_entropy(net, name=name, out_dir=outdir)
-            print 'youtube'.center(80, '=')
-            name = 'youtube'
+            # enron ============================================
+            print 'enron'.center(80, '=')
+            name = 'enron'
             outdir = base_outdir + name + '/'
             basics.create_folder_structure(outdir)
-            net = load_edge_list('/opt/datasets/youtube/youtube')
-            net.vp['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int', line_groups=True)
+            net = load_edge_list('/opt/datasets/enron/enron')
+            # net.vp['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int', line_groups=True)
+            print 'vertices:', net.num_vertices()
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
             else:
                 self_sim_entropy(net, name=name, out_dir=outdir)
-            print 'dblp'.center(80, '=')
-            name = 'dblp'
-            outdir = base_outdir + name + '/'
-            basics.create_folder_structure(outdir)
-            net = load_edge_list('/opt/datasets/dblp/dblp')
-            net.vp['com'] = load_property(net, '/opt/datasets/dblp/dblp_com', type='int', line_groups=True)
-            if multip:
-                worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                        callback=None)
-            else:
-                self_sim_entropy(net, name=name, out_dir=outdir)
+
 
     if multip:
         worker_pool.close()
