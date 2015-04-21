@@ -426,7 +426,7 @@ def main():
 
     test = False  # basic test flag
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    first_two_only = True  # quick test flag
+    first_two_only = False  # quick test flag
     if first_two_only:
         multip = False
     worker_pool = multiprocessing.Pool(processes=14)
