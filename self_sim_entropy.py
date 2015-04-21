@@ -133,6 +133,21 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
     print 'done'
 
 
+def create_scatter(x, y, fname, c=None, cmap='blue'):
+    assert isinstance(x, tuple)
+    assert isinstance(y, tuple)
+    df = pd.DataFrame(columns=[x[0]], data=x[1])
+    df[y[0]] = y[1]
+    if c is not None:
+        # df['color'] = c
+        pass
+    df.plot(x=x[0], y=y[0], kind='scatter',
+            alpha=1 / np.log10(len(df)), loglog=True, color='darkblue', lw=0)
+    plt.axhline(1., color='red', alpha=.25, lw=2, ls='--')
+    plt.savefig(fname, bbox_inches='tight')
+    plt.close('all')
+
+
 
 def katz_sim_network(net, largest_eigenvalue=None, gamma=0.99):
     if largest_eigenvalue is None:
@@ -269,9 +284,9 @@ def self_sim_entropy(network, name, out_dir):
         sort_df.append((key, ent))
         #print 'draw graph:', out_dir + name + '_' + key
         corr_df[key] = stat_dist
-    base_line = stat_distributions['adjacency']
+    base_line_abs_vals = stat_distributions['adjacency']
     #base_line = np.array([[1. / network.num_vertices()]])
-    base_line /= 100  # /100 for percent
+    base_line = base_line_abs_vals / 100  # /100 for percent
     #vertex_size = deg_map
     vertex_size = network.new_vertex_property('float')
     vertex_size.a = base_line
@@ -283,18 +298,27 @@ def self_sim_entropy(network, name, out_dir):
     if True:
         all_vals = [j for i in stat_distributions.values() for j in i / base_line]
         max_val = np.mean(all_vals) + (2 * np.std(all_vals))
+
     for key, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
+        weight = weights[key]
         stat_dist_diff = stat_dist / base_line
         stat_dist_diff[np.isclose(stat_dist_diff, 100.0)] = 100.0
         draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=deg_map,
                    groups='com', output=out_dir + name + '_graph_' + key, pos=pos)
-        stat_dist_ser = pd.Series(data=stat_dist)
-        stat_dist_ser.plot(kind='hist', bins=25, range=(min_stat_dist, max_stat_dist), lw=0, normed=True)
-        plt.title(key)
-        plt.ylabel('#nodes')
-        plt.xlabel('stationary value')
-        plt.savefig(out_dir + name + '_stat_dist_' + key + '.png', bbox_tight=True)
         plt.close('all')
+
+        stat_dist_ser = pd.Series(data=stat_dist)
+        x = ('stationary value of adjacency', base_line_abs_vals)
+        y = (key.replace('_', ' ') + ' difference', stat_dist_diff / 100)
+        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + key, c=weight)
+
+        # plot stationary distribution
+        #stat_dist_ser.plot(kind='hist', bins=25, range=(min_stat_dist, max_stat_dist), lw=0, normed=True)
+        #plt.title(key)
+        #plt.ylabel('#nodes')
+        #plt.xlabel('stationary value')
+        #plt.savefig(out_dir + name + '_stat_dist_' + key + '.png', bbox_tight=True)
+        #plt.close('all')
         stat_dist_ser.sort(ascending=False)
         stat_dist_ser.index = range(len(stat_dist_ser))
         trapped_df[key] = stat_dist_ser.cumsum()
@@ -353,16 +377,19 @@ def main():
     generator = SBMGenerator()
     granularity = 10
     num_samples = 10
-    outdir = 'output/'
-    basics.create_folder_structure(outdir)
+    base_outdir = 'output/'
+    basics.create_folder_structure(base_outdir)
     font_size = 12
     matplotlib.rcParams.update({'font.size': font_size})
 
     test = False
     multip = True
+    first_two_only = True
+    if first_two_only:
+        multip = False
     worker_pool = multiprocessing.Pool(processes=14)
     if test:
-        outdir += 'tests/'
+        outdir = base_outdir + 'tests/'
         basics.create_folder_structure(outdir)
 
         print 'complete graph'.center(80, '=')
@@ -384,6 +411,7 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
+
         print 'price network'.center(80, '=')
         name = 'price_net_n50_m1_g2_1'
         net = price_network(30, m=2, gamma=1, directed=False)
@@ -401,6 +429,8 @@ def main():
         num_blocks = 3
         print 'karate'.center(80, '=')
         name = 'karate'
+        outdir = base_outdir + name + '/'
+        basics.create_folder_structure(outdir)
         net = load_edge_list('/opt/datasets/karate/karate.edgelist')
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
@@ -420,6 +450,8 @@ def main():
 
         print 'sbm'.center(80, '=')
         name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)
+        outdir = base_outdir + name + '/'
+        basics.create_folder_structure(outdir)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.05)
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
@@ -427,9 +459,12 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
-        #exit()
+        if first_two_only:
+            exit()
         print 'sbm'.center(80, '=')
         name = 'sbm_weak_n' + str(num_nodes) + '_m' + str(num_links)
+        outdir = base_outdir + name + '/'
+        basics.create_folder_structure(outdir)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.5)
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
@@ -450,6 +485,8 @@ def main():
 
         print 'price network'.center(80, '=')
         name = 'price_net_n' + str(num_nodes) + '_m' + str(net.num_edges())
+        outdir = base_outdir + name + '/'
+        basics.create_folder_structure(outdir)
         net = price_network(num_nodes, m=2, gamma=1, directed=False)
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
@@ -460,6 +497,8 @@ def main():
         if True:
             print 'wiki4schools'.center(80, '=')
             name = 'wiki4schools'
+            outdir = base_outdir + name + '/'
+            basics.create_folder_structure(outdir)
             net = load_edge_list('/opt/datasets/wikiforschools/graph')
             net.vp['com'] = load_property(net, '/opt/datasets/wikiforschools/artid_catid', type='int')
             if multip:
@@ -469,6 +508,8 @@ def main():
                 self_sim_entropy(net, name=name, out_dir=outdir)
             print 'facebook'.center(80, '=')
             name = 'facebook'
+            outdir = base_outdir + name + '/'
+            basics.create_folder_structure(outdir)
             net = load_edge_list('/opt/datasets/facebook/facebook')
             net.vp['com'] = load_property(net, '/opt/datasets/facebook/facebook_com', type='int', line_groups=True)
             if multip:
@@ -478,6 +519,8 @@ def main():
                 self_sim_entropy(net, name=name, out_dir=outdir)
             print 'youtube'.center(80, '=')
             name = 'youtube'
+            outdir = base_outdir + name + '/'
+            basics.create_folder_structure(outdir)
             net = load_edge_list('/opt/datasets/youtube/youtube')
             net.vp['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int', line_groups=True)
             if multip:
@@ -487,6 +530,8 @@ def main():
                 self_sim_entropy(net, name=name, out_dir=outdir)
             print 'dblp'.center(80, '=')
             name = 'dblp'
+            outdir = base_outdir + name + '/'
+            basics.create_folder_structure(outdir)
             net = load_edge_list('/opt/datasets/dblp/dblp')
             net.vp['com'] = load_property(net, '/opt/datasets/dblp/dblp_com', type='int', line_groups=True)
             if multip:
