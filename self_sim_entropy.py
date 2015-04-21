@@ -133,7 +133,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
     print 'done'
 
 
-def create_scatter(x, y, fname, c=None, cmap='blue'):
+def create_scatter(x, y, fname, c=None, cmap='blue', **kwargs):
     assert isinstance(x, tuple)
     assert isinstance(y, tuple)
     df = pd.DataFrame(columns=[x[0]], data=x[1])
@@ -142,7 +142,7 @@ def create_scatter(x, y, fname, c=None, cmap='blue'):
         # df['color'] = c
         pass
     df.plot(x=x[0], y=y[0], kind='scatter',
-            alpha=1 / np.log10(len(df)), loglog=True, color='darkblue', lw=0)
+            alpha=1 / np.log10(len(df)), loglog=True, color='darkblue', lw=0, **kwargs)
     plt.axhline(1., color='red', alpha=.25, lw=2, ls='--')
     plt.savefig(fname, bbox_inches='tight')
     plt.close('all')
@@ -222,6 +222,17 @@ def calc_common_neigh(A):
     M = A.dot(A).todense()
     np.fill_diagonal(M, 0)
     return M
+
+
+def gini_coeff(x):
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+    # requires all values in x to be zero or positive numbers,
+    # otherwise results are undefined
+    n = len(x)
+    s = x.sum()
+    r = np.argsort(np.argsort(-x))  # calculates zero-based ranks
+    return 1 - (2.0 * (r * x).sum() + s) / (n * s)
 
 def self_sim_entropy(network, name, out_dir):
     A = adjacency(network)
@@ -312,6 +323,12 @@ def self_sim_entropy(network, name, out_dir):
         y = (key.replace('_', ' ') + ' difference', stat_dist_diff / 100)
         create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + key, c=weight)
 
+        x = ('popularity', np.array(deg_map.a))
+        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_popularity_' + key, c=weight)
+
+        x = ('betweenness', np.array(weights['betweenness']))
+        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_between_' + key, c=weight)
+
         # plot stationary distribution
         #stat_dist_ser.plot(kind='hist', bins=25, range=(min_stat_dist, max_stat_dist), lw=0, normed=True)
         #plt.title(key)
@@ -319,7 +336,7 @@ def self_sim_entropy(network, name, out_dir):
         #plt.xlabel('stationary value')
         #plt.savefig(out_dir + name + '_stat_dist_' + key + '.png', bbox_tight=True)
         #plt.close('all')
-        stat_dist_ser.sort(ascending=False)
+        stat_dist_ser.sort(ascending=True)
         stat_dist_ser.index = range(len(stat_dist_ser))
         trapped_df[key] = stat_dist_ser.cumsum()
         trapped_df[key] /= trapped_df[key].max()
@@ -327,18 +344,22 @@ def self_sim_entropy(network, name, out_dir):
     trapped_df['uniform'] /= trapped_df['uniform'].max()
     trapped_df.index += 1
     trapped_df['idx'] = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
-    if len(trapped_df) > 20:
-        trapped_df['idx'] = trapped_df['idx'].astype('int')
-        trapped_df['idx'] = trapped_df['idx'].apply(lambda x: int(x / 10) * 10 if x > 10 else x)
-        trapped_df.drop_duplicates(subset=['idx'], inplace=True)
-        #trapped_df.drop('idx', axis=1, inplace=True)
+
     #trapped_df.index = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
 
-    trapped_df.plot(x='idx',lw=2, alpha=0.5, style=['-o', '-v', '-^', '-s', '-*', '-D'], logx=True)
-    ticks = [1, 3, 5, 10, 30, 50, 100]
+    labels = [i + ' gc:' + ('%.4f' % gini_coeff(np.array(trapped_df[i]))) if not i == 'idx' else i for i in
+              trapped_df.columns]
+    trapped_df.columns = labels
+    if len(trapped_df) > 50:
+        trapped_df['idx'] = trapped_df['idx'].astype('int')
+        trapped_df['idx'] = trapped_df['idx'].apply(lambda x: int(x / 5) * 5)
+        trapped_df.drop_duplicates(subset=['idx'], inplace=True)
+        #trapped_df.drop('idx', axis=1, inplace=True)
+    trapped_df.plot(x='idx', lw=2, alpha=0.5, style=['-o', '-v', '-^', '-s', '-*', '-D'])
+    #ticks = [1, 3, 5, 10, 30, 50, 100]
     #plt.xscale('log')
-    plt.xticks(ticks, [i + '%' for i in map(str, ticks)])
-    plt.xlim([0.9, 110])
+    #plt.xticks(ticks, [i + '%' for i in map(str, ticks)])
+    #plt.xlim([0.9, 110])
     plt.yticks([0, .25, .5, .75, 1], ['0', '25%', '50%', '75%', '100%'])
     plt.xlabel('percent of nodes')
     plt.ylim([0, 1])
@@ -382,9 +403,9 @@ def main():
     font_size = 12
     matplotlib.rcParams.update({'font.size': font_size})
 
-    test = False
-    multip = True
-    first_two_only = True
+    test = False  # basic test flag
+    multip = True  # multiprocessing flag (warning: suppresses exceptions)
+    first_two_only = False  # quick test flag
     if first_two_only:
         multip = False
     worker_pool = multiprocessing.Pool(processes=14)
