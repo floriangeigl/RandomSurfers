@@ -31,6 +31,7 @@ from timeit import Timer
 np.set_printoptions(precision=2)
 import copy
 import matplotlib.cm as colormap
+import psutil
 
 
 def draw_graph(network, color, min_color=None, max_color=None, groups=None, sizep=None, colormap_name='bwr',
@@ -253,19 +254,53 @@ def gini_coeff(x):
     return 1 - (2.0 * (r * x).sum() + s) / (n * s)
 """
 
+def calc_bias(network, bias_name):
+    pass
+
+
+def get_memory_consumption_in_mb():
+    return psutil.Process(os.getpid()).get_memory_info()[0] / float(2 ** 20)
+
 def self_sim_entropy(network, name, out_dir):
+    mem_cons  = []
+    mem_cons.append(('start',get_memory_consumption_in_mb()))
     A = adjacency(network)
-    A_eigvalue, A_eigvector = eigenvector(network)
-    A_eigvector = A_eigvector.a
+
     deg_map = network.degree_property_map('total')
     weights = dict()
-    weights['adjacency'] = None
-    weights['eigenvector'] = A_eigvector
-    weights['eigenvector_inverse'] = 1 / A_eigvector
-    weights['sigma'] = katz_sim_network(network, largest_eigenvalue=A_eigvalue)
-    weights['sigma_deg_corrected'] = weights['sigma'] / np.array(deg_map.a)
-    weights['cosine'] = calc_cosine(A, weight_direct_link=True)
-    weights['betweenness'] = np.array(betweenness(network)[0].a)
+    if network.gp['type'] == 'empiric':
+        fn = network.gp['filename']
+        weights['adjacency'] = lambda: None
+        if not os.path.isfile(fn + '_eigenvec'):
+            A_eigvalue, A_eigvector = eigenvector(network)
+            A_eigvector = np.array(A_eigvector.a)
+            A_eigvector.dump(fn + '_eigenvec')
+            (1 / A_eigvector).dump(fn + '_eigenvector_inverse')
+
+            katz_sim = katz_sim_network(network, largest_eigenvalue=A_eigvalue)
+            katz_sim.dump(fn + '_sigma')
+            (katz_sim / np.array(deg_map.a)).dump(fn + '_sigma_deg_corrected')
+            calc_cosine(A, weight_direct_link=True).dump(fn + '_cosine')
+            np.array(betweenness(network)[0].a).dump(fn + '_betweenness')
+        A_eigvector = np.load(fn + '_eigenvec')
+        weights['eigenvector'] = lambda: A_eigvector
+        weights['eigenvector_inverse'] = lambda: np.load(fn + '_eigenvector_inverse')
+        weights['sigma'] = lambda: np.load(fn + '_sigma')
+        weights['sigma_deg_corrected'] = lambda: np.load(fn + '_sigma_deg_corrected')
+        weights['cosine'] = lambda: np.load(fn + '_cosine')
+        weights['betweenness'] = lambda: np.load(fn + '_betweenness')
+    else:
+        A_eigvalue, A_eigvector = eigenvector(network)
+        A_eigvector = A_eigvector.a
+        weights['adjacency'] = lambda: None
+        weights['eigenvector'] = lambda: A_eigvector
+        weights['eigenvector_inverse'] = lambda: 1 / A_eigvector
+        katz_sim = katz_sim_network(network, largest_eigenvalue=A_eigvalue)
+        weights['sigma'] = lambda: katz_sim
+        weights['sigma_deg_corrected'] = lambda: katz_sim / np.array(deg_map.a)
+        weights['cosine'] = lambda: calc_cosine(A, weight_direct_link=True)
+        weights['betweenness'] = lambda: np.array(betweenness(network)[0].a)
+    mem_cons.append(('stored weight functions', get_memory_consumption_in_mb()))
     #weights['sigma_log_deg_corrected'] = weights['sigma'] / np.log(np.array(deg_map.a))
     #weights['pagerank_d100'] = np.array(pagerank(network, damping=1.).a)
     #weights['pagerank_d85'] = np.array(pagerank(network, damping=0.85).a)
@@ -276,21 +311,6 @@ def self_sim_entropy(network, name, out_dir):
     #weights['cosine'] = calc_cosine(A)
     #weights['common_neighbours'] = calc_common_neigh(A)
 
-
-    # filter out metrics containing nans or infs
-    if False:
-        # filter out metrics containing nans or infs
-        weights = {key: val for key, val in weights.iteritems() if val is not None and np.isnan(val).sum() == 0 and np.isinf(val).sum() == 0}
-    else:
-        # replace nans and infs with zero
-        for key, val in weights.iteritems():
-            if val is not None:
-                num_nans = np.isnan(val).sum()
-                num_infs = np.isinf(val).sum()
-                if num_nans > 0 or num_infs > 0:
-                    print '[', name, '] ', key, ': shape:', val.shape, '|replace nans(', num_nans, ') and infs (', num_infs, ') of metric with zero'
-                    val[np.isnan(val) | np.isinf(val)] = 0
-                    weights[key] = val
 
     weights = {key.replace(' ', '_'): val for key, val in weights.iteritems()}
 
@@ -306,6 +326,20 @@ def self_sim_entropy(network, name, out_dir):
     stat_distributions = {}
     for key, weight in sorted(weights.iteritems(), key=operator.itemgetter(0)):
         print '[', name, '||', key, '] start calc'
+
+        # calc metric
+        weight = weight()
+
+        # replace infs and nans with zero
+        if weight is not None:
+            num_nans = np.isnan(weight).sum()
+            num_infs = np.isinf(weight).sum()
+            if num_nans > 0 or num_infs > 0:
+                print '[', name, '] ', key, ': shape:', weight.shape, '|replace nans(', num_nans, ') and infs (', num_infs, ') of metric with zero'
+                weight[np.isnan(weight) | np.isinf(weight)] = 0
+        if weight is None or len(weight.shape) == 1:
+            weights[key] = weight
+
         #print 'weight', weight
         ent, stat_dist = calc_entropy_and_stat_dist(A, weight)
         stat_distributions[key] = stat_dist
@@ -314,6 +348,7 @@ def self_sim_entropy(network, name, out_dir):
         sort_df.append((key, ent))
         #print 'draw graph:', out_dir + name + '_' + key
         corr_df[key] = stat_dist
+        mem_cons.append(('after ' + key, get_memory_consumption_in_mb()))
     base_line_abs_vals = stat_distributions['adjacency']
     #base_line = np.array([[1. / network.num_vertices()]])
     base_line = base_line_abs_vals / 100  # /100 for percent
@@ -332,7 +367,8 @@ def self_sim_entropy(network, name, out_dir):
 
     # plot all biased graphs and add biases to trapped plot
     for key, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
-        weight = weights[key]
+        #weight = weights[key]
+        weight = None
         stat_dist_diff = stat_dist / base_line
         stat_dist_diff[np.isclose(stat_dist_diff, 100.0)] = 100.0
         draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=deg_map,
@@ -365,6 +401,7 @@ def self_sim_entropy(network, name, out_dir):
         key += ' gc:' + ('%.4f' % gini_coeff(stat_dist_ser))
         trapped_df[key] = stat_dist_ser.cumsum()
         trapped_df[key] /= trapped_df[key].max()
+        mem_cons.append(('after ' + key + ' scatter', get_memory_consumption_in_mb()))
 
     # add uniform to trapped plot
     key = 'uniform'
@@ -410,6 +447,10 @@ def self_sim_entropy(network, name, out_dir):
     plt.xlim([-1, 0.4])
     plt.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off')
     plt.savefig(out_dir + name + '_entropy_rates.png', bbox_tight=True)
+    plt.close('all')
+    mem_df = pd.DataFrame(columns=['state', 'memory in MB'], data=mem_cons)
+    mem_df.plot(x='state', y='memory in MB', rot=45)
+    plt.savefig(out_dir + name + '_mem_status.png', bbox_tight=True)
     plt.close('all')
 
 #=======================================================================================================================
@@ -476,6 +517,8 @@ def main():
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
         net = load_edge_list('/opt/datasets/karate/karate.edgelist')
+        net.gp['type'] = net.new_graph_property('string')
+        net.gp['type'] = 'empiric'
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
@@ -498,6 +541,8 @@ def main():
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.05)
+        net.gp['type'] = net.new_graph_property('string')
+        net.gp['type'] = 'synthetic'
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
@@ -512,6 +557,8 @@ def main():
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
         net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.5)
+        net.gp['type'] = net.new_graph_property('string')
+        net.gp['type'] = 'synthetic'
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
@@ -534,6 +581,8 @@ def main():
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
         net = price_network(num_nodes, m=2, gamma=1, directed=False)
+        net.gp['type'] = net.new_graph_property('string')
+        net.gp['type'] = 'synthetic'
         generator.analyse_graph(net, outdir + name, draw_net=False)
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
@@ -547,7 +596,9 @@ def main():
             outdir = base_outdir + name + '/'
             basics.create_folder_structure(outdir)
             net = load_edge_list('/opt/datasets/wikiforschools/graph')
-            net.vp['com'] = load_property(net, '/opt/datasets/wikiforschools/artid_catid', type='int')
+            # net.vp['com'] = load_property(net, '/opt/datasets/wikiforschools/artid_catid', type='int')
+            net.gp['type'] = net.new_graph_property('string')
+            net.gp['type'] = 'empiric'
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
@@ -559,7 +610,9 @@ def main():
             outdir = base_outdir + name + '/'
             basics.create_folder_structure(outdir)
             net = load_edge_list('/opt/datasets/facebook/facebook')
-            net.vp['com'] = load_property(net, '/opt/datasets/facebook/facebook_com', type='int', line_groups=True)
+            # net.vp['com'] = load_property(net, '/opt/datasets/facebook/facebook_com', type='int', line_groups=True)
+            net.gp['type'] = net.new_graph_property('string')
+            net.gp['type'] = 'empiric'
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
                                         callback=None)
@@ -571,6 +624,8 @@ def main():
             outdir = base_outdir + name + '/'
             basics.create_folder_structure(outdir)
             net = load_edge_list('/opt/datasets/enron/enron')
+            net.gp['type'] = net.new_graph_property('string')
+            net.gp['type'] = 'empiric'
             # net.vp['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int', line_groups=True)
             print 'vertices:', net.num_vertices()
             if multip:
