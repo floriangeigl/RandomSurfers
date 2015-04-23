@@ -32,6 +32,8 @@ np.set_printoptions(precision=2)
 import copy
 import matplotlib.cm as colormap
 import psutil
+font_size = 12
+matplotlib.rcParams.update({'font.size': font_size})
 
 
 def draw_graph(network, color, min_color=None, max_color=None, groups=None, sizep=None, colormap_name='bwr',
@@ -134,17 +136,61 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
     print 'done'
 
 
-def create_scatter(x, y, fname, c=None, cmap='blue', **kwargs):
+def shift_data_pos(data,shift_min=True):
+    data_lower_z = data < 0
+    if any(data_lower_z):
+        data += data[data_lower_z].min()
+    data_near_z = np.isclose(data, 0.)
+    if any(data_near_z):
+        if shift_min:
+            data += data[data > 0].min()
+        else:
+            data += np.finfo(float).eps
+    return data
+
+def create_scatter(x, y, fname, **kwargs):
     assert isinstance(x, tuple)
     assert isinstance(y, tuple)
-    df = pd.DataFrame(columns=[x[0]], data=x[1])
-    df[y[0]] = y[1]
-    if c is not None:
-        # df['color'] = c
-        pass
-    df.plot(x=x[0], y=y[0], kind='scatter',
-            alpha=1 / np.log10(len(df)), loglog=True, color='darkblue', lw=0, **kwargs)
+    x_label, x_data = x
+    y_label, y_data = y
+    x_data = np.array(x_data)
+    y_data = np.array(y_data)
+
+    y_data = shift_data_pos(y_data)
+    x_data = shift_data_pos(x_data)
+    #df = pd.DataFrame(columns=[x_label], data=x_data)
+    #df[y_label] = y_data
+    alpha = 1 / np.log10(len(y_data))
+    f, ax = plt.subplots()
+    pearson = stats.pearsonr(np.log10(x_data), np.log10(y_data))[0]
+    if not np.isnan(pearson):
+        ax.plot(None, lw=0, c='white', alpha=0., label='log10 pearson: ' + "%.2f" % pearson)
+    for i in range(3):
+        if i == 0:
+            filt = y_data > 1
+            label = 'increased'
+            c = 'red'
+        elif i == 1:
+            filt = np.isclose(y_data, 1.)
+            label = 'neutral'
+            c = 'white'
+        else:
+            filt = y_data < 1
+            label = 'decreased'
+            c = 'blue'
+        x_filt, y_filt = x_data[filt], y_data[filt]
+        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, color=c, lw=0, label=label, **kwargs)
     plt.axhline(1., color='red', alpha=.25, lw=2, ls='--')
+    y_min, y_max = y_data.min(), y_data.max()
+    x_min, x_max = x_data.min(), x_data.max()
+    ax.set_xlim([x_min, x_max])
+    ax.set_ylim([y_min, y_max])
+
+    plt.legend(loc='upper left')
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
     plt.savefig(fname, bbox_inches='tight')
     plt.close('all')
 
@@ -378,13 +424,13 @@ def self_sim_entropy(network, name, out_dir):
         stat_dist_ser = pd.Series(data=stat_dist)
         x = ('stationary value of adjacency', base_line_abs_vals)
         y = (key.replace('_', ' ') + ' difference', stat_dist_diff / 100)
-        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + key, c=weight)
+        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + key)
 
         x = ('popularity', np.array(deg_map.a))
-        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_popularity_' + key, c=weight)
+        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_popularity_' + key)
 
         x = ('betweenness', np.array(weights['betweenness']))
-        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_between_' + key, c=weight)
+        create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_between_' + key)
 
         # plot stationary distribution
         if False:
@@ -618,7 +664,8 @@ def main():
                                         callback=None)
             else:
                 self_sim_entropy(net, name=name, out_dir=outdir)
-            # enron ============================================
+
+            '''# enron ============================================
             print 'enron'.center(80, '=')
             name = 'enron'
             outdir = base_outdir + name + '/'
@@ -633,6 +680,7 @@ def main():
                                         callback=None)
             else:
                 self_sim_entropy(net, name=name, out_dir=outdir)
+            '''
 
 
     if multip:
