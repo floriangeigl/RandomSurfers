@@ -232,7 +232,7 @@ def main():
     base_outdir = 'output/'
     basics.create_folder_structure(base_outdir)
 
-    first_two_only = True  # quick test flag
+    first_two_only = False  # quick test flag
     test = False  # basic test flag
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
 
@@ -264,7 +264,7 @@ def main():
         name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
-        net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.05)
+        net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.1)
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         generator.analyse_graph(net, outdir + name, draw_net=False)
@@ -280,7 +280,7 @@ def main():
         name = 'sbm_weak_n' + str(num_nodes) + '_m' + str(num_links)
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
-        net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.5)
+        net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links, other_con=0.7)
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         generator.analyse_graph(net, outdir + name, draw_net=False)

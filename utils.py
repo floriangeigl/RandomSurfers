@@ -48,16 +48,19 @@ def get_ranking_df(ranking, weights):
 
 
 def shift_data_pos(data, shift_min=True):
+    changed_data = False
     data_lower_z = data < 0
     if any(data_lower_z):
         data += data[data_lower_z].min()
+        changed_data = True
     data_near_z = np.isclose(data, 0.)
     if any(data_near_z):
+        changed_data = True
         if shift_min:
             data += data[data > 0].min()
         else:
             data += np.finfo(float).eps
-    return data
+    return data, changed_data
 
 
 def gini_coeff(y):

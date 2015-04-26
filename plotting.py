@@ -27,13 +27,18 @@ def create_scatter(x, y, fname, **kwargs):
     x_data = np.array(x_data)
     y_data = np.array(y_data)
 
-    #y_data = utils.shift_data_pos(y_data)
-    #x_data = utils.shift_data_pos(x_data)
+    y_data, y_data_mod = utils.shift_data_pos(y_data)
+    x_data, x_data_mod = utils.shift_data_pos(x_data)
     #df = pd.DataFrame(columns=[x_label], data=x_data)
     #df[y_label] = y_data
     alpha = 1 / np.log10(len(y_data))
     f, ax = plt.subplots()
-    pearson = stats.pearsonr(np.log10(x_data), np.log10(y_data))[0]
+    x_data_log, y_data_log = np.log10(x_data), np.log10(y_data)
+    pearson = stats.pearsonr(x_data_log, y_data_log)[0]
+    if pearson > .2 or pearson < -.2:
+        coefs = np.polyfit(x_data_log, y_data_log, deg=1)
+    else:
+        coefs = None
     if not np.isnan(pearson):
         ax.plot(None, lw=0, c='white', alpha=0., label='log10 pearson: ' + "%.2f" % pearson)
     for i in range(3):
@@ -57,11 +62,27 @@ def create_scatter(x, y, fname, **kwargs):
     plt.axhline(1., color='red', alpha=.25, lw=2, ls='--')
     y_min, y_max = y_data.min(), y_data.max()
     x_min, x_max = x_data.min(), x_data.max()
+    if coefs is not None:
+        lin_space = np.linspace(np.log10(x_min), np.log10(x_max), 100)
+        y_log_space = (coefs[1] + lin_space * coefs[0])
+        ax.plot(10 ** lin_space, 10 ** y_log_space, lw=5, alpha=0.2, label='logarithmic fit', c='green')
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
-    plt.legend(loc='best')
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
+    if not np.isnan(pearson):
+        if np.isclose(pearson, 0.):
+            loc = 'best'
+        elif pearson > 0:
+            loc = 'upper left'
+        elif pearson < 0:
+            loc = 'upper right'
+        else:
+            loc = 'best'
+    else:
+        loc = 'best'
+
+    plt.legend(loc=loc)
+    plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
+    plt.ylabel(y_label + (' (shifted)' if y_data_mod else ''))
     ax.set_xscale('log')
     ax.set_yscale('log')
     plt.tight_layout()
@@ -142,7 +163,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
     color_pmap.set_2d_array(tmp.T)
     plt.switch_backend('cairo')
     f, ax = plt.subplots(figsize=(15, 15))
-    output_size = (output_size[0] * 0.8, output_size[1])
+    output_size = (output_size[0], output_size[1]*.8)  # make space for colorbar
     edge_alpha = 0.3 if network.num_vertices() < 1000 else 0.01
     pen_width = 0.8 if network.num_vertices() < 1000 else 0.1
     v_pen_color = [0., 0., 0., 1] if network.num_vertices() < 1000 else [0.0, 0.0, 0.0, edge_alpha]
@@ -165,6 +186,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
                 if non_zero_dig == 0:
                     break
         cbar.ax.set_yticklabels(tick_labels)
+        cbar.ax.tick_params(labelsize=20)
         #var = stats.tvar(orig_color)
         #cbar.set_label('')
     plt.axis('off')
