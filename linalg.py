@@ -23,18 +23,22 @@ def adj_matrix(G, nodelist):
     A = np.asarray(A)
     return np.transpose(A)
 
+
 def deg_vector(A):
     d = np.sum(A, axis=0)
     d[d == 0] = 1
     return d
+
 
 def deg_matrix(A):
     d = deg_vector(A)
     D = np.diag(d)
     return D
 
+
 def laplacian_matrix(A, D):
     return D - A
+
 
 def transition_matrix(M):
     n, n = M.shape
@@ -56,16 +60,19 @@ def leading_eigenvector(M):
         u = vc.real_part(v[:, l1index])
         return l[l1index].real, vc.normalize(u)
 
+
 def deg_matrix_inv(A):
     d = deg_vector(A)
     di = [1/float(a) for a in d]
     Di = np.diag(di)
     return Di
 
+
 def rwalk_matrix(A, D):
     Di = deg_matrix_inv(A)
     P = np.dot(A, Di)
     return P
+
 
 def katz_alpha(A):
     lm = lmax(A)
@@ -74,10 +81,12 @@ def katz_alpha(A):
     print "alpha%f"%alpha
     return alpha
 
+
 def katz_matrix(A, alpha):
     m, n = A.shape
     katz = np.eye(n) - alpha * A
     return katz
+
 
 def largest_eigenvalue_index(l):
     lreal = [a.real for a in l]
@@ -113,10 +122,12 @@ def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir=
         plt.close('all')
     return sigma
 
+
 def lmax(M):
     l,v = matrix_spectrum(M)
     lmax = l[0].real
     return lmax
+
 
 def matrix_spectrum(M, sparse=True, k=1):
     if sparse:
@@ -125,9 +136,11 @@ def matrix_spectrum(M, sparse=True, k=1):
         l, v = lalg.eig(M)
     return l, v
 
+
 def row_vector(M, index):
     x = M[index, :]
     return x
+
 
 def column_vector(M, index):
     x = M[:, index]
@@ -140,6 +153,7 @@ def number_of_links(A, undirected=True):
     else:
         return m
 
+
 def cosine_sim_matrix(A, undirected=True):
     sigma = np.zeros(A.shape)
     m, n = A.shape
@@ -151,10 +165,12 @@ def cosine_sim_matrix(A, undirected=True):
             sigma[i][j] = sim
     return sigma
 
+
 def katz_sim_matrix(A, alpha):
     katz = katz_matrix(A, alpha)
     sigma = lalg.inv(katz)
     return sigma
+
 
 def modularity_matrix(A):
     m = number_of_links(A)
@@ -163,6 +179,7 @@ def modularity_matrix(A):
     B = A - Dp
     B_max = deg_matrix(A) - Dp
     return B, B_max
+
 
 def rw_entropy_rate(M):
     n, n = M.shape
@@ -174,6 +191,7 @@ def rw_entropy_rate(M):
         if row_sum > 0:
             entropy += v[i] * stats.entropy(P[i, :], base=2)
     return entropy
+
 
 def degree_product_matrix(A):
     d = deg_vector(A)

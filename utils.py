@@ -10,7 +10,8 @@ from scipy.stats import poisson, powerlaw
 import operator
 import pandas as pd
 import numpy as np
-
+import psutil
+import os
 
 
 def graph_gen(self_con, other_con, nodes=100, groups=10):
@@ -44,6 +45,39 @@ def get_ranking_df(ranking, weights):
     data = [(val, vertex) for val, vertex in zip(weights, ranking)]
     df = pd.DataFrame(columns=['values', 'ranked_vertex'], data=data)
     return df
+
+
+def shift_data_pos(data, shift_min=True):
+    data_lower_z = data < 0
+    if any(data_lower_z):
+        data += data[data_lower_z].min()
+    data_near_z = np.isclose(data, 0.)
+    if any(data_near_z):
+        if shift_min:
+            data += data[data > 0].min()
+        else:
+            data += np.finfo(float).eps
+    return data
+
+
+def gini_coeff(y):
+    if not isinstance(y, np.ndarray):
+        y = np.array(y)
+    n = len(y)
+    if n <= 1:
+        return 0
+    y.sort()
+    y_sum = y.sum()
+    if np.isclose(y_sum, 0.0):
+        return 0.
+    gini = 1 - 2 / (n - 1) * (n - sum((i + 1) * yi for i, yi in enumerate(y)) / y_sum)
+    #print (y, gini)
+    return gini
+
+
+def get_memory_consumption_in_mb():
+    return psutil.Process(os.getpid()).get_memory_info()[0] / float(2 ** 20)
+
 
 class bcolors:
     prefix = '\33'
