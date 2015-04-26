@@ -516,42 +516,7 @@ def main():
     if first_two_only:
         multip = False
     worker_pool = multiprocessing.Pool(processes=14)
-    if test:
-        outdir = base_outdir + 'tests/'
-        basics.create_folder_structure(outdir)
-
-        print 'complete graph'.center(80, '=')
-        name = 'complete_graph_n50'
-        net = complete_graph(10)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
-        if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                    callback=None)
-        else:
-            self_sim_entropy(net, name=name, out_dir=outdir)
-
-        print 'sbm'.center(80, '=')
-        name = 'sbm_n10_m30'
-        net = generator.gen_stock_blockmodel(num_nodes=10, blocks=2, num_links=40, self_con=1, other_con=0.1)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
-        if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                    callback=None)
-        else:
-            self_sim_entropy(net, name=name, out_dir=outdir)
-
-        print 'price network'.center(80, '=')
-        name = 'price_net_n50_m1_g2_1'
-        net = price_network(30, m=2, gamma=1, directed=False)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
-        if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-                                    callback=None)
-        else:
-            self_sim_entropy(net, name=name, out_dir=outdir)
-
-        print 'quick tests done'.center(80, '=')
-    else:
+    if not test:
         num_links = 300
         num_nodes = 100
         num_blocks = 3
@@ -570,15 +535,6 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
-        #print 'complete graph'.center(80, '=')
-        #name = 'complete_graph_n' + str(num_nodes)
-        #net = complete_graph(num_nodes)
-        #generator.analyse_graph(net, outdir + name, draw_net=False)
-        #if multip:
-        #    worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-        #                            callback=None)
-        #else:
-        #    self_sim_entropy(net, name=name, out_dir=outdir)
 
         # strong sbm ============================================
         print 'sbm'.center(80, '=')
@@ -611,15 +567,6 @@ def main():
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
 
-        #print 'powerlaw'.center(80, '=')
-        #name = 'powerlaw_n' + str(num_nodes) + '_m' + str(num_links)
-        #net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=1, num_links=num_links)
-        #generator.analyse_graph(net, outdir + name, draw_net=False)
-        #if multip:
-        #    worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
-        #                            callback=None)
-        #else:
-        #    self_sim_entropy(net, name=name, out_dir=outdir)
         # price network ============================================
         print 'price network'.center(80, '=')
         name = 'price_net_n' + str(num_nodes) + '_m' + str(net.num_edges())
@@ -634,7 +581,7 @@ def main():
                                     callback=None)
         else:
             self_sim_entropy(net, name=name, out_dir=outdir)
-        if True:
+        if False:
             # wiki4schools ============================================
             print 'wiki4schools'.center(80, '=')
             name = 'wiki4schools'
@@ -680,7 +627,41 @@ def main():
             else:
                 self_sim_entropy(net, name=name, out_dir=outdir)
             '''
+    else:
+        outdir = base_outdir + 'tests/'
+        basics.create_folder_structure(outdir)
 
+        print 'complete graph'.center(80, '=')
+        name = 'complete_graph_n50'
+        net = complete_graph(10)
+        generator.analyse_graph(net, outdir + name, draw_net=False)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
+
+        print 'sbm'.center(80, '=')
+        name = 'sbm_n10_m30'
+        net = generator.gen_stock_blockmodel(num_nodes=10, blocks=2, num_links=40, self_con=1, other_con=0.1)
+        generator.analyse_graph(net, outdir + name, draw_net=False)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
+
+        print 'price network'.center(80, '=')
+        name = 'price_net_n50_m1_g2_1'
+        net = price_network(30, m=2, gamma=1, directed=False)
+        generator.analyse_graph(net, outdir + name, draw_net=False)
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                    callback=None)
+        else:
+            self_sim_entropy(net, name=name, out_dir=outdir)
+
+        print 'quick tests done'.center(80, '=')
 
     if multip:
         worker_pool.close()
