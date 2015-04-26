@@ -13,6 +13,7 @@ import utils
 import numpy as np
 from graph_tool.all import *
 import scipy.stats as stats
+import utils
 
 font_size = 12
 matplotlib.rcParams.update({'font.size': font_size})
@@ -65,7 +66,11 @@ def create_scatter(x, y, fname, **kwargs):
 
 
 def draw_graph(network, color, min_color=None, max_color=None, groups=None, sizep=None, colormap_name='bwr', min_vertex_size_shrinking_factor=4, output='graph.png', output_size=(15, 15), dpi=80, standardize=False, color_bar=True, **kwargs):
-    print 'draw graph ||',
+    output_splitted = output.rsplit('/', 1)[-1].split('_graph_')
+    net_name, prop_key = output_splitted[0], output_splitted[-1]
+    print_prefix = utils.color_string('[' + net_name + '] ') + '[' + prop_key + '] draw graph'
+    print print_prefix
+    print_prefix += ': '
     num_nodes = network.num_vertices()
     min_vertex_size_shrinking_factor = min_vertex_size_shrinking_factor
     if num_nodes < 10:
@@ -94,7 +99,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
 
             v_shape.a %= 14
         except KeyError:
-            print 'cannot find groups property:', groups, '||',
+            print print_prefix + 'cannot find groups property:', groups
             v_shape = 'circle'
 
     cmap = colormap.get_cmap(colormap_name)
@@ -109,6 +114,9 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
         color = c
     min_color = color.a.min() if min_color is None else min_color
     max_color = color.a.max() if max_color is None else max_color
+    if np.isclose(min_color, max_color):
+        min_color = 0
+        max_color = 2
 
     #orig_color = np.array(color.a)
     if standardize:
@@ -120,9 +128,9 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
         #color.a -= min_color
         #color.a /= max_color
         tmp = np.array(color.a)
-        tmp[tmp > 100] = 100 + (tmp[tmp > 100] / (max_color/100))
+        tmp[tmp > 1] = 1 + (tmp[tmp > 1] / (max_color/1))
         color.a = tmp
-        color.a /= 200
+        color.a /= 2
     if not output.endswith('.png'):
         output += '.png'
     color_pmap = network.new_vertex_property('vector<float>')
@@ -139,10 +147,10 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
                output_size=output_size, output=output, **kwargs)
     if color_bar:
         cmap = plt.cm.ScalarMappable(cmap=cmap)
-        cmap.set_array([0, 200])
+        cmap.set_array([0., 2.])
         cbar = f.colorbar(cmap, drawedges=False)
-        ticks = [0, 1.0, max_color / 100]
-        cbar.set_ticks([0, 100.0, 200.0])
+        ticks = [0, 1.0, max_color / 1]
+        cbar.set_ticks([0., 1., 2.])
         tick_labels = None
         non_zero_dig = 1
         for digi in range(10):
@@ -159,7 +167,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
     plt.savefig(output, bbox_inches='tight', dpi=dpi)
     plt.close('all')
     plt.switch_backend('Agg')
-    print 'done'
+    print print_prefix + 'done'
 
 
 def plot_stat_dist(ser, output_filename, **kwargs):

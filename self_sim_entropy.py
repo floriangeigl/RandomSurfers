@@ -18,6 +18,8 @@ import datetime
 import traceback
 import utils
 import network_matrix_tools
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 font_size = 12
 matplotlib.rcParams.update({'font.size': font_size})
@@ -26,7 +28,8 @@ np.set_printoptions(linewidth=225)
 
 
 def self_sim_entropy(network, name, out_dir):
-    mem_cons  = []
+    base_line_type = 'adjacency'
+    mem_cons = list()
     mem_cons.append(('start', utils.get_memory_consumption_in_mb()))
     adjacency_matrix = adjacency(network)
 
@@ -64,13 +67,14 @@ def self_sim_entropy(network, name, out_dir):
         weights['sigma_deg_corrected'] = lambda: katz_sim / np.array(deg_map.a)
         weights['cosine'] = lambda: network_matrix_tools.calc_cosine(adjacency_matrix, weight_direct_link=True)
         weights['betweenness'] = lambda: np.array(betweenness(network)[0].a)
-    mem_cons.append(('stored weight functions', utils.get_memory_consumption_in_mb()))
 
+    mem_cons.append(('stored weight functions', utils.get_memory_consumption_in_mb()))
     weights = {key.replace(' ', '_'): val for key, val in weights.iteritems()}
 
     entropy_df = pd.DataFrame()
     sort_df = []
-    print '[', name, '] calc graph-layout'
+    print_prefix = utils.color_string('[' + name + ']')
+    print print_prefix, 'calc graph-layout'
     try:
         pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
     except KeyError:
@@ -79,7 +83,7 @@ def self_sim_entropy(network, name, out_dir):
     corr_df = pd.DataFrame(columns=['deg'], data=deg_map.a)
     stat_distributions = {}
     for key, weight in sorted(weights.iteritems(), key=operator.itemgetter(0)):
-        print '[', name, '||', key, '] start calc'
+        print print_prefix, '[' + key + '] calc stat dist and entropy rate'
 
         # calc metric
         weight = weight()
@@ -89,7 +93,9 @@ def self_sim_entropy(network, name, out_dir):
             num_nans = np.isnan(weight).sum()
             num_infs = np.isinf(weight).sum()
             if num_nans > 0 or num_infs > 0:
-                print '[', name, '] ', key, ': shape:', weight.shape, '|replace nans(', num_nans, ') and infs (', num_infs, ') of metric with zero'
+                print print_prefix, '[' + key + ']:', utils.color_string(
+                    'shape:' + str(weight.shape) + '|replace nans(' + str(num_nans) + ') and infs (' + str(
+                        num_infs) + ') of metric with zero', type=utils.bcolor.RED)
                 weight[np.isnan(weight) | np.isinf(weight)] = 0
         if weight is None or len(weight.shape) == 1:
             weights[key] = weight
@@ -97,16 +103,22 @@ def self_sim_entropy(network, name, out_dir):
         #print 'weight', weight
         ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, weight)
         stat_distributions[key] = stat_dist
-        print '[', name, '||', key, '] entropy rate:', ent
+        print print_prefix, '[' + key + '] entropy rate:', ent
         entropy_df.at[0, key] = ent
         sort_df.append((key, ent))
-        #print 'draw graph:', out_dir + name + '_' + key
         corr_df[key] = stat_dist
         mem_cons.append(('after ' + key, utils.get_memory_consumption_in_mb()))
-    base_line_abs_vals = stat_distributions['adjacency']
-    #base_line = np.array([[1. / network.num_vertices()]])
-    base_line = base_line_abs_vals / 100  # /100 for percent
-    #vertex_size = deg_map
+    if base_line_type == 'adjacency':
+        base_line_abs_vals = stat_distributions['adjacency']
+    elif base_line_type == 'uniform':
+        base_line_abs_vals = np.array([[1. / network.num_vertices()]])
+    else:
+        print print_prefix, '[' + key + ']', utils.color_string(('unkown baseline type: ' + base_line_type).upper(),
+            utils.bcolors.RED)
+        exit()
+
+    #base_line = base_line_abs_vals / 100  # /100 for percent
+    base_line = base_line_abs_vals
     vertex_size = network.new_vertex_property('float')
     vertex_size.a = base_line
     min_stat_dist = min([min(i) for i in stat_distributions.values()])
@@ -122,14 +134,14 @@ def self_sim_entropy(network, name, out_dir):
     # plot all biased graphs and add biases to trapped plot
     for key, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
         stat_dist_diff = stat_dist / base_line
-        stat_dist_diff[np.isclose(stat_dist_diff, 100.0)] = 100.0
+        stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
         plotting.draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=deg_map,
                             groups='com', output=out_dir + name + '_graph_' + key, pos=pos)
         plt.close('all')
 
         stat_dist_ser = pd.Series(data=stat_dist)
         x = ('stationary value of adjacency', base_line_abs_vals)
-        y = (key.replace('_', ' ') + ' difference', stat_dist_diff / 100)
+        y = (key.replace('_', ' ') + ' difference', stat_dist_diff)
         plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + key)
 
         x = ('popularity', np.array(deg_map.a))
@@ -179,14 +191,13 @@ def self_sim_entropy(network, name, out_dir):
         plt.savefig(out_dir + name + '_scatter_matrix.png', bbox_tight=True)
         plt.close('all')
     except:
-        pass
-    #entropy_df.sort(axis=1, inplace=True)
+        print print_prefix, '[', key, ']', utils.color_string('plot scatter-matrix failed'.upper(), utils.bcolors.RED)
+
     sorted_keys, sorted_values = zip(*sorted(sort_df, key=lambda x: x[1], reverse=True))
     if len(set(sorted_values)) == 1:
         sorted_keys = sorted(sorted_keys)
     entropy_df = entropy_df[list(sorted_keys)]
-    print '[', name, '] entropy rates:'
-    print entropy_df
+    print print_prefix, ' entropy rates:\n', entropy_df
     ax = entropy_df.plot(kind='bar', label=[i.replace('_', ' ') for i in entropy_df.columns])
     min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
     ax.set_ylim([min_e * 0.99, max_e * 1.01])
@@ -200,6 +211,7 @@ def self_sim_entropy(network, name, out_dir):
     mem_df.plot(x='state', y='memory in MB', rot=45)
     plt.savefig(out_dir + name + '_mem_status.png', bbox_tight=True)
     plt.close('all')
+    print print_prefix, utils.color_string('>>all done<<', type=utils.bcolors.GREEN)
 
 
 def error_callback():
