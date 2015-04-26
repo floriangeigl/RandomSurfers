@@ -15,11 +15,9 @@ from graph_tool.all import *
 import scipy.stats as stats
 import utils
 
-font_size = 15
-matplotlib.rcParams.update({'font.size': font_size})
-
 
 def create_scatter(x, y, fname, **kwargs):
+    matplotlib.rcParams.update({'font.size': 15})
     assert isinstance(x, tuple)
     assert isinstance(y, tuple)
     x_label, x_data = x
@@ -58,7 +56,7 @@ def create_scatter(x, y, fname, **kwargs):
             c = 'blue'
             marker = 'v'
         x_filt, y_filt = x_data[filt], y_data[filt]
-        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, color=c, lw=0, label=label, marker=marker, **kwargs)
+        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=50, color=c, lw=0, label=label, marker=marker, **kwargs)
     plt.axhline(1., color='red', alpha=.25, lw=2, ls='--')
     y_min, y_max = y_data.min(), y_data.max()
     x_min, x_max = x_data.min(), x_data.max()
@@ -79,7 +77,7 @@ def create_scatter(x, y, fname, **kwargs):
             loc = 'best'
     else:
         loc = 'best'
-
+    loc = 'best'
     plt.legend(loc=loc)
     plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
     plt.ylabel(y_label + (' (shifted)' if y_data_mod else ''))
@@ -124,7 +122,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
 
             v_shape.a %= 14
         except KeyError:
-            print print_prefix + 'cannot find groups property:', groups
+            # print print_prefix + 'cannot find groups property:', groups
             v_shape = 'circle'
 
     cmap = colormap.get_cmap(colormap_name)
@@ -193,10 +191,11 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
     plt.savefig(output, bbox_tight=True, dpi=dpi)
     plt.close('all')
     plt.switch_backend('Agg')
-    print print_prefix + 'done'
+    # print print_prefix + 'done'
 
 
 def plot_stat_dist(ser, output_filename, **kwargs):
+    matplotlib.rcParams.update({'font.size': 15})
     assert isinstance(ser, pd.Series)
     ser.plot(kind='hist', **kwargs)
     # plt.title(key)
