@@ -52,6 +52,8 @@ def self_sim_entropy(network, name, out_dir):
         A_eigvector = np.load(fn + '_eigenvec')
         weights['eigenvector'] = lambda: A_eigvector
         weights['eigenvector_inverse'] = lambda: np.load(fn + '_eigenvector_inverse')
+        # test = utils.softmax(np.load(fn + '_eigenvector_inverse'), t=0.01)
+        # weights['test'] = lambda: test
         weights['sigma'] = lambda: np.load(fn + '_sigma')
         weights['sigma_deg_corrected'] = lambda: np.load(fn + '_sigma_deg_corrected')
         weights['cosine'] = lambda: np.load(fn + '_cosine')
@@ -62,6 +64,8 @@ def self_sim_entropy(network, name, out_dir):
         weights['adjacency'] = lambda: None
         weights['eigenvector'] = lambda: A_eigvector
         weights['eigenvector_inverse'] = lambda: 1 / A_eigvector
+        # test = utils.softmax(weights['eigenvector_inverse'](), t=0.01)
+        # weights['test'] = lambda: test
         katz_sim = network_matrix_tools.katz_sim_network(adjacency_matrix, A_eigvalue)
         weights['sigma'] = lambda: katz_sim
         weights['sigma_deg_corrected'] = lambda: katz_sim / np.array(deg_map.a)
@@ -182,13 +186,15 @@ def self_sim_entropy(network, name, out_dir):
     plt.xlabel('percent of nodes')
     plt.ylim([0, 1])
     plt.ylabel('cumulative sum of stationary distribution values')
-    plt.savefig(out_dir + name + '_trapped.png', bbox_tight=True)
+    plt.tight_layout()
+    plt.savefig(out_dir + name + '_trapped.png')
     plt.close('all')
 
     try:
         num_cols = len(corr_df.columns) * 3
         pd.scatter_matrix(corr_df, figsize=(num_cols, num_cols), diagonal='kde', range_padding=0.2, grid=True)
-        plt.savefig(out_dir + name + '_scatter_matrix.png', bbox_tight=True)
+        plt.tight_layout()
+        plt.savefig(out_dir + name + '_scatter_matrix.png')
         plt.close('all')
     except:
         print print_prefix, '[', key, ']', utils.color_string('plot scatter-matrix failed'.upper(), utils.bcolors.RED)
@@ -200,21 +206,23 @@ def self_sim_entropy(network, name, out_dir):
     print print_prefix, ' entropy rates:\n', entropy_df
     ax = entropy_df.plot(kind='bar', label=[i.replace('_', ' ') for i in entropy_df.columns])
     min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
-    ax.set_ylim([min_e * 0.99, max_e * 1.01])
-    ax.spines['top'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(True)
-    ax.spines['right'].set_visible(True)
+    ax.set_ylim([min_e * 0.95, max_e * 1.01])
+    #ax.spines['top'].set_visible(False)
+    #ax.spines['bottom'].set_visible(False)
+    #ax.spines['left'].set_visible(True)
+    #ax.spines['right'].set_visible(True)
     plt.ylabel('entropy rate')
     plt.legend(loc='upper left')
     plt.xlim([-1, 0.4])
     plt.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off')
-    plt.savefig(out_dir + name + '_entropy_rates.png', bbox_tight=True)
+    plt.tight_layout()
+    plt.savefig(out_dir + name + '_entropy_rates.png')
     plt.close('all')
     mem_df = pd.DataFrame(columns=['state', 'memory in MB'], data=mem_cons)
     mem_df.plot(x='state', y='memory in MB', rot=45, label='MB')
     plt.title('memory consumption')
-    plt.savefig(out_dir + name + '_mem_status.png', bbox_tight=True)
+    plt.tight_layout()
+    plt.savefig(out_dir + name + '_mem_status.png')
     plt.close('all')
     print print_prefix, utils.color_string('>>all done<<', type=utils.bcolors.GREEN)
 
@@ -232,9 +240,9 @@ def main():
         multip = False
     worker_pool = multiprocessing.Pool(processes=14)
     if not test:
-        num_links = 300
-        num_nodes = 100
-        num_blocks = 3
+        num_links = 1200
+        num_nodes = 300
+        num_blocks = 5
 
         # karate ninja bam bam ============================================
         print 'karate'.center(80, '=')

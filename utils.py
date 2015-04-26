@@ -113,3 +113,11 @@ def color_string(string, type=bcolors.BLUE):
 
 def get_colors_list():
     return [bcolors.BLUE, bcolors.CYAN, bcolors.GREEN, bcolors.LIGHT_RED, bcolors.PURPLE]
+
+
+def softmax(w, t=1.0):
+    dist = np.array(w, dtype='float')
+    dist /= dist.sum()
+    dist = np.exp(dist / t)
+    dist /= dist.sum()
+    return dist

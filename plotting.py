@@ -40,17 +40,20 @@ def create_scatter(x, y, fname, **kwargs):
         if i == 0:
             filt = y_data > 1
             label = 'increased'
+            marker = '^'
             c = 'red'
         elif i == 1:
             filt = np.isclose(y_data, 1.)
             label = 'neutral'
-            c = 'white'
+            c = 'gray'
+            marker = 'o'
         else:
             filt = y_data < 1
             label = 'decreased'
             c = 'blue'
+            marker = 'v'
         x_filt, y_filt = x_data[filt], y_data[filt]
-        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, color=c, lw=0.1, label=label, **kwargs)
+        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, color=c, lw=0, label=label, marker=marker, **kwargs)
     plt.axhline(1., color='red', alpha=.25, lw=2, ls='--')
     y_min, y_max = y_data.min(), y_data.max()
     x_min, x_max = x_data.min(), x_data.max()
@@ -61,7 +64,8 @@ def create_scatter(x, y, fname, **kwargs):
     plt.ylabel(y_label)
     ax.set_xscale('log')
     ax.set_yscale('log')
-    plt.savefig(fname, bbox_inches='tight')
+    plt.tight_layout()
+    plt.savefig(fname)
     plt.close('all')
 
 
@@ -164,7 +168,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
         #var = stats.tvar(orig_color)
         #cbar.set_label('')
     plt.axis('off')
-    plt.savefig(output, bbox_inches='tight', dpi=dpi)
+    plt.savefig(output, bbox_tight=True, dpi=dpi)
     plt.close('all')
     plt.switch_backend('Agg')
     print print_prefix + 'done'
@@ -176,5 +180,6 @@ def plot_stat_dist(ser, output_filename, **kwargs):
     # plt.title(key)
     plt.ylabel('#nodes')
     plt.xlabel('stationary value')
-    plt.savefig(output_filename, bbox_tight=True)
+    plt.tight_layout()
+    plt.savefig(output_filename)
     plt.close('all')
