@@ -26,7 +26,7 @@ import multiprocessing
 import datetime
 import traceback
 np.set_printoptions(linewidth=225)
-import seaborn
+#import seaborn
 from timeit import Timer
 np.set_printoptions(precision=2)
 import copy
@@ -185,8 +185,7 @@ def create_scatter(x, y, fname, **kwargs):
     x_min, x_max = x_data.min(), x_data.max()
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
-
-    plt.legend(loc='upper left')
+    plt.legend(loc='best')
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     ax.set_xscale('log')
