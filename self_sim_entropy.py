@@ -24,8 +24,15 @@ np.set_printoptions(linewidth=225)
 
 def self_sim_entropy(network, name, out_dir):
     base_line_type = 'adjacency'
+    print_prefix = utils.color_string('[' + name + ']')
     mem_cons = list()
     mem_cons.append(('start', utils.get_memory_consumption_in_mb()))
+    try:
+        com_prop = network.vp['com']
+        mod = modularity(network, com_prop)
+        print print_prefix + ' newman modularity:', mod
+    except KeyError:
+        print print_prefix + ' newman modularity:', 'no com mapping'
     adjacency_matrix = adjacency(network)
 
     deg_map = network.degree_property_map('total')
@@ -72,7 +79,7 @@ def self_sim_entropy(network, name, out_dir):
 
     entropy_df = pd.DataFrame()
     sort_df = []
-    print_prefix = utils.color_string('[' + name + ']')
+
     print print_prefix, 'calc graph-layout'
     try:
         pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
