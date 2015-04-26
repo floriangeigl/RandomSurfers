@@ -147,8 +147,8 @@ def self_sim_entropy(network, name, out_dir):
         x = ('popularity', np.array(deg_map.a))
         plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_popularity_' + key)
 
-        x = ('betweenness', np.array(weights['betweenness']))
-        plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_between_' + key)
+        #x = ('betweenness', np.array(weights['betweenness']))
+        #plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_between_' + key)
 
         # plot stationary distribution
         if False:
@@ -201,6 +201,10 @@ def self_sim_entropy(network, name, out_dir):
     ax = entropy_df.plot(kind='bar', label=[i.replace('_', ' ') for i in entropy_df.columns])
     min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
     ax.set_ylim([min_e * 0.99, max_e * 1.01])
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(True)
+    ax.spines['right'].set_visible(True)
     plt.ylabel('entropy rate')
     plt.legend(loc='upper left')
     plt.xlim([-1, 0.4])
@@ -208,16 +212,11 @@ def self_sim_entropy(network, name, out_dir):
     plt.savefig(out_dir + name + '_entropy_rates.png', bbox_tight=True)
     plt.close('all')
     mem_df = pd.DataFrame(columns=['state', 'memory in MB'], data=mem_cons)
-    mem_df.plot(x='state', y='memory in MB', rot=45)
+    mem_df.plot(x='state', y='memory in MB', rot=45, label='MB')
+    plt.title('memory consumption')
     plt.savefig(out_dir + name + '_mem_status.png', bbox_tight=True)
     plt.close('all')
     print print_prefix, utils.color_string('>>all done<<', type=utils.bcolors.GREEN)
-
-
-def error_callback():
-    sys.stdout.flush()
-    print 'ERROR'.center(80, '!'), '\n', traceback.format_exc(), '\n', ''.center(80, '!')
-    sys.stdout.flush()
 
 
 def main():

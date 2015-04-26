@@ -15,7 +15,7 @@ from graph_tool.all import *
 import scipy.stats as stats
 import utils
 
-font_size = 12
+font_size = 15
 matplotlib.rcParams.update({'font.size': font_size})
 
 
@@ -27,8 +27,8 @@ def create_scatter(x, y, fname, **kwargs):
     x_data = np.array(x_data)
     y_data = np.array(y_data)
 
-    y_data = utils.shift_data_pos(y_data)
-    x_data = utils.shift_data_pos(x_data)
+    #y_data = utils.shift_data_pos(y_data)
+    #x_data = utils.shift_data_pos(x_data)
     #df = pd.DataFrame(columns=[x_label], data=x_data)
     #df[y_label] = y_data
     alpha = 1 / np.log10(len(y_data))
@@ -50,7 +50,7 @@ def create_scatter(x, y, fname, **kwargs):
             label = 'decreased'
             c = 'blue'
         x_filt, y_filt = x_data[filt], y_data[filt]
-        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, color=c, lw=0, label=label, **kwargs)
+        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, color=c, lw=0.1, label=label, **kwargs)
     plt.axhline(1., color='red', alpha=.25, lw=2, ls='--')
     y_min, y_max = y_data.min(), y_data.max()
     x_min, x_max = x_data.min(), x_data.max()
