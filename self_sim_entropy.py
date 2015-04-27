@@ -13,6 +13,7 @@ import pandas as pd
 import operator
 import utils
 import network_matrix_tools
+from collections import defaultdict
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
@@ -60,6 +61,7 @@ def self_sim_entropy(network, name, out_dir):
         weights['sigma_deg_corrected'] = lambda: np.load(fn + '_sigma_deg_corrected')
         weights['cosine'] = lambda: np.load(fn + '_cosine')
         weights['betweenness'] = lambda: np.load(fn + '_betweenness')
+        weights['inv_deg'] = lambda: 1. / np.array(deg_map.a)
     else:
         A_eigvalue, A_eigvector = eigenvector(network)
         A_eigvector = A_eigvector.a
@@ -73,6 +75,7 @@ def self_sim_entropy(network, name, out_dir):
         weights['sigma_deg_corrected'] = lambda: katz_sim / np.array(deg_map.a)
         weights['cosine'] = lambda: network_matrix_tools.calc_cosine(adjacency_matrix, weight_direct_link=True)
         weights['betweenness'] = lambda: np.array(betweenness(network)[0].a)
+        weights['inv_deg'] = lambda: 1. / np.array(deg_map.a)
 
     mem_cons.append(('stored weight functions', utils.get_memory_consumption_in_mb()))
     weights = {key.replace(' ', '_'): val for key, val in weights.iteritems()}
@@ -211,7 +214,7 @@ def self_sim_entropy(network, name, out_dir):
     if len(set(sorted_values)) == 1:
         sorted_keys = sorted(sorted_keys)
     entropy_df = entropy_df[list(sorted_keys)]
-    bar_colors = dict()
+    bar_colors = defaultdict(lambda:'pink')
     bar_colors['adjacency'] = 'lightgray'
     bar_colors['betweenness'] = 'magenta'
     bar_colors['sigma'] = 'darkblue'
@@ -219,6 +222,7 @@ def self_sim_entropy(network, name, out_dir):
     bar_colors['cosine'] = 'green'
     bar_colors['eigenvector'] = 'darkred'
     bar_colors['eigenvector_inverse'] = 'red'
+    bar_colors['inv_deg'] = 'yellow'
     bar_colors = {idx: bar_colors[key] for idx, key in enumerate(sorted_keys)}
     # print 'bar colors:', bar_colors
 

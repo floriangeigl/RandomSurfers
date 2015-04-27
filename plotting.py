@@ -32,13 +32,18 @@ def create_scatter(x, y, fname, **kwargs):
     alpha = 1 / np.log10(len(y_data))
     f, ax = plt.subplots()
     x_data_log, y_data_log = np.log10(x_data), np.log10(y_data)
-    pearson = stats.pearsonr(x_data_log, y_data_log)[0]
-    if pearson > .2 or pearson < -.2:
+    logarithmic_pearson = stats.pearsonr(x_data_log, y_data_log)[0]
+    pearson = stats.pearsonr(x_data, y_data)[0]
+
+    if logarithmic_pearson > .2 or logarithmic_pearson < -.2:
         coefs = np.polyfit(x_data_log, y_data_log, deg=1)
+        ax.plot(None, lw=0, c='white', alpha=0., label='k: ' + "%.2f" % coefs[1])
     else:
         coefs = None
-    if not np.isnan(pearson):
-        ax.plot(None, lw=0, c='white', alpha=0., label='log10 pearson: ' + "%.2f" % pearson)
+    if not np.isnan(logarithmic_pearson):
+        ax.plot(None, lw=0, c='white', alpha=0., label='log10 pearson: ' + "%.2f" % logarithmic_pearson)
+        ax.plot(None, lw=0, c='white', alpha=0., label='pearson: ' + "%.2f" % pearson)
+
     for i in range(3):
         if i == 0:
             filt = y_data > 1
@@ -66,12 +71,12 @@ def create_scatter(x, y, fname, **kwargs):
         ax.plot(10 ** lin_space, 10 ** y_log_space, lw=5, alpha=0.2, label='logarithmic fit', c='green')
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
-    if not np.isnan(pearson):
-        if np.isclose(pearson, 0.):
+    if not np.isnan(logarithmic_pearson):
+        if np.isclose(logarithmic_pearson, 0.):
             loc = 'best'
-        elif pearson > 0:
+        elif logarithmic_pearson > 0:
             loc = 'upper left'
-        elif pearson < 0:
+        elif logarithmic_pearson < 0:
             loc = 'upper right'
         else:
             loc = 'best'

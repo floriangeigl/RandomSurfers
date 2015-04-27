@@ -115,7 +115,7 @@ def main():
         name = 'price_net_n' + str(num_nodes) + '_m' + str(net.num_edges())
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
-        net = price_network(num_nodes, m=2, gamma=1, directed=False)
+        net = price_network(num_nodes, m=4, gamma=1, directed=False)
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         if multip:
@@ -223,7 +223,7 @@ def main():
     gini_dfs = [i['gini'] for i in results]
     gini_dfs = gini_dfs[0].join(gini_dfs[1:])
     print 'gini coefs\n', gini_dfs
-    gini_dfs.to_csv(outdir + 'gini_coefs.csv')
+    gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
 
 
 if __name__ == '__main__':
