@@ -14,6 +14,28 @@ import random
 import os
 
 
+def gini_to_table(df, out_fname, digits=2):
+    col_names = list()
+    # col_names.append(list(filter(lambda x: 'karate' in x, df.columns))[0])
+    col_names.append(list(filter(lambda x: 'price_net_n' in x, df.columns))[0])
+    col_names.append(list(filter(lambda x: 'sbm_weak_n' in x, df.columns))[0])
+    col_names.append(list(filter(lambda x: 'sbm_strong_n' in x, df.columns))[0])
+    print col_names
+    digits = str(digits)
+    with open(out_fname,'w') as f:
+        f.write('\t'.join(col_names))
+        for name, data in df[col_names].iterrows():
+            name = name.replace('_', ' ')
+            name = name.replace('inverse', 'inv.').replace('corrected', 'cor.')
+            # name = name.split()
+            # name = ' '.join([i[:3] + '.' for i in name])
+            line_string = name + ' & $' + '$ & $'.join(
+                map(lambda x: str("{:2." + str(digits) + "f}").format(x), list(data))) + '$ \\\\'
+            print line_string
+            line_string += '\n'
+            f.write(line_string)
+
+
 def write_network_properties(network, net_name, out_filename):
     with open(out_filename, 'a') as f:
         f.write('=' * 80)
@@ -224,6 +246,8 @@ def main():
     gini_dfs = gini_dfs[0].join(gini_dfs[1:])
     print 'gini coefs\n', gini_dfs
     gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
+    gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2)
+
 
 
 if __name__ == '__main__':

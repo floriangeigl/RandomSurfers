@@ -180,7 +180,7 @@ def self_sim_entropy(network, name, out_dir):
     uniform = np.array([1]*len(trapped_df))
     gcoef = utils.gini_coeff(uniform)
     gini_coef_df.at[key, name] = gcoef
-    key += ' gc:' + ('%.4f' % gcoef)
+    key += ' gc:' + ('%.2f' % gcoef)
     trapped_df[key] = uniform.cumsum()
     trapped_df[key] /= trapped_df[key].max()
 
