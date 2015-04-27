@@ -23,7 +23,7 @@ def gini_to_table(df, out_fname, digits=2):
     print col_names
     digits = str(digits)
     with open(out_fname,'w') as f:
-        f.write('\t'.join(col_names))
+        f.write('\t'.join(col_names) + '\n')
         for name, data in df[col_names].iterrows():
             name = name.replace('_', ' ')
             name = name.replace('inverse', 'inv.').replace('corrected', 'cor.')
