@@ -256,7 +256,7 @@ def self_sim_entropy(network, name, out_dir):
 
     print print_prefix, ' entropy rates:\n', entropy_df
     matplotlib.rcParams.update({'font.size': 15})
-    entropy_df.columns = [i.replace('_', ' ') for i in entropy_df.columns]
+    #entropy_df.columns = [i.replace('_', ' ') for i in entropy_df.columns]
     ax = entropy_df.plot(kind='bar', color=bar_colors, alpha=0.9)
     entropy_df.to_pickle(out_data_dir + name + '_entropy.df')
     min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
