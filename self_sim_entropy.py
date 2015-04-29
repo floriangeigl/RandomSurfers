@@ -26,7 +26,9 @@ np.set_printoptions(linewidth=225)
 
 def self_sim_entropy(network, name, out_dir):
     base_line_type = 'adjacency'
-    out_data_dir = out_dir + 'data/'
+    out_data_dir = out_dir.rsplit('/', 2)[0] + '/data/'
+    print '='*80
+    print out_data_dir
     if not os.path.isdir(out_data_dir):
         os.mkdir(out_data_dir)
     print_prefix = utils.color_string('[' + name + ']')
@@ -44,10 +46,10 @@ def self_sim_entropy(network, name, out_dir):
     name_to_legend['adjacency'] = 'A'
     name_to_legend['betweenness'] = 'B'
     name_to_legend['cosine'] = 'cos'
-    name_to_legend['eigenvector inverse'] = '$v_1^{-1}$'
-    name_to_legend['inv deg'] = '$k^{-1}$'
+    name_to_legend['eigenvector_inverse'] = '$v_1^{-1}$'
+    name_to_legend['inv_deg'] = '$k^{-1}$'
     name_to_legend['sigma'] = '$\\sigma$'
-    name_to_legend['sigma deg corrected'] = '$\\sigma_{dc}$'
+    name_to_legend['sigma_deg_corrected'] = '$\\sigma_{dc}$'
 
     deg_map = network.degree_property_map('total')
     weights = dict()
@@ -67,28 +69,28 @@ def self_sim_entropy(network, name, out_dir):
             np.array(betweenness(network)[0].a).dump(fn + '_betweenness')
         A_eigvector = np.load(fn + '_eigenvec')
         weights['eigenvector'] = lambda: A_eigvector
-        weights['eigenvector inverse'] = lambda: np.load(fn + '_eigenvector_inverse')
+        weights['eigenvector_inverse'] = lambda: np.load(fn + '_eigenvector_inverse')
         # test = utils.softmax(np.load(fn + '_eigenvector_inverse'), t=0.01)
         # weights['test'] = lambda: test
         weights['sigma'] = lambda: np.load(fn + '_sigma')
-        weights['sigma deg corrected'] = lambda: np.load(fn + '_sigma_deg_corrected')
+        weights['sigma_deg_corrected'] = lambda: np.load(fn + '_sigma_deg_corrected')
         weights['cosine'] = lambda: np.load(fn + '_cosine')
         weights['betweenness'] = lambda: np.load(fn + '_betweenness')
-        weights['inv deg'] = lambda: 1. / np.array(deg_map.a)
+        weights['inv_deg'] = lambda: 1. / np.array(deg_map.a)
     else:
         A_eigvalue, A_eigvector = eigenvector(network)
         A_eigvector = A_eigvector.a
         weights['adjacency'] = lambda: None
         weights['eigenvector'] = lambda: A_eigvector
-        weights['eigenvector inverse'] = lambda: 1 / A_eigvector
+        weights['eigenvector_inverse'] = lambda: 1 / A_eigvector
         # test = utils.softmax(weights['eigenvector_inverse'](), t=0.01)
         # weights['test'] = lambda: test
         katz_sim = network_matrix_tools.katz_sim_network(adjacency_matrix, A_eigvalue)
         weights['sigma'] = lambda: katz_sim
-        weights['sigma deg corrected'] = lambda: katz_sim / np.array(deg_map.a)
+        weights['sigma_deg_corrected'] = lambda: katz_sim / np.array(deg_map.a)
         weights['cosine'] = lambda: network_matrix_tools.calc_cosine(adjacency_matrix, weight_direct_link=True)
         weights['betweenness'] = lambda: np.array(betweenness(network)[0].a)
-        weights['inv deg'] = lambda: 1. / np.array(deg_map.a)
+        weights['inv_deg'] = lambda: 1. / np.array(deg_map.a)
 
     mem_cons.append(('stored weight functions', utils.get_memory_consumption_in_mb()))
     #weights = {key.replace(' ', '_'): val for key, val in weights.iteritems()}
@@ -247,8 +249,8 @@ def self_sim_entropy(network, name, out_dir):
     bar_colors['sigma_deg_corrected'] = 'blue'
     bar_colors['cosine'] = 'green'
     bar_colors['eigenvector'] = 'darkred'
-    bar_colors['eigenvector inverse'] = 'red'
-    bar_colors['inv deg'] = 'yellow'
+    bar_colors['eigenvector_inverse'] = 'red'
+    bar_colors['inv_deg'] = 'yellow'
     bar_colors = {idx: bar_colors[key] for idx, key in enumerate(sorted_keys)}
     # print 'bar colors:', bar_colors
 
