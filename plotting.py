@@ -61,14 +61,14 @@ def create_scatter(x, y, fname, **kwargs):
             c = 'blue'
             marker = 'v'
         x_filt, y_filt = x_data[filt], y_data[filt]
-        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=50, color=c, lw=0, label=label, marker=marker, **kwargs)
+        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=70, color=c, lw=0, label=label, marker=marker, **kwargs)
     plt.axhline(1., color='red', alpha=.25, lw=2, ls='--')
     y_min, y_max = y_data.min(), y_data.max()
     x_min, x_max = x_data.min(), x_data.max()
     if coefs is not None:
         lin_space = np.linspace(np.log10(x_min), np.log10(x_max), 100)
         y_log_space = (coefs[1] + lin_space * coefs[0])
-        ax.plot(10 ** lin_space, 10 ** y_log_space, lw=5, alpha=0.2, label='logarithmic fit', c='green')
+        ax.plot(10 ** lin_space, 10 ** y_log_space, lw=4, alpha=0.9, label='logarithmic fit', c='green')
     ax.set_xlim([x_min, x_max])
     ax.set_ylim([y_min, y_max])
     if not np.isnan(logarithmic_pearson):
@@ -132,6 +132,10 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
 
     cmap = colormap.get_cmap(colormap_name)
     color = color.copy()
+    v_shape = network.new_vertex_property('int')
+    v_shape.a = np.array(
+        [0 if np.isclose(color[int(v)], 1.) else (1 if color[int(v)] > 1. else 4) for v in network.vertices()],
+        dtype='int')
 
 
     try:

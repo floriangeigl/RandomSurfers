@@ -247,6 +247,8 @@ def main():
     print 'gini coefs\n', gini_dfs
     gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
     gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2)
+    import filter_output
+
 
 
 
