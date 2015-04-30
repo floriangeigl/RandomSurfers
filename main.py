@@ -148,7 +148,28 @@ def main():
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
 
-        if False:
+        if True:
+            empiric_data_dir = '/opt/datasets/'
+            empiric_data_sets = ['thinkgeek']
+            empiric_data_sets.append('getdigital')
+            empiric_data_sets.append('milan_spiele')
+            for name in empiric_data_sets:
+                print name.center(80, '=')
+                fname = empiric_data_dir + name + '/' + name + '.gt'
+                outdir = base_outdir + name + '/'
+                basics.create_folder_structure(outdir)
+                net = load_graph(fname)
+                net.gp['type'] = net.new_graph_property('string')
+                net.gp['type'] = 'empiric'
+                if multip:
+                    worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                                            callback=async_callback)
+                else:
+                    results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+                write_network_properties(net, name, network_prop_file)
+                generator.analyse_graph(net, outdir + name, draw_net=False)
+
+            '''
             # wiki4schools ============================================
             print 'wiki4schools'.center(80, '=')
             name = 'wiki4schools'
@@ -183,7 +204,7 @@ def main():
             write_network_properties(net, name, network_prop_file)
             generator.analyse_graph(net, outdir + name, draw_net=False)
 
-            '''# enron ============================================
+            # enron ============================================
             print 'enron'.center(80, '=')
             name = 'enron'
             outdir = base_outdir + name + '/'
