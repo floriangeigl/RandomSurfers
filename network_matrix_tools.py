@@ -61,7 +61,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
     else:
         # needs copy
         weighted_trans = adjacency_matrix
-    weighted_trans = normalize_mat(weighted_trans)
+    # weighted_trans = normalize_mat(weighted_trans)
     stat_dist = stationary_dist(weighted_trans)
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
 
