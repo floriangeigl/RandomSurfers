@@ -62,7 +62,7 @@ def self_sim_entropy(network, name, out_dir):
             A_eigvector.dump(fn + '_eigenvec')
             (1 / A_eigvector).dump(fn + '_eigenvector_inverse')
 
-            katz_sim = network_matrix_tools.katz_sim_network(network, largest_eigenvalue=A_eigvalue)
+            katz_sim = network_matrix_tools.katz_sim_network(adjacency_matrix, largest_eigenvalue=A_eigvalue)
             katz_sim.dump(fn + '_sigma')
             (katz_sim / np.array(deg_map.a)).dump(fn + '_sigma_deg_corrected')
             network_matrix_tools.calc_cosine(adjacency_matrix, weight_direct_link=True).dump(fn + '_cosine')
