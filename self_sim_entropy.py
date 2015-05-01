@@ -56,16 +56,22 @@ def self_sim_entropy(network, name, out_dir):
     if network.gp['type'] == 'empiric':
         fn = network.gp['filename']
         weights['adjacency'] = lambda: None
-        if not os.path.isfile(fn + '_eigenvec'):
+        A_eigvalue = None
+        if not os.path.isfile(fn + '_eigenvec') or not (os.path.isfile(fn + '_eigenvector_inverse')):
             A_eigvalue, A_eigvector = eigenvector(network)
             A_eigvector = np.array(A_eigvector.a)
             A_eigvector.dump(fn + '_eigenvec')
             (1 / A_eigvector).dump(fn + '_eigenvector_inverse')
 
+        if not os.path.isfile(fn + '_sigma') or not (os.path.isfile(fn + '_sigma_deg_corrected')):
+            if A_eigvalue is None:
+                A_eigvalue, A_eigvector = eigenvector(network)
             katz_sim = network_matrix_tools.katz_sim_network(adjacency_matrix, largest_eigenvalue=A_eigvalue)
             katz_sim.dump(fn + '_sigma')
             (katz_sim / np.array(deg_map.a)).dump(fn + '_sigma_deg_corrected')
+        if not os.path.isfile(fn + '_cosine'):
             network_matrix_tools.calc_cosine(adjacency_matrix, weight_direct_link=True).dump(fn + '_cosine')
+        if not os.path.isfile(fn + '_betweenness'):
             np.array(betweenness(network)[0].a).dump(fn + '_betweenness')
         A_eigvector = np.load(fn + '_eigenvec')
         weights['eigenvector'] = lambda: A_eigvector
@@ -79,7 +85,7 @@ def self_sim_entropy(network, name, out_dir):
         weights['inv_deg'] = lambda: 1. / np.array(deg_map.a)
     else:
         A_eigvalue, A_eigvector = eigenvector(network)
-        A_eigvector = A_eigvector.a
+        A_eigvector = np.array(A_eigvector.a)
         weights['adjacency'] = lambda: None
         weights['eigenvector'] = lambda: A_eigvector
         weights['eigenvector_inverse'] = lambda: 1 / A_eigvector
@@ -108,7 +114,7 @@ def self_sim_entropy(network, name, out_dir):
     stat_distributions = {}
     network.save(out_dir+name+'.gt')
     for key, weight in sorted(weights.iteritems(), key=operator.itemgetter(0)):
-        print print_prefix, '[' + key + '] calc stat dist and entropy rate'
+        print print_prefix, '[' + key + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges()
 
         # calc metric
         weight = weight()

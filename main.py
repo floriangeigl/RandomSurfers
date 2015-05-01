@@ -63,8 +63,7 @@ def main():
     base_outdir = 'output/'
     basics.create_folder_structure(base_outdir)
 
-    first_two_only = False  # quick test flag
-    test = False  # basic test flag
+    first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     synthetic = True
     empiric = True
