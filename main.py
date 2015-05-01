@@ -85,7 +85,6 @@ def main():
     if os.path.isfile(network_prop_file):
         os.remove(network_prop_file)
 
-
     num_links = 1200
     num_nodes = 300
     num_blocks = 5
@@ -99,7 +98,9 @@ def main():
     net.gp['type'] = net.new_graph_property('string')
     net.gp['type'] = 'empiric'
     if multip:
-        worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q}, callback=async_callback)
+        worker_pool.apply_async(self_sim_entropy, args=(net,),
+                                kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
+                                callback=async_callback)
     else:
         results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
     write_network_properties(net, name, network_prop_file)
