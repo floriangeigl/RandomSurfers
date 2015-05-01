@@ -301,9 +301,11 @@ def self_sim_entropy(network, name, out_dir):
         results['gini'] = gini_coef_df
         return results
     except:
-        with open(out_dir + name + '_error.log', 'r') as f:
-            f.write(str(datetime.datetime.now()).center(100, '='))
-            f.write(str(traceback.format_exc()))
+        error_msg = str(traceback.format_exc())
+        print error_msg
+        with open(out_dir + name + '_error.log', 'w') as f:
+            f.write(str(datetime.datetime.now()).center(100, '=') + '\n')
+            f.write(error_msg + '\n')
         return None
 
 
