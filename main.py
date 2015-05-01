@@ -12,6 +12,8 @@ import numpy as np
 from graph_tool.all import *
 import random
 import os
+import time
+import utils
 
 
 def gini_to_table(df, out_fname, digits=2):
@@ -71,6 +73,8 @@ def main():
         multip = False
     worker_pool = multiprocessing.Pool(processes=14)
     results = list()
+    if multip:
+        error_q = multiprocessing.Queue()
     async_callback = results.append
     network_prop_file = base_outdir + 'network_properties.txt'
     if os.path.isfile(network_prop_file):
@@ -90,7 +94,7 @@ def main():
     net.gp['type'] = net.new_graph_property('string')
     net.gp['type'] = 'empiric'
     if multip:
-        worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+        worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
                                 callback=async_callback)
     else:
         results.append(self_sim_entropy(net, name=name, out_dir=outdir))
@@ -107,7 +111,7 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
                                     callback=async_callback)
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir))
@@ -126,7 +130,7 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
                                     callback=async_callback)
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir))
@@ -142,7 +146,7 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
                                     callback=async_callback)
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir))
@@ -169,7 +173,7 @@ def main():
             outdir = base_outdir + name + '/'
             basics.create_folder_structure(outdir)
             if multip:
-                worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+                worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
                                         callback=async_callback)
             else:
                 results.append(self_sim_entropy(net, name=name, out_dir=outdir))
@@ -187,7 +191,7 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'empiric'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
                                     callback=async_callback)
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir))
@@ -204,7 +208,7 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'empiric'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
                                     callback=async_callback)
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir))
@@ -222,7 +226,7 @@ def main():
         # net.vp['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int', line_groups=True)
         print 'vertices:', net.num_vertices()
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
                                     callback=async_callback)
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir))
@@ -240,8 +244,17 @@ def main():
     gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
     gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2)
     import filter_output
-
-
+    time.sleep(5)
+    c = 0
+    while error_q.qsize() > 0 and c < 100:
+        c += 1
+        print 'Error'.center(80, '-')
+        try:
+            q_elem = error_q.get(timeout=1)
+            print utils.color_string('[' + str(q_elem[0]) + ']')
+            print q_elem[-1]
+        except multiprocessing.Queue.Empty:
+            break
 
 
 if __name__ == '__main__':

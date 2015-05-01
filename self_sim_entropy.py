@@ -17,6 +17,7 @@ from collections import defaultdict
 import scipy
 import traceback
 import datetime
+import multiprocessing as mp
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
@@ -26,7 +27,7 @@ np.set_printoptions(precision=2)
 np.set_printoptions(linewidth=225)
 
 
-def self_sim_entropy(network, name, out_dir):
+def self_sim_entropy(network, name, out_dir, error_q=None):
     try:
         base_line_type = 'adjacency'
         out_data_dir = out_dir.rsplit('/', 2)[0] + '/data/'
@@ -303,6 +304,8 @@ def self_sim_entropy(network, name, out_dir):
     except:
         error_msg = str(traceback.format_exc())
         print error_msg
+        if error_q is not None and isinstance(error_q, mp.Queue):
+            error_q.put((name, error_msg))
         with open(out_dir + name + '_error.log', 'w') as f:
             f.write(str(datetime.datetime.now()).center(100, '=') + '\n')
             f.write(error_msg + '\n')
