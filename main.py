@@ -164,8 +164,8 @@ def main():
     if empiric:
         empiric_data_dir = '/opt/datasets/'
         empiric_data_sets = list()
-        #empiric_data_sets.append('thinkgeek')
-        #empiric_data_sets.append('getdigital')
+        empiric_data_sets.append('thinkgeek')
+        empiric_data_sets.append('getdigital')
         empiric_data_sets.append('milan_spiele')
         for name in empiric_data_sets:
             print name.center(80, '=')
