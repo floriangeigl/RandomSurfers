@@ -65,7 +65,7 @@ def main():
 
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    synthetic = True
+    synthetic = False
     empiric = True
     if first_two_only:
         multip = False
@@ -151,8 +151,9 @@ def main():
 
     if empiric:
         empiric_data_dir = '/opt/datasets/'
-        empiric_data_sets = ['thinkgeek']
-        empiric_data_sets.append('getdigital')
+        empiric_data_sets = []
+        # empiric_data_sets.append('thinkgeek')
+        # empiric_data_sets.append('getdigital')
         empiric_data_sets.append('milan_spiele')
         for name in empiric_data_sets:
             print name.center(80, '=')
@@ -232,6 +233,7 @@ def main():
     if multip:
         worker_pool.close()
         worker_pool.join()
+    results = filter(lambda x: isinstance(x, dict), results)
     gini_dfs = [i['gini'] for i in results]
     gini_dfs = gini_dfs[0].join(gini_dfs[1:])
     print 'gini coefs\n', gini_dfs
