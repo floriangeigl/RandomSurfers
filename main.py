@@ -158,6 +158,9 @@ def main():
             print name.center(80, '=')
             fname = empiric_data_dir + name + '/' + name + '.gt'
             net = load_graph(fname)
+            l = label_largest_component(net, directed=True)
+            net.set_vertex_filter(l)
+            net.purge_vertices()
             net.gp['filename'] = net.new_graph_property('string')
             net.gp['filename'] = fname
             net.gp['type'] = net.new_graph_property('string')
