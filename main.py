@@ -65,7 +65,7 @@ def main():
 
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    synthetic = False
+    synthetic = True
     empiric = True
     if first_two_only:
         multip = False
@@ -151,9 +151,9 @@ def main():
 
     if empiric:
         empiric_data_dir = '/opt/datasets/'
-        empiric_data_sets = []
-        # empiric_data_sets.append('thinkgeek')
-        # empiric_data_sets.append('getdigital')
+        empiric_data_sets = list()
+        empiric_data_sets.append('thinkgeek')
+        empiric_data_sets.append('getdigital')
         empiric_data_sets.append('milan_spiele')
         for name in empiric_data_sets:
             print name.center(80, '=')
