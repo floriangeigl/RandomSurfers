@@ -27,7 +27,102 @@ np.set_printoptions(precision=2)
 np.set_printoptions(linewidth=225)
 
 
-def self_sim_entropy(network, name, out_dir, error_q=None):
+def try_dump(data, filename):
+    try:
+        data.dump(filename)
+        return True
+    except SystemError:
+        return False
+
+
+def calc_bias(filename, biasname, data_dict, dump=True):
+    dump_filename = filename + '_' + biasname
+    loaded = False
+    if biasname == 'adjacency':
+        return None
+    elif biasname == 'eigenvector':
+        try:
+            A_eigvector = np.load(dump_filename)
+            loaded = True
+        except IOError:
+            try:
+                A_eigvalue = data_dict['eigval']
+                A_eigvector = data_dict['eigvec']
+            except KeyError:
+                A_eigvalue, A_eigvector = eigenvector(data_dict['net'])
+                A_eigvalue = np.float(A_eigvalue)
+                A_eigvector = np.array(A_eigvector.a)
+                data_dict['eigval'] = A_eigvalue
+                data_dict['eigvec'] = A_eigvector
+        if dump and not loaded:
+            try_dump(A_eigvector, dump_filename)
+        return A_eigvector
+    elif biasname == 'eigenvector_inverse':
+        try:
+            A_eigvector = np.load(dump_filename)
+            loaded = True
+        except IOError:
+            try:
+                A_eigvector = data_dict['eigvec']
+            except KeyError:
+                _ = calc_bias(filename, 'eigenvec', data_dict, dump=dump)
+                A_eigvector = data_dict['eigvec']
+        A_eigvector_inf = 1. / A_eigvector
+        if dump and not loaded:
+            try_dump(A_eigvector_inf, dump_filename)
+        return A_eigvector_inf
+    elif biasname == 'sigma':
+        try:
+            sigma = np.load(dump_filename)
+            loaded = True
+        except IOError:
+            try:
+                A_eigvalue = data_dict['eigval']
+            except KeyError:
+                _ = calc_bias(filename, 'eigenvector', data_dict, dump=dump)
+                A_eigvalue = data_dict['eigval']
+            sigma = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue)
+        if dump and not loaded:
+            try_dump(sigma, dump_filename)
+        return sigma
+    elif biasname == 'sigma_deg_corrected':
+        try:
+            sigma_deg_cor = np.load(dump_filename)
+            loaded = True
+        except IOError:
+            sigma_deg_cor = calc_bias(filename, 'sigma', data_dict, dump=dump) / np.array(
+                data_dict['net'].degree_property_map('total').a)
+        if dump and not loaded:
+            try_dump(sigma_deg_cor, dump_filename)
+        return sigma_deg_cor
+    elif biasname == 'cosine':
+        try:
+            cos = np.load(dump_filename)
+            loaded = True
+        except IOError:
+            cos = network_matrix_tools.calc_cosine(data_dict['adj'], weight_direct_link=True)
+        if dump and not loaded:
+            try_dump(cos, dump_filename)
+        return cos
+    elif biasname == 'betweenness':
+        try:
+            bet = np.load(dump_filename)
+            loaded = True
+        except IOError:
+            bet = np.array(betweenness(data_dict['net'])[0].a)
+        if dump and not loaded:
+            try_dump(bet, dump_filename)
+        return bet
+    elif biasname == 'deg':
+        return np.array(data_dict['net'].degree_property_map('total').a)
+    elif biasname == 'inv_deg':
+        return 1. / calc_bias(filename, 'deg', data_dict, dump=dump)
+    else:
+        print 'unknown bias:', biasname
+        exit()
+
+
+def self_sim_entropy(network, name, out_dir, biases, error_q):
     try:
         base_line_type = 'adjacency'
         out_data_dir = out_dir.rsplit('/', 2)[0] + '/data/'
@@ -54,65 +149,10 @@ def self_sim_entropy(network, name, out_dir, error_q=None):
         name_to_legend['sigma_deg_corrected'] = '$\\sigma_{dc}$'
 
         deg_map = network.degree_property_map('total')
-        weights = dict()
         if network.gp['type'] == 'empiric':
-            fn = network.gp['filename']
-            weights['adjacency'] = lambda: None
-            A_eigvalue = None
-            if not os.path.isfile(fn + '_eigenvec') or not (os.path.isfile(fn + '_eigenvector_inverse')):
-                print print_prefix, 'calc eigenvector'
-                A_eigvalue, A_eigvector = eigenvector(network)
-                A_eigvector = np.array(A_eigvector.a)
-                A_eigvector.dump(fn + '_eigenvec')
-                (1 / A_eigvector).dump(fn + '_eigenvector_inverse')
-
-            if not os.path.isfile(fn + '_sigma') or not (os.path.isfile(fn + '_sigma_deg_corrected')):
-                if A_eigvalue is None:
-                    print print_prefix, 'calc eigenvector'
-                    A_eigvalue, A_eigvector = eigenvector(network)
-                print print_prefix, 'calc sigma'
-                katz_sim = network_matrix_tools.katz_sim_network(adjacency_matrix, largest_eigenvalue=A_eigvalue)
-                katz_sim.dump(fn + '_sigma')
-                print print_prefix, 'calc sigma degree corrected'
-                (katz_sim / np.array(deg_map.a)).dump(fn + '_sigma_deg_corrected')
-            if not os.path.isfile(fn + '_cosine'):
-                print print_prefix, 'calc cosine'
-                network_matrix_tools.calc_cosine(adjacency_matrix, weight_direct_link=True).dump(fn + '_cosine')
-            if not os.path.isfile(fn + '_betweenness'):
-                print print_prefix, 'calc betweenness'
-                np.array(betweenness(network)[0].a).dump(fn + '_betweenness')
-            A_eigvector = np.load(fn + '_eigenvec')
-            weights['eigenvector'] = lambda: A_eigvector
-            weights['eigenvector_inverse'] = lambda: np.load(fn + '_eigenvector_inverse')
-            # test = utils.softmax(np.load(fn + '_eigenvector_inverse'), t=0.01)
-            # weights['test'] = lambda: test
-            weights['sigma'] = lambda: np.load(fn + '_sigma')
-            weights['sigma_deg_corrected'] = lambda: np.load(fn + '_sigma_deg_corrected')
-            weights['cosine'] = lambda: np.load(fn + '_cosine')
-            weights['betweenness'] = lambda: np.load(fn + '_betweenness')
-            weights['inv_deg'] = lambda: 1. / np.array(deg_map.a)
+            dump_base_fn = network.gp['filename']
         else:
-            print print_prefix, 'calc eigenvector'
-            A_eigvalue, A_eigvector = eigenvector(network)
-            A_eigvector = np.array(A_eigvector.a)
-            weights['adjacency'] = lambda: None
-            weights['eigenvector'] = lambda: A_eigvector
-            weights['eigenvector_inverse'] = lambda: 1 / A_eigvector
-            # test = utils.softmax(weights['eigenvector_inverse'](), t=0.01)
-            # weights['test'] = lambda: test
-            print print_prefix, 'calc sigma'
-            katz_sim = network_matrix_tools.katz_sim_network(adjacency_matrix, A_eigvalue)
-            weights['sigma'] = lambda: katz_sim
-            print print_prefix, 'calc sigma degree corrected'
-            weights['sigma_deg_corrected'] = lambda: katz_sim / np.array(deg_map.a)
-            print print_prefix, 'calc cosine'
-            weights['cosine'] = lambda: network_matrix_tools.calc_cosine(adjacency_matrix, weight_direct_link=True)
-            print print_prefix, 'calc betweenness'
-            weights['betweenness'] = lambda: np.array(betweenness(network)[0].a)
-            weights['inv_deg'] = lambda: 1. / np.array(deg_map.a)
-
-        mem_cons.append(('stored weight functions', utils.get_memory_consumption_in_mb()))
-        #weights = {key.replace(' ', '_'): val for key, val in weights.iteritems()}
+            dump_base_fn = 'synthetic'
 
         entropy_df = pd.DataFrame()
         sort_df = []
@@ -126,39 +166,40 @@ def self_sim_entropy(network, name, out_dir, error_q=None):
         corr_df = pd.DataFrame(columns=['deg'], data=deg_map.a)
         stat_distributions = {}
         network.save(out_dir+name+'.gt')
-        for key, weight in sorted(weights.iteritems(), key=operator.itemgetter(0)):
-            print print_prefix, '[' + key + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
+        data_dict = dict()
+        data_dict['net'] = network
+        data_dict['adj'] = adjacency(network)
+        for bias_name in sorted(biases):
+            print print_prefix, '[' + bias_name + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
 
             # calc metric
-            weight = weight()
+            bias = calc_bias(dump_base_fn, bias_name, data_dict, dump=network.gp['type'] == 'empiric')
 
             # replace infs and nans with zero
-            if weight is not None:
-                num_nans = np.isnan(weight).sum()
-                num_infs = np.isinf(weight).sum()
+            if bias is not None:
+                num_nans = np.isnan(bias).sum()
+                num_infs = np.isinf(bias).sum()
                 if num_nans > 0 or num_infs > 0:
-                    print print_prefix, '[' + key + ']:', utils.color_string(
-                        'shape:' + str(weight.shape) + '|replace nans(' + str(num_nans) + ') and infs (' + str(
+                    print print_prefix, '[' + bias_name + ']:', utils.color_string(
+                        'shape:' + str(bias.shape) + '|replace nans(' + str(num_nans) + ') and infs (' + str(
                             num_infs) + ') of metric with zero', type=utils.bcolor.RED)
-                    weight[np.isnan(weight) | np.isinf(weight)] = 0
-            if weight is None or len(weight.shape) == 1:
-                weights[key] = weight
+                    bias[np.isnan(bias) | np.isinf(bias)] = 0
 
-            #print 'weight', weight
+            #print 'bias', bias
             assert scipy.sparse.issparse(adjacency_matrix)
-            ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, weight)
-            stat_distributions[key] = stat_dist
-            #print print_prefix, '[' + key + '] entropy rate:', ent
-            entropy_df.at[0, key] = ent
-            sort_df.append((key, ent))
-            corr_df[key] = stat_dist
-            mem_cons.append(('after ' + key, utils.get_memory_consumption_in_mb()))
+            ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias)
+            stat_distributions[bias_name] = stat_dist
+            #print print_prefix, '[' + biasname + '] entropy rate:', ent
+            entropy_df.at[0, bias_name] = ent
+            sort_df.append((bias_name, ent))
+            corr_df[bias_name] = stat_dist
+            mem_cons.append(('after ' + bias_name, utils.get_memory_consumption_in_mb()))
         if base_line_type == 'adjacency':
             base_line_abs_vals = stat_distributions['adjacency']
         elif base_line_type == 'uniform':
             base_line_abs_vals = np.array([[1. / network.num_vertices()]])
         else:
-            print print_prefix, '[' + key + ']', utils.color_string(('unkown baseline type: ' + base_line_type).upper(),
+            print print_prefix, '[' + bias_name + ']', utils.color_string(('unkown baseline type: ' + base_line_type).upper(),
                 utils.bcolors.RED)
             exit()
 
@@ -181,17 +222,17 @@ def self_sim_entropy(network, name, out_dir, error_q=None):
         gini_coef_df = pd.DataFrame()
 
         # plot all biased graphs and add biases to trapped plot
-        for key, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
+        for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
             plotting.draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=vertex_size,
-                                groups='com', output=out_dir + name + '_graph_' + key, pos=pos)
+                                groups='com', output=out_dir + name + '_graph_' + bias_name, pos=pos)
             plt.close('all')
 
             # create scatter plot
             x = ('stationary value of adjacency', base_line_abs_vals)
-            y = (name_to_legend[key] + ' prob. ratio', stat_dist_diff)
-            plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + key)
+            y = (name_to_legend[bias_name] + ' prob. ratio', stat_dist_diff)
+            plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + bias_name)
 
             # x = ('popularity', np.array(deg_map.a))
             # plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_popularity_' + key)
@@ -202,30 +243,30 @@ def self_sim_entropy(network, name, out_dir, error_q=None):
             # plot stationary distribution
             stat_dist_ser = pd.Series(data=stat_dist)
             if False:
-                stat_dist_fname = out_dir + name + '_stat_dist_' + key + '.png'
+                stat_dist_fname = out_dir + name + '_stat_dist_' + bias_name + '.png'
                 plotting.plot_stat_dist(stat_dist_ser, stat_dist_fname, bins=25, range=(min_stat_dist, max_stat_dist), lw=0)
 
             # calc gini coef and trapped values
             stat_dist_ser.sort(ascending=True)
             stat_dist_ser.index = range(len(stat_dist_ser))
             gcoef = utils.gini_coeff(stat_dist_ser)
-            gini_coef_df.at[key, name] = gcoef
-            key = name_to_legend[key]
-            key += ' $' + ('%.4f' % gcoef) + '$'
-            trapped_df[key] = stat_dist_ser.cumsum()
-            trapped_df[key] /= trapped_df[key].max()
-            mem_cons.append(('after ' + key + ' scatter', utils.get_memory_consumption_in_mb()))
+            gini_coef_df.at[bias_name, name] = gcoef
+            bias_name = name_to_legend[bias_name]
+            bias_name += ' $' + ('%.4f' % gcoef) + '$'
+            trapped_df[bias_name] = stat_dist_ser.cumsum()
+            trapped_df[bias_name] /= trapped_df[bias_name].max()
+            mem_cons.append(('after ' + bias_name + ' scatter', utils.get_memory_consumption_in_mb()))
 
         # add uniform to trapped plot
         if False:
-            key = 'unif.'
+            bias_name = 'unif.'
             uniform = np.array([1]*len(trapped_df))
             gcoef = utils.gini_coeff(uniform)
-            gini_coef_df.at[key, name] = gcoef
+            gini_coef_df.at[bias_name, name] = gcoef
             # key = name_to_legend[key]
-            key += ' $' + ('%.2f' % gcoef) + '$'
-            trapped_df[key] = uniform.cumsum()
-            trapped_df[key] /= trapped_df[key].max()
+            bias_name += ' $' + ('%.2f' % gcoef) + '$'
+            trapped_df[bias_name] = uniform.cumsum()
+            trapped_df[bias_name] /= trapped_df[bias_name].max()
         gini_coef_df.to_pickle(out_data_dir + name + '_gini.df')
         trapped_df.index += 1
         trapped_df['idx'] = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
@@ -306,6 +347,8 @@ def self_sim_entropy(network, name, out_dir, error_q=None):
         print error_msg
         if error_q is not None and isinstance(error_q, mp.Queue):
             error_q.put((name, error_msg))
+        else:
+            exit()
         with open(out_dir + name + '_error.log', 'w') as f:
             f.write(str(datetime.datetime.now()).center(100, '=') + '\n')
             f.write(error_msg + '\n')

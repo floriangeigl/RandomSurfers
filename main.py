@@ -12,6 +12,7 @@ import numpy as np
 from graph_tool.all import *
 import random
 import os
+
 import utils
 
 
@@ -65,15 +66,20 @@ def main():
     basics.create_folder_structure(base_outdir)
 
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
-    multip = False  # multiprocessing flag (warning: suppresses exceptions)
-    synthetic = False
+    multip = True  # multiprocessing flag (warning: suppresses exceptions)
+    synthetic = True
     empiric = True
     if first_two_only:
         multip = False
     worker_pool = multiprocessing.Pool(processes=14)
     results = list()
+    biases = ['adjacency', 'eigenvector', 'eigenvector_inverse', 'sigma', 'sigma_deg_corrected', 'cosine', 'betweenness',
+              'inv_deg']
     if multip:
-        error_q = multiprocessing.Queue()
+        manager = multiprocessing.Manager()
+        error_q = manager.Queue()
+    else:
+        error_q = None
     async_callback = results.append
     network_prop_file = base_outdir + 'network_properties.txt'
     if os.path.isfile(network_prop_file):
@@ -93,10 +99,9 @@ def main():
     net.gp['type'] = net.new_graph_property('string')
     net.gp['type'] = 'empiric'
     if multip:
-        worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
-                                callback=async_callback)
+        worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q}, callback=async_callback)
     else:
-        results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+        results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
     write_network_properties(net, name, network_prop_file)
     generator.analyse_graph(net, outdir + name, draw_net=False)
 
@@ -110,10 +115,11 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
+            worker_pool.apply_async(self_sim_entropy, args=(net,),
+                                    kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
                                     callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+            results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
 
@@ -129,10 +135,11 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
+            worker_pool.apply_async(self_sim_entropy, args=(net,),
+                                    kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
                                     callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+            results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
 
@@ -145,10 +152,11 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'synthetic'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
+            worker_pool.apply_async(self_sim_entropy, args=(net,),
+                                    kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
                                     callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+            results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
 
@@ -172,10 +180,11 @@ def main():
             outdir = base_outdir + name + '/'
             basics.create_folder_structure(outdir)
             if multip:
-                worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
+                worker_pool.apply_async(self_sim_entropy, args=(net,),
+                                        kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
                                         callback=async_callback)
             else:
-                results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+                results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
             write_network_properties(net, name, network_prop_file)
             generator.analyse_graph(net, outdir + name, draw_net=False)
 
@@ -190,10 +199,10 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'empiric'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
                                     callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+            results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
 
@@ -207,10 +216,10 @@ def main():
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'empiric'
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
                                     callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+            results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
 
@@ -225,10 +234,10 @@ def main():
         # net.vp['com'] = load_property(net, '/opt/datasets/youtube/youtube_com', type='int', line_groups=True)
         print 'vertices:', net.num_vertices()
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'error_q': error_q},
+            worker_pool.apply_async(self_sim_entropy, args=(net,), kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
                                     callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=name, out_dir=outdir))
+            results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
         '''
@@ -236,6 +245,14 @@ def main():
     if multip:
         worker_pool.close()
         worker_pool.join()
+    while True:
+        try:
+            q_elem = error_q.get(timeout=3)
+            print 'Error'.center(80, '-')
+            print utils.color_string('[' + str(q_elem[0]) + ']')
+            print q_elem[-1]
+        except:
+            break
     results = filter(lambda x: isinstance(x, dict), results)
     gini_dfs = [i['gini'] for i in results]
     gini_dfs = gini_dfs[0].join(gini_dfs[1:])
@@ -243,14 +260,7 @@ def main():
     gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
     gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2)
     import filter_output
-    while True:
-        print 'Error'.center(80, '-')
-        try:
-            q_elem = error_q.get(timeout=10)
-            print utils.color_string('[' + str(q_elem[0]) + ']')
-            print q_elem[-1]
-        except multiprocessing.Queue.Empty:
-            break
+
 
 
 if __name__ == '__main__':
