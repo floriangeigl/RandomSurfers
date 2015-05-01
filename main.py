@@ -12,7 +12,6 @@ import numpy as np
 from graph_tool.all import *
 import random
 import os
-import time
 import utils
 
 
@@ -244,13 +243,10 @@ def main():
     gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
     gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2)
     import filter_output
-    time.sleep(5)
-    c = 0
-    while error_q.qsize() > 0 and c < 100:
-        c += 1
+    while True:
         print 'Error'.center(80, '-')
         try:
-            q_elem = error_q.get(timeout=1)
+            q_elem = error_q.get(timeout=10)
             print utils.color_string('[' + str(q_elem[0]) + ']')
             print q_elem[-1]
         except multiprocessing.Queue.Empty:

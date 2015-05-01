@@ -94,14 +94,17 @@ def largest_eigenvalue_index(l):
     return l1index
 
 
-def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir='output/', plot=True):
-    print 'calc katz iterative'
-    print 'alpha:', alpha
+def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir='output/', plot=True, verbose=0):
+    if verbose > 0:
+        print 'calc katz iterative'
+        print 'alpha:', alpha
     sigma = np.identity(A.shape[0])
     A_max, alphas = list(), list()
     orig_A = A.copy()
     orig_alpha = alpha
     for i in range(1, max_iter):
+        if verbose > 1:
+            print 'iter:', i
         if i > 1:
             A *= orig_A
             alpha *= orig_alpha
@@ -110,7 +113,8 @@ def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir=
         A_max.append(M.max())
         alphas.append(alpha)
         if np.allclose(A_max[-1], 0):
-            print '\tbreak after length:', i
+            if verbose > 0:
+                print '\tbreak after length:', i
             break
     if plot:
         df = pd.DataFrame(columns=['max matrix value'], data=A_max)

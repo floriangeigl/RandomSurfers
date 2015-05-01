@@ -25,9 +25,12 @@ def calc_cosine(adjacency_matrix, weight_direct_link=False):
 def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99):
     alpha_max = 1.0 / largest_eigenvalue
     alpha = gamma * alpha_max
-    katz = la.katz_matrix(adjacency_matrix, alpha)
-    sigma = lalg.inv(katz)
-    return sigma
+    try:
+        katz = la.katz_matrix(adjacency_matrix, alpha)
+        sigma = lalg.inv(katz)
+        return sigma
+    except:
+        return la.calc_katz_iterative(adjacency_matrix, alpha, plot=False)
 
 
 def stationary_dist(transition_matrix):
