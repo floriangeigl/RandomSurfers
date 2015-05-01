@@ -126,7 +126,7 @@ def self_sim_entropy(network, name, out_dir):
         stat_distributions = {}
         network.save(out_dir+name+'.gt')
         for key, weight in sorted(weights.iteritems(), key=operator.itemgetter(0)):
-            print print_prefix, '[' + key + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges()
+            print print_prefix, '[' + key + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
 
             # calc metric
             weight = weight()
