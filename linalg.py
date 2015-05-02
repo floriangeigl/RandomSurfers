@@ -67,6 +67,8 @@ def leading_eigenvector(M, symetric=False, overwrite_a=False, tol=0, max_inc_tol
                 else:
                     tol += np.finfo(float).eps
                     print 'no eigvec found. retry with increased tol:', tol
+                    return leading_eigenvector(M, symetric=symetric, tol=tol, max_inc_tol_fac=max_inc_tol_fac,
+                                               overwrite_a=overwrite_a)
     else:
         l, v = lalg.eig(M, overwrite_a=overwrite_a)
         l1index = largest_eigenvalue_index(l)
