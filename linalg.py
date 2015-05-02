@@ -49,11 +49,16 @@ def transition_matrix(M):
 
 def leading_eigenvector(M):
     if scipy.sparse.issparse(M):
-         l, v = linalg.eigs(M, k=1, which="LR")
-         l1 = l.real
-         u = [x[0] for x in v]
-         u = vc.real_part(u)
-         return l1, vc.normalize(u)
+        while True:
+            try:
+                print 'sparse eigv'
+                l, v = linalg.eigs(M, k=1, which="LR", maxiter=np.iinfo(np.int32).max)
+                l1 = l.real
+                u = [x[0] for x in v]
+                u = vc.real_part(u)
+                return l1, vc.normalize(u)
+            except:
+                print 'no eigvec found. retry...'
     else:
         l, v = lalg.eig(M)
         l1index = largest_eigenvalue_index(l)

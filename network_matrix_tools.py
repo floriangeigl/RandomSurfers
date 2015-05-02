@@ -3,6 +3,8 @@ import scipy
 import linalg as la
 import scipy.linalg as lalg
 import scipy.stats as stats
+from scipy.sparse import lil_matrix, csr_matrix
+from sklearn.preprocessing import normalize
 
 
 def calc_common_neigh(adjacency_matrix):
@@ -34,7 +36,8 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99):
 
 
 def stationary_dist(transition_matrix):
-    transition_matrix = normalize_mat(transition_matrix)
+    #transition_matrix = normalize_mat(transition_matrix)
+    transition_matrix = normalize(transition_matrix, norm='l1', axis=1, copy=True)
     stat_dist = la.leading_eigenvector(transition_matrix.T)[1]
     assert np.all(np.isfinite(stat_dist))
     while not np.isclose(stat_dist.sum(), 1.):
@@ -62,10 +65,16 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
     if bias is not None:
         if np.count_nonzero(bias) == 0:
             print '\tall zero matrix as weights -> use ones-matrix'
-            bias = np.ones(bias.shape, dtype='float')
-        weighted_trans = adjacency_matrix.multiply(bias)
+            bias = lil_matrix(np.ones(bias.shape, dtype='float'))
+        if len(bias.shape) == 1:
+            bias_m = lil_matrix(adjacency_matrix.shape)
+            bias_m.setdiag(bias)
+            bias = bias_m
+            weighted_trans = adjacency_matrix * bias.tocsr()
+        elif len(bias.shape) == 2:
+            weighted_trans = adjacency_matrix.multiply(lil_matrix(bias))
     else:
-        weighted_trans = adjacency_matrix
+        weighted_trans = adjacency_matrix.copy()
     # weighted_trans = normalize_mat(weighted_trans)
     stat_dist = stationary_dist(weighted_trans)
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
