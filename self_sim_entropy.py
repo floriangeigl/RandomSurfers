@@ -61,15 +61,14 @@ def calc_bias(filename, biasname, data_dict, dump=True):
         return A_eigvector
     elif biasname == 'eigenvector_inverse':
         try:
-            A_eigvector = np.load(dump_filename)
+            A_eigvector_inf = np.load(dump_filename)
             loaded = True
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
             except KeyError:
-                _ = calc_bias(filename, 'eigenvec', data_dict, dump=dump)
-                A_eigvector = data_dict['eigvec']
-        A_eigvector_inf = 1. / A_eigvector
+                A_eigvector = calc_bias(filename, 'eigenvector', data_dict, dump=dump)
+            A_eigvector_inf = 1. / A_eigvector
         if dump and not loaded:
             try_dump(A_eigvector_inf, dump_filename)
         return A_eigvector_inf
