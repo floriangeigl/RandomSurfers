@@ -48,19 +48,23 @@ def transition_matrix(M):
 
 
 def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=5):
+    print 'largest eigenvec',
     if scipy.sparse.issparse(M):
         while True:
             try:
-                print 'sparse eigv'
+                print 'sprase',
                 if symmetric:
-                    l, v = linalg.eigsh(M, k=1, which="LR")
+                    print 'symmetric'
+                    l, v = linalg.eigsh(M, k=1, which="LA")
                 else:
+                    print 'asymmetric'
                     l, v = linalg.eigs(M, k=1, which="LR")  # maxiter=100) #np.iinfo(np.int32).max)
                 l1 = l.real
                 u = [x[0] for x in v]
                 u = np.array(vc.real_part(u))
                 return l1, vc.normalize(u)
             except Exception as e:
+                print traceback.format_exc()
                 if tol > np.finfo(float).eps * max_inc_tol_fac:
                     print 'no eigvec found. retry dense mode...'
                     return leading_eigenvector(M.todense(), overwrite_a=True)
@@ -70,9 +74,12 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                     return leading_eigenvector(M, symmetric=symmetric, tol=tol, max_inc_tol_fac=max_inc_tol_fac,
                                                overwrite_a=overwrite_a)
     else:
+        print 'dense',
         if symmetric:
+            print 'symmetric'
             l, v = lalg.eigh(M, overwrite_a=overwrite_a)
         else:
+            print 'asymmetric'
             l, v = lalg.eig(M, overwrite_a=overwrite_a)
         l1index = largest_eigenvalue_index(l)
         u = np.array(vc.real_part(v[:, l1index]))
