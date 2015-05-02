@@ -52,7 +52,7 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
     if scipy.sparse.issparse(M):
         while True:
             try:
-                print 'sprase',
+                print 'sparse',
                 if symmetric:
                     print 'symmetric'
                     l, v = linalg.eigsh(M, k=1, which="LA")

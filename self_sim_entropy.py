@@ -126,7 +126,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
 
 def self_sim_entropy(network, name, out_dir, biases, error_q):
     try:
-        if True:
+        if False:
             network.set_directed(False)
             remove_parallel_edges(network)
             remove_self_loops(network)

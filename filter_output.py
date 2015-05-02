@@ -18,7 +18,8 @@ os.system('mkdir -p ' + ent_rate_dir)
 os.system('mkdir -p ' + steady_state_hist_dir)
 os.system('mkdir -p ' + gini_dir)
 
-graphs = ['weak', 'strong', 'price_net', 'facebook', 'wiki4schools', 'karate']
+graphs = ['weak', 'strong', 'price_net', 'facebook', 'wiki4schools', 'karate', 'milan_spiele', 'thinkgeek',
+          'getdigital']
 properties = ['adjacency', 'betweenness', 'eigenvector', 'eigenvector_inverse', 'sigma', 'sigma_deg_corrected']
 for g in filter(lambda x: any([i in x for i in graphs]), os.listdir(input_dir)):
     for p in properties:
