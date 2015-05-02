@@ -105,7 +105,7 @@ def main():
     else:
         results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
     write_network_properties(net, name, network_prop_file)
-    generator.analyse_graph(net, outdir + name, draw_net=False)
+    # generator.analyse_graph(net, outdir + name, draw_net=False)
 
     if synthetic:
         # strong sbm ============================================
@@ -123,7 +123,7 @@ def main():
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
+        # generator.analyse_graph(net, outdir + name, draw_net=False)
 
         if first_two_only:
             exit()
@@ -143,7 +143,7 @@ def main():
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
+        # generator.analyse_graph(net, outdir + name, draw_net=False)
 
         # price network ============================================
         print 'price network'.center(80, '=')
@@ -160,7 +160,7 @@ def main():
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
+        # generator.analyse_graph(net, outdir + name, draw_net=False)
 
     if empiric_crawled:
         empiric_data_dir = '/opt/datasets/'
@@ -188,7 +188,7 @@ def main():
             else:
                 results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
             write_network_properties(net, name, network_prop_file)
-            generator.analyse_graph(net, outdir + name, draw_net=False)
+            # generator.analyse_graph(net, outdir + name, draw_net=False)
     if empiric_downloaded:
         # wiki4schools ============================================
         print 'wiki4schools'.center(80, '=')
@@ -205,7 +205,7 @@ def main():
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
+        # generator.analyse_graph(net, outdir + name, draw_net=False)
 
         # facebook ============================================
         print 'facebook'.center(80, '=')
@@ -222,7 +222,7 @@ def main():
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
+        # generator.analyse_graph(net, outdir + name, draw_net=False)
         '''
         # enron ============================================
         print 'enron'.center(80, '=')
@@ -240,7 +240,7 @@ def main():
         else:
             results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
-        generator.analyse_graph(net, outdir + name, draw_net=False)
+        # generator.analyse_graph(net, outdir + name, draw_net=False)
         '''
 
     if multip:
