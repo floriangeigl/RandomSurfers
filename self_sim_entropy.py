@@ -35,11 +35,12 @@ def try_dump(data, filename):
         return False
 
 
-def calc_bias(filename, biasname, data_dict, dump=True):
+def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     dump_filename = filename + '_' + biasname
     name = filename.rsplit('/', 1)[-1].replace('.gt', '')
-    print utils.color_string('[' + name + ']'), '[' + biasname + ']', '[' + str(
-        datetime.datetime.now().replace(microsecond=0)) + ']', 'calc bias'
+    if verbose > 0:
+        print utils.color_string('[' + name + ']'), '[' + biasname + ']', '[' + str(
+            datetime.datetime.now().replace(microsecond=0)) + ']', 'calc bias'
     loaded = False
     if biasname == 'adjacency':
         return None
@@ -67,7 +68,7 @@ def calc_bias(filename, biasname, data_dict, dump=True):
             try:
                 A_eigvector = data_dict['eigvec']
             except KeyError:
-                A_eigvector = calc_bias(filename, 'eigenvector', data_dict, dump=dump)
+                A_eigvector = calc_bias(filename, 'eigenvector', data_dict, dump=dump, verbose=verbose-1)
             A_eigvector_inf = 1. / A_eigvector
         if dump and not loaded:
             try_dump(A_eigvector_inf, dump_filename)
@@ -80,7 +81,7 @@ def calc_bias(filename, biasname, data_dict, dump=True):
             try:
                 A_eigvalue = data_dict['eigval']
             except KeyError:
-                _ = calc_bias(filename, 'eigenvector', data_dict, dump=dump)
+                _ = calc_bias(filename, 'eigenvector', data_dict, dump=dump, verbose=verbose-1)
                 A_eigvalue = data_dict['eigval']
             sigma = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue)
         if dump and not loaded:
@@ -91,7 +92,7 @@ def calc_bias(filename, biasname, data_dict, dump=True):
             sigma_deg_cor = np.load(dump_filename)
             loaded = True
         except IOError:
-            sigma_deg_cor = calc_bias(filename, 'sigma', data_dict, dump=dump) / np.array(
+            sigma_deg_cor = calc_bias(filename, 'sigma', data_dict, dump=dump, verbose=verbose-1) / np.array(
                 data_dict['net'].degree_property_map('total').a)
         if dump and not loaded:
             try_dump(sigma_deg_cor, dump_filename)
@@ -117,7 +118,7 @@ def calc_bias(filename, biasname, data_dict, dump=True):
     elif biasname == 'deg':
         return np.array(data_dict['net'].degree_property_map('total').a)
     elif biasname == 'inv_deg':
-        return 1. / calc_bias(filename, 'deg', data_dict, dump=dump)
+        return 1. / calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose-1)
     else:
         print 'unknown bias:', biasname
         exit()
@@ -324,7 +325,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         plt.tight_layout()
         plt.savefig(out_dir + name + '_mem_status.png')
         plt.close('all')
-        print print_prefix, utils.color_string('>>all done<< duration:' + str(datetime.datetime.now() - start_time),
+        print print_prefix, utils.color_string('>>all done<< duration: ' + str(datetime.datetime.now() - start_time),
                                                type=utils.bcolors.GREEN)
         results = dict()
         results['gini'] = gini_coef_df
