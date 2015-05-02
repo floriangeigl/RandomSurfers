@@ -15,7 +15,7 @@ import scipy
 import scipy.stats as stats
 import pandas as pd
 import vector as vc
-
+import traceback
 
 def adj_matrix(G, nodelist):
     A = nx.adjacency_matrix(G, nodelist)
@@ -47,22 +47,30 @@ def transition_matrix(M):
     return P
 
 
-def leading_eigenvector(M):
+def leading_eigenvector(M, symetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=5):
     if scipy.sparse.issparse(M):
         while True:
             try:
                 print 'sparse eigv'
-                l, v = linalg.eigs(M, k=1, which="LR", maxiter=np.iinfo(np.int32).max)
+                if symetric:
+                    l, v = linalg.eigsh(M, k=1, which="LR")
+                else:
+                    l, v = linalg.eigs(M, k=1, which="LR")  # maxiter=100) #np.iinfo(np.int32).max)
                 l1 = l.real
                 u = [x[0] for x in v]
-                u = vc.real_part(u)
+                u = np.array(vc.real_part(u))
                 return l1, vc.normalize(u)
-            except:
-                print 'no eigvec found. retry...'
+            except Exception as e:
+                if tol > np.finfo(float).eps * max_inc_tol_fac:
+                    print 'no eigvec found. retry dense mode...'
+                    return leading_eigenvector(M.todense(), overwrite_a=True)
+                else:
+                    tol += np.finfo(float).eps
+                    print 'no eigvec found. retry with increased tol:', tol
     else:
-        l, v = lalg.eig(M)
+        l, v = lalg.eig(M, overwrite_a=overwrite_a)
         l1index = largest_eigenvalue_index(l)
-        u = vc.real_part(v[:, l1index])
+        u = np.array(vc.real_part(v[:, l1index]))
         return l[l1index].real, vc.normalize(u)
 
 

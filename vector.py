@@ -15,8 +15,11 @@ def real_part(x):
     u = [v.real for v in x]
     return np.array(u)
 
+
 def normalize(x):
-    return x / float(sum(x))
+    while not np.isclose(x.sum(), 1.):
+        x /= x.sum()
+    return x
 
 def vlength(x):
     length = math.sqrt(np.dot(x, x))

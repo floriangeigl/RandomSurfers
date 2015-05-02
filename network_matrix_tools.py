@@ -38,7 +38,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99):
 def stationary_dist(transition_matrix):
     #transition_matrix = normalize_mat(transition_matrix)
     transition_matrix = normalize(transition_matrix, norm='l1', axis=1, copy=True)
-    stat_dist = la.leading_eigenvector(transition_matrix.T)[1]
+    stat_dist = la.leading_eigenvector(transition_matrix.transpose())[1]
     assert np.all(np.isfinite(stat_dist))
     while not np.isclose(stat_dist.sum(), 1.):
         stat_dist /= stat_dist.sum()
