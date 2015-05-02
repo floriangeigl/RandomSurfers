@@ -325,7 +325,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         plt.tight_layout()
         plt.savefig(out_dir + name + '_mem_status.png')
         plt.close('all')
-        print print_prefix, utils.color_string('>>all done<<' + str(datetime.datetime.now() - start_time),
+        print print_prefix, utils.color_string('>>all done<< duration:' + str(datetime.datetime.now() - start_time),
                                                type=utils.bcolors.GREEN)
         results = dict()
         results['gini'] = gini_coef_df
