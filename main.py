@@ -68,7 +68,8 @@ def main():
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     synthetic = True
-    empiric = True
+    empiric_crawled = True
+    empiric_downloaded = True
     if first_two_only:
         multip = False
     worker_pool = multiprocessing.Pool(processes=14)
@@ -161,7 +162,7 @@ def main():
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
 
-    if empiric:
+    if empiric_crawled:
         empiric_data_dir = '/opt/datasets/'
         empiric_data_sets = list()
         empiric_data_sets.append('thinkgeek')
@@ -188,14 +189,13 @@ def main():
                 results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
             write_network_properties(net, name, network_prop_file)
             generator.analyse_graph(net, outdir + name, draw_net=False)
-
-        '''
+    if empiric_downloaded:
         # wiki4schools ============================================
         print 'wiki4schools'.center(80, '=')
         name = 'wiki4schools'
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
-        net = load_edge_list('/opt/datasets/wikiforschools/graph')
+        net = load_edge_list('/opt/datasets/wikiforschools/graph', directed=True)
         # net.vp['com'] = load_property(net, '/opt/datasets/wikiforschools/artid_catid', type='int')
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'empiric'
@@ -212,7 +212,7 @@ def main():
         name = 'facebook'
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
-        net = load_edge_list('/opt/datasets/facebook/facebook')
+        net = load_edge_list('/opt/datasets/facebook/facebook', directed=False)
         # net.vp['com'] = load_property(net, '/opt/datasets/facebook/facebook_com', type='int', line_groups=True)
         net.gp['type'] = net.new_graph_property('string')
         net.gp['type'] = 'empiric'
@@ -223,7 +223,7 @@ def main():
             results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
         write_network_properties(net, name, network_prop_file)
         generator.analyse_graph(net, outdir + name, draw_net=False)
-
+        '''
         # enron ============================================
         print 'enron'.center(80, '=')
         name = 'enron'
