@@ -37,6 +37,8 @@ def try_dump(data, filename):
 
 def calc_bias(filename, biasname, data_dict, dump=True):
     dump_filename = filename + '_' + biasname
+    name = filename.rsplit('/', 1)[-1].replace('.gt', '')
+    print utils.color_string('[' + name + ']'), 'calc', biasname
     loaded = False
     if biasname == 'adjacency':
         return None
@@ -123,6 +125,7 @@ def calc_bias(filename, biasname, data_dict, dump=True):
 
 def self_sim_entropy(network, name, out_dir, biases, error_q):
     try:
+        start_time = datetime.datetime.now()
         base_line_type = 'adjacency'
         out_data_dir = out_dir.rsplit('/', 2)[0] + '/data/'
         if not os.path.isdir(out_data_dir):
@@ -322,7 +325,8 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         plt.tight_layout()
         plt.savefig(out_dir + name + '_mem_status.png')
         plt.close('all')
-        print print_prefix, utils.color_string('>>all done<<', type=utils.bcolors.GREEN)
+        print print_prefix, utils.color_string('>>all done<<' + str(datetime.datetime.now() - start_time),
+                                               type=utils.bcolors.GREEN)
         results = dict()
         results['gini'] = gini_coef_df
         return results
