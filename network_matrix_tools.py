@@ -35,10 +35,10 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99):
         return la.calc_katz_iterative(adjacency_matrix, alpha, plot=False)
 
 
-def stationary_dist(transition_matrix):
+def stationary_dist(transition_matrix, symmetric=False):
     #transition_matrix = normalize_mat(transition_matrix)
     transition_matrix = normalize(transition_matrix, norm='l1', axis=1, copy=True)
-    stat_dist = la.leading_eigenvector(transition_matrix.transpose())[1]
+    stat_dist = la.leading_eigenvector(transition_matrix.transpose(), symmetric=symmetric)[1]
     assert np.all(np.isfinite(stat_dist))
     while not np.isclose(stat_dist.sum(), 1.):
         stat_dist /= stat_dist.sum()
@@ -61,7 +61,7 @@ def normalize_mat(matrix, replace_nans_with=0):
     return matrix
 
 
-def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
+def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, directed=True):
     if bias is not None:
         if np.count_nonzero(bias) == 0:
             print '\tall zero matrix as weights -> use ones-matrix'
@@ -76,7 +76,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
     else:
         weighted_trans = adjacency_matrix.copy()
     # weighted_trans = normalize_mat(weighted_trans)
-    stat_dist = stationary_dist(weighted_trans)
+    stat_dist = stationary_dist(weighted_trans, symmetric=directed)
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
 
 

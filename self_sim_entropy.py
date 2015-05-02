@@ -185,7 +185,8 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
 
             #print 'bias', bias
             assert scipy.sparse.issparse(adjacency_matrix)
-            ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias)
+            ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias,
+                                                                             directed=network.is_directed())
             stat_distributions[bias_name] = stat_dist
             #print print_prefix, '[' + biasname + '] entropy rate:', ent
             entropy_df.at[0, bias_name] = ent
