@@ -46,7 +46,6 @@ def calc_bias(filename, biasname, data_dict, dump=True):
             loaded = True
         except IOError:
             try:
-                A_eigvalue = data_dict['eigval']
                 A_eigvector = data_dict['eigvec']
             except KeyError:
                 A_eigvalue, A_eigvector = eigenvector(data_dict['net'])
@@ -157,12 +156,6 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         entropy_df = pd.DataFrame()
         sort_df = []
 
-        print print_prefix, 'calc graph-layout'
-        try:
-            pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
-        except KeyError:
-            pos = sfdp_layout(network)
-
         corr_df = pd.DataFrame(columns=['deg'], data=deg_map.a)
         stat_distributions = {}
         network.save(out_dir+name+'.gt')
@@ -170,7 +163,8 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         data_dict['net'] = network
         data_dict['adj'] = adjacency(network)
         for bias_name in sorted(biases):
-            print print_prefix, '[' + bias_name + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
+            print datetime.datetime.now().replace(
+                microseconds=0), print_prefix, '[' + bias_name + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
 
             # calc metric
             bias = calc_bias(dump_base_fn, bias_name, data_dict, dump=network.gp['type'] == 'empiric')
@@ -221,6 +215,13 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         max_val = np.mean(all_vals) + (2 * np.std(all_vals))
         gini_coef_df = pd.DataFrame()
 
+        print datetime.datetime.now().replace(
+                microseconds=0), print_prefix, 'calc graph-layout'
+        try:
+            pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
+        except KeyError:
+            pos = sfdp_layout(network)
+
         # plot all biased graphs and add biases to trapped plot
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
@@ -230,21 +231,13 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
             plt.close('all')
 
             # create scatter plot
-            x = ('stationary value of adjacency', base_line_abs_vals)
-            y = (name_to_legend[bias_name] + ' prob. ratio', stat_dist_diff)
-            plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + bias_name)
-
-            # x = ('popularity', np.array(deg_map.a))
-            # plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_popularity_' + key)
-
-            # x = ('betweenness', np.array(weights['betweenness']))
-            # plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_between_' + key)
+            if False:
+                x = ('stationary value of adjacency', base_line_abs_vals)
+                y = (name_to_legend[bias_name] + ' prob. ratio', stat_dist_diff)
+                plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + bias_name)
 
             # plot stationary distribution
             stat_dist_ser = pd.Series(data=stat_dist)
-            if False:
-                stat_dist_fname = out_dir + name + '_stat_dist_' + bias_name + '.png'
-                plotting.plot_stat_dist(stat_dist_ser, stat_dist_fname, bins=25, range=(min_stat_dist, max_stat_dist), lw=0)
 
             # calc gini coef and trapped values
             stat_dist_ser.sort(ascending=True)
@@ -288,15 +281,6 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         plt.tight_layout()
         plt.savefig(out_dir + name + '_trapped.png')
         plt.close('all')
-
-        #try:
-        #    num_cols = len(corr_df.columns) * 3
-        #    pd.scatter_matrix(corr_df, figsize=(num_cols, num_cols), diagonal='kde', range_padding=0.2, grid=True)
-        #    plt.tight_layout()
-        #    plt.savefig(out_dir + name + '_scatter_matrix.png')
-        #    plt.close('all')
-        #except:
-        #    print print_prefix, '[', key, ']', utils.color_string('plot scatter-matrix failed'.upper(), utils.bcolors.RED)
 
         sorted_keys, sorted_values = zip(*sorted(sort_df, key=lambda x: x[1], reverse=True))
         if len(set(sorted_values)) == 1:

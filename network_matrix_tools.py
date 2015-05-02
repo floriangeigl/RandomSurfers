@@ -45,7 +45,7 @@ def normalize_mat(matrix, replace_nans_with=0):
         print '\tnormalize all zero matrix -> set to all 1 before normalization'
         matrix = np.ones(matrix.shape, dtype='float')
         # np.fill_diagonal(M, 0)
-    matrix /= matrix.sum(axis=1)  # copies the matrix
+    matrix /= matrix.sum(axis=1)  # copies sparse matrix
     if replace_nans_with is not None:
         matrix_sum = matrix.sum()
         if np.isnan(matrix_sum) or np.isinf(matrix_sum):
@@ -62,7 +62,6 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
             bias = np.ones(bias.shape, dtype='float')
         weighted_trans = adjacency_matrix.multiply(bias)
     else:
-        # needs copy
         weighted_trans = adjacency_matrix
     # weighted_trans = normalize_mat(weighted_trans)
     stat_dist = stationary_dist(weighted_trans)
