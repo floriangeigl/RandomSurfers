@@ -38,7 +38,8 @@ def try_dump(data, filename):
 def calc_bias(filename, biasname, data_dict, dump=True):
     dump_filename = filename + '_' + biasname
     name = filename.rsplit('/', 1)[-1].replace('.gt', '')
-    print utils.color_string('[' + name + ']'), 'calc', biasname
+    print utils.color_string('[' + name + ']'), '[' + biasname + ']', '[' + str(
+        datetime.datetime.now().replace(microsecond=0)) + ']', 'calc bias'
     loaded = False
     if biasname == 'adjacency':
         return None
@@ -166,11 +167,11 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         data_dict['net'] = network
         data_dict['adj'] = adjacency(network)
         for bias_name in sorted(biases):
-            print datetime.datetime.now().replace(
-                microsecond=0), print_prefix, '[' + bias_name + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
-
-            # calc metric
+            # calc bias
             bias = calc_bias(dump_base_fn, bias_name, data_dict, dump=network.gp['type'] == 'empiric')
+
+            print print_prefix, '[' + bias_name + ']', '['+str(datetime.datetime.now().replace(
+                microsecond=0))+']', 'calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
 
             # replace infs and nans with zero
             if bias is not None:
@@ -218,8 +219,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         max_val = np.mean(all_vals) + (2 * np.std(all_vals))
         gini_coef_df = pd.DataFrame()
 
-        print datetime.datetime.now().replace(
-                microsecond=0), print_prefix, 'calc graph-layout'
+        print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
         try:
             pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
         except KeyError:
