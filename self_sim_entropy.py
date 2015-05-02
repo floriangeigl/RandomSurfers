@@ -164,7 +164,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         data_dict['adj'] = adjacency(network)
         for bias_name in sorted(biases):
             print datetime.datetime.now().replace(
-                microseconds=0), print_prefix, '[' + bias_name + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
+                microsecond=0), print_prefix, '[' + bias_name + '] calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
 
             # calc metric
             bias = calc_bias(dump_base_fn, bias_name, data_dict, dump=network.gp['type'] == 'empiric')
@@ -216,7 +216,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         gini_coef_df = pd.DataFrame()
 
         print datetime.datetime.now().replace(
-                microseconds=0), print_prefix, 'calc graph-layout'
+                microsecond=0), print_prefix, 'calc graph-layout'
         try:
             pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
         except KeyError:
