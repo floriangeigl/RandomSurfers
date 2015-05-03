@@ -62,7 +62,7 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                 l1 = l.real
                 u = [x[0] for x in v]
                 u = np.array(vc.real_part(u))
-                return l1, vc.normalize(u)
+                return l1, u
             except Exception as e:
                 print traceback.format_exc()
                 if tol > np.finfo(float).eps * max_inc_tol_fac:
@@ -83,7 +83,7 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
             l, v = lalg.eig(M, overwrite_a=overwrite_a)
         l1index = largest_eigenvalue_index(l)
         u = np.array(vc.real_part(v[:, l1index]))
-        return l[l1index].real, vc.normalize(u)
+        return l[l1index].real, u
 
 
 def deg_matrix_inv(A):

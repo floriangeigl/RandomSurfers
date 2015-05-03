@@ -127,7 +127,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
 def self_sim_entropy(network, name, out_dir, biases, error_q):
     try:
         if False:
-            network.set_directed(False)
+            # network.set_directed(False)
             remove_parallel_edges(network)
             remove_self_loops(network)
         start_time = datetime.datetime.now()
@@ -187,7 +187,6 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
                             num_infs) + ') of metric with zero', type=utils.bcolor.RED)
                     bias[np.isnan(bias) | np.isinf(bias)] = 0
 
-            #print 'bias', bias
             assert scipy.sparse.issparse(adjacency_matrix)
             ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias,
                                                                              directed=network.is_directed())
@@ -224,19 +223,21 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         max_val = np.mean(all_vals) + (2 * np.std(all_vals))
         gini_coef_df = pd.DataFrame()
 
-        print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
-        try:
-            pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
-        except KeyError:
-            pos = sfdp_layout(network)
-
+        pos = None
         # plot all biased graphs and add biases to trapped plot
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
-            plotting.draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=vertex_size,
-                                groups='com', output=out_dir + name + '_graph_' + bias_name, pos=pos)
-            plt.close('all')
+            if False:
+                if pos is None:
+                    print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
+                    try:
+                        pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
+                    except KeyError:
+                        pos = sfdp_layout(network)
+                plotting.draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=vertex_size,
+                                    groups='com', output=out_dir + name + '_graph_' + bias_name, pos=pos)
+                plt.close('all')
 
             # create scatter plot
             if False:

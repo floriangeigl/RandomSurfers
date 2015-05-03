@@ -36,12 +36,18 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99):
 
 
 def stationary_dist(transition_matrix, symmetric=False):
-    #transition_matrix = normalize_mat(transition_matrix)
-    normed_transition_matrix = normalize(transition_matrix, norm='l1', axis=1, copy=True)
-    stat_dist = la.leading_eigenvector(normed_transition_matrix.transpose(), symmetric=symmetric)[1]
+    # transition_matrix = normalize_mat(transition_matrix)
+    normed_transition_matrix = normalize(transition_matrix, norm='l1', axis=0, copy=True)
+    # normed_transition_matrix = transition_matrix
+    assert np.all(np.isfinite(normed_transition_matrix.data))
+    eigval, stat_dist = la.leading_eigenvector(normed_transition_matrix, symmetric=symmetric)
+    # print str(eigval).center(80, '*')
     assert np.all(np.isfinite(stat_dist))
+    # assert np.all(np.isclose(stat_dist, normed_transition_matrix * stat_dist))
+    # assert np.all(stat_dist > -0.1)
     while not np.isclose(stat_dist.sum(), 1.):
         stat_dist /= stat_dist.sum()
+    # assert np.all(stat_dist > -0.0001)
     assert np.isclose(stat_dist.sum(), 1.)
     return stat_dist
 
@@ -65,14 +71,16 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, directed=True):
     if bias is not None:
         if np.count_nonzero(bias) == 0:
             print '\tall zero matrix as weights -> use ones-matrix'
-            bias = lil_matrix(np.ones(bias.shape, dtype='float'))
+            bias = lil_matrix(np.ones(bias.shape))
         if len(bias.shape) == 1:
             bias_m = lil_matrix(adjacency_matrix.shape)
             bias_m.setdiag(bias)
             bias = bias_m
-            weighted_trans = adjacency_matrix * bias.tocsr()
-        elif len(bias.shape) == 2:
+            weighted_trans = bias.tocsr() * adjacency_matrix
+        elif len(bias.shape) == 2 and bias.shape[0] > 0 and bias.shape[1] > 0:
             weighted_trans = adjacency_matrix.multiply(lil_matrix(bias))
+        else:
+            print '\tunknown bias shape'
     else:
         weighted_trans = adjacency_matrix.copy()
     # weighted_trans = normalize_mat(weighted_trans)

@@ -67,11 +67,12 @@ def main():
 
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    synthetic = True
+    synthetic = False
     empiric_crawled = True
     empiric_downloaded = True
     if first_two_only:
         multip = False
+        synthetic = True
     worker_pool = multiprocessing.Pool(processes=14)
     results = list()
     biases = ['adjacency', 'eigenvector', 'eigenvector_inverse', 'sigma', 'sigma_deg_corrected', 'cosine', 'betweenness',
@@ -86,8 +87,8 @@ def main():
     if os.path.isfile(network_prop_file):
         os.remove(network_prop_file)
 
-    num_links = 1200
-    num_nodes = 300
+    num_links = 172402
+    num_nodes = 3963
     num_blocks = 5
 
     # karate ninja bam bam ============================================
@@ -109,7 +110,7 @@ def main():
 
     if synthetic:
         # strong sbm ============================================
-        print 'sbm'.center(80, '=')
+        print 'sbm strong'.center(80, '=')
         name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
@@ -129,7 +130,7 @@ def main():
             exit()
 
         # weak sbm ============================================
-        print 'sbm'.center(80, '=')
+        print 'sbm weak'.center(80, '=')
         name = 'sbm_weak_n' + str(num_nodes) + '_m' + str(num_links)
         outdir = base_outdir + name + '/'
         basics.create_folder_structure(outdir)
@@ -167,7 +168,9 @@ def main():
         empiric_data_sets = list()
         empiric_data_sets.append('thinkgeek')
         empiric_data_sets.append('getdigital')
-        empiric_data_sets.append('milan_spiele')
+        #empiric_data_sets.append('milan_spiele')
+        empiric_data_sets.append('tk_supersample')
+        empiric_data_sets.append('tk_com_sampled')
         for name in empiric_data_sets:
             print name.center(80, '=')
             fname = empiric_data_dir + name + '/' + name + '.gt'
