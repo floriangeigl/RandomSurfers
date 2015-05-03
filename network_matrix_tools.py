@@ -93,7 +93,7 @@ def entropy_rate(transition_matrix, stat_dist=None, base=2):
         stat_dist = stationary_dist(transition_matrix)
     if scipy.sparse.issparse(transition_matrix):
         transition_matrix = transition_matrix.todense()
-    entropies = stats.entropy(transition_matrix.T, base=base) * stat_dist
+    entropies = stats.entropy(transition_matrix, base=base) * stat_dist
     entropy_rate = np.sum(entropies[np.isfinite(entropies)])
     assert np.isfinite(entropy_rate)
     return entropy_rate
