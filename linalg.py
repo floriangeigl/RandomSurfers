@@ -47,7 +47,7 @@ def transition_matrix(M):
     return P
 
 
-def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=5):
+def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=5, k=1):
     print 'largest eigenvec',
     if scipy.sparse.issparse(M):
         while True:
@@ -55,14 +55,13 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                 print 'sparse',
                 if symmetric:
                     print 'symmetric'
-                    l, v = linalg.eigsh(M, k=1, which="LA")
+                    l, v = linalg.eigsh(M, k=k, which="LA")
                 else:
                     print 'asymmetric'
-                    l, v = linalg.eigs(M, k=1, which="LR")  # maxiter=100) #np.iinfo(np.int32).max)
+                    l, v = linalg.eigs(M, k=k, which="LR")  # maxiter=100) #np.iinfo(np.int32).max)
                 l1 = l.real
-                u = v[:, 0]
-                u = np.array(vc.real_part(u))
-                return l1, u
+                u = v[:, 0].real
+                return l1, u / u.sum()
             except Exception as e:
                 print traceback.format_exc()
                 if tol > np.finfo(float).eps * max_inc_tol_fac:

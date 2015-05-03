@@ -67,7 +67,7 @@ def main():
 
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    synthetic = False
+    synthetic = True
     empiric_crawled = True
     empiric_downloaded = True
     if first_two_only:
@@ -87,8 +87,8 @@ def main():
     if os.path.isfile(network_prop_file):
         os.remove(network_prop_file)
 
-    num_links = 172402
-    num_nodes = 3963
+    num_links = 1200
+    num_nodes = 300
     num_blocks = 5
 
     # karate ninja bam bam ============================================
@@ -96,7 +96,7 @@ def main():
     name = 'karate'
     outdir = base_outdir + name + '/'
     basics.create_folder_structure(outdir)
-    net = load_edge_list('/opt/datasets/karate/karate.edgelist')
+    net = load_edge_list('/opt/datasets/karate/karate.edgelist', directed=False)
     net.gp['type'] = net.new_graph_property('string')
     net.gp['type'] = 'empiric'
     if multip:
@@ -263,7 +263,7 @@ def main():
     print 'gini coefs\n', gini_dfs
     gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
     gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2)
-    import filter_output
+    # import filter_output
 
 
 

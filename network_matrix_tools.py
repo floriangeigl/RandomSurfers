@@ -35,15 +35,19 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99):
         return la.calc_katz_iterative(adjacency_matrix, alpha, plot=False)
 
 
-def stationary_dist(transition_matrix, symmetric=False):
-    # transition_matrix = normalize_mat(transition_matrix)
+def stationary_dist(transition_matrix):
     normed_transition_matrix = normalize(transition_matrix, norm='l1', axis=0, copy=True)
-    # normed_transition_matrix = transition_matrix
+    assert np.all(normed_transition_matrix.data > 0)
     assert np.all(np.isfinite(normed_transition_matrix.data))
-    eigval, stat_dist = la.leading_eigenvector(normed_transition_matrix, symmetric=symmetric)
+    eigval, stat_dist = la.leading_eigenvector(normed_transition_matrix)
     # print str(eigval).center(80, '*')
     assert np.all(np.isfinite(stat_dist))
-    # assert np.all(np.isclose(stat_dist, normed_transition_matrix * stat_dist))
+    if not np.all(np.isclose(stat_dist, normed_transition_matrix * stat_dist)):
+        eigvals, _ = la.leading_eigenvector(normed_transition_matrix, k=10)
+        print '=' * 80
+        print eigvals
+        print '=' * 80
+        exit()
     # assert np.all(stat_dist > -0.1)
     while not np.isclose(stat_dist.sum(), 1.):
         stat_dist /= stat_dist.sum()
@@ -67,7 +71,7 @@ def normalize_mat(matrix, replace_nans_with=0):
     return matrix
 
 
-def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, directed=True):
+def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
     if bias is not None:
         if np.count_nonzero(bias) == 0:
             print '\tall zero matrix as weights -> use ones-matrix'
@@ -84,7 +88,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, directed=True):
     else:
         weighted_trans = adjacency_matrix.copy()
     # weighted_trans = normalize_mat(weighted_trans)
-    stat_dist = stationary_dist(weighted_trans, symmetric=not directed)
+    stat_dist = stationary_dist(weighted_trans)
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
 
 
@@ -94,6 +98,6 @@ def entropy_rate(transition_matrix, stat_dist=None, base=2):
     if scipy.sparse.issparse(transition_matrix):
         transition_matrix = transition_matrix.todense()
     entropies = stats.entropy(transition_matrix, base=base) * stat_dist
-    entropy_rate = np.sum(entropies[np.isfinite(entropies)])
-    assert np.isfinite(entropy_rate)
-    return entropy_rate
+    rate = np.sum(entropies[np.isfinite(entropies)])
+    assert np.isfinite(rate)
+    return rate
