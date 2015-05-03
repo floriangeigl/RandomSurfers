@@ -60,7 +60,7 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                     print 'asymmetric'
                     l, v = linalg.eigs(M, k=1, which="LR")  # maxiter=100) #np.iinfo(np.int32).max)
                 l1 = l.real
-                u = [x[0] for x in v]
+                u = v[:, 0]
                 u = np.array(vc.real_part(u))
                 return l1, u
             except Exception as e:

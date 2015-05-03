@@ -11,9 +11,9 @@ def squared_error(x, y):
 def unit_vector(x):
     return x / vlength(x)
 
+
 def real_part(x):
-    u = [v.real for v in x]
-    return np.array(u)
+    return np.array([v.real for v in x])
 
 
 def normalize(x):
