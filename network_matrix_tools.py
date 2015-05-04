@@ -20,7 +20,7 @@ def calc_cosine(adjacency_matrix, weight_direct_link=False):
         b = adjacency_matrix
     deg = adjacency_matrix.sum(axis=0)
     cos = lil_matrix(adjacency_matrix * b)
-    cos.setdiag(deg)
+    cos.setdiag(np.array(deg).flatten())
     cos = cos.tocsr()
     deg_norm = np.sqrt(deg.T * deg)
     cos = cos.multiply(lil_matrix(1. / deg_norm))
