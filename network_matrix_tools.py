@@ -15,21 +15,33 @@ def calc_common_neigh(adjacency_matrix):
 
 def calc_cosine(adjacency_matrix, weight_direct_link=False):
     if weight_direct_link:
-        adjacency_matrix = adjacency_matrix.copy() + np.eye(adjacency_matrix.shape[0])
-    com_neigh = adjacency_matrix.dot(adjacency_matrix)
-    deg = adjacency_matrix.sum(axis=1).astype('float')
-    deg_norm = np.sqrt(deg * deg.T)
-    com_neigh /= deg_norm
-    assert np.all(np.isfinite(com_neigh))
-    return com_neigh
+        b = adjacency_matrix + lil_matrix(np.eye(adjacency_matrix.shape[0]))
+    else:
+        b = adjacency_matrix
+    deg = adjacency_matrix.sum(axis=0)
+    cos = lil_matrix(adjacency_matrix * b)
+    cos.setdiag(deg)
+    cos = cos.tocsr()
+    deg_norm = np.sqrt(deg.T * deg)
+    cos = cos.multiply(lil_matrix(1. / deg_norm))
+    cos[np.invert(np.isfinite(cos.data))] = 0
+    cos.eliminate_zeros()
+    # cos.setdiag(1.)
+    assert np.all(np.isfinite(cos))
+    return cos
 
 
-def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99):
+def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None):
     alpha_max = 1. / largest_eigenvalue
     alpha = gamma * alpha_max
     try:
-        katz = la.katz_matrix(adjacency_matrix, alpha)
+        katz = la.katz_matrix(adjacency_matrix, alpha, norm=norm)
         sigma = lalg.inv(katz)
+        if norm is not None:
+            if len(norm.shape) == 1:
+                sigma *= np.diag(norm)
+            else:
+                sigma *= norm
         return sigma
     except:
         return la.calc_katz_iterative(adjacency_matrix, alpha, plot=False)

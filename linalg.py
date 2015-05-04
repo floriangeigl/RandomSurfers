@@ -108,9 +108,16 @@ def katz_alpha(A):
     return alpha
 
 
-def katz_matrix(A, alpha):
+def katz_matrix(A, alpha, norm=None):
     m, n = A.shape
-    katz = np.eye(n) - alpha * A
+    if norm is None:
+        katz = np.eye(n) - alpha * A
+    elif len(norm.shape) == 1:
+        katz = np.diag(norm) - alpha * A
+    elif len(norm.shape) == 2:
+        katz = norm - alpha * A
+    else:
+        katz = None
     return katz
 
 

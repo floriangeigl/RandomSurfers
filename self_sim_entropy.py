@@ -97,8 +97,9 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
             sigma_deg_cor = np.load(dump_filename)
             loaded = True
         except IOError:
-            sigma_deg_cor = calc_bias(filename, 'sigma', data_dict, dump=dump, verbose=verbose-1) / np.array(
-                data_dict['net'].degree_property_map('total').a)
+            sigma_deg_cor = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue,
+                                                                  norm=np.array(
+                                                                      data_dict['net'].degreep_property_map('total').a))
         if dump and not loaded:
             try_dump(sigma_deg_cor, dump_filename)
         return sigma_deg_cor
@@ -232,7 +233,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
-            if False:
+            if True:
                 if pos is None:
                     print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
                     try:
