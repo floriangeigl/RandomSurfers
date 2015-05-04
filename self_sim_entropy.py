@@ -185,13 +185,24 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
 
             # replace infs and nans with zero
             if bias is not None:
-                num_nans = np.isnan(bias).sum()
-                num_infs = np.isinf(bias).sum()
-                if num_nans > 0 or num_infs > 0:
-                    print print_prefix, '[' + bias_name + ']:', utils.color_string(
-                        'shape:' + str(bias.shape) + '|replace nans(' + str(num_nans) + ') and infs (' + str(
-                            num_infs) + ') of metric with zero', type=utils.bcolor.RED)
-                    bias[np.isnan(bias) | np.isinf(bias)] = 0
+                try:
+                    num_nans = np.isnan(bias).sum()
+                    num_infs = np.isinf(bias).sum()
+                    if num_nans > 0 or num_infs > 0:
+                        print print_prefix, '[' + bias_name + ']:', utils.color_string(
+                            'shape:' + str(bias.shape) + '|replace nans(' + str(num_nans) + ') and infs (' + str(
+                                num_infs) + ') of metric with zero', type=utils.bcolor.RED)
+                        bias[np.isnan(bias) | np.isinf(bias)] = 0
+                except TypeError:
+                    assert scipy.sparse.issparse(bias)
+                    num_nans = np.isnan(bias.data).sum()
+                    num_infs = np.isinf(bias.data).sum()
+                    if num_nans > 0 or num_infs > 0:
+                        print print_prefix, '[' + bias_name + ']:', utils.color_string(
+                            'shape:' + str(bias.shape) + '|replace nans(' + str(num_nans) + ') and infs (' + str(
+                                num_infs) + ') of metric with zero', type=utils.bcolor.RED)
+                        bias.data[np.isnan(bias.data) | np.isinf(bias.data)] = 0
+
 
             assert scipy.sparse.issparse(adjacency_matrix)
             ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias)
