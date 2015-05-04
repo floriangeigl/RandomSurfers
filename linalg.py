@@ -48,8 +48,8 @@ def transition_matrix(M):
     return P
 
 
-def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1):
-    print 'largest eigenvec',
+def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1, print_prefix=''):
+    print print_prefix + 'largest eigenvec',
     k = min(k, M.shape[0] - 2)
     if symmetric:
         pass
@@ -70,10 +70,10 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                 print traceback.format_exc()
                 tol += np.finfo(float).eps
                 if tol > np.finfo(float).eps * max_inc_tol_fac:
-                    print 'no eigvec found. retry dense mode...'
+                    print print_prefix + 'no eigvec found. retry dense mode...'
                     return leading_eigenvector(M.todense(), overwrite_a=True)
                 else:
-                    print 'no eigvec found. retry with increased tol:', tol
+                    print print_prefix + 'no eigvec found. retry with increased tol:', tol
                     return leading_eigenvector(M, symmetric=symmetric, tol=tol, max_inc_tol_fac=max_inc_tol_fac,
                                                overwrite_a=overwrite_a)
     else:

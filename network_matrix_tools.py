@@ -73,7 +73,7 @@ def stationary_dist(transition_matrix, print_prefix=''):
             or not np.isclose(eigval, 1., atol=1e-10, rtol=0.):
         print print_prefix + 'stat_dist = trans * stat_dist:', np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10, rtol=0.)
         print print_prefix + 'eigval == 1:', np.isclose(eigval, 1., atol=1e-10, rtol=0.)
-        eigvals, _ = la.leading_eigenvector(normed_transition_matrix, k=10)
+        eigvals, _ = la.leading_eigenvector(normed_transition_matrix, k=10, print_prefix=print_prefix)
         print print_prefix, '=' * 80
         print print_prefix, eigvals
         print print_prefix, '=' * 80
@@ -129,12 +129,15 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix=''):
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
 
 
-def entropy_rate(transition_matrix, stat_dist=None, base=2):
+def entropy_rate(transition_matrix, stat_dist=None, base=2, print_prefix=''):
+    print print_prefix + 'calc entropy rate'
     if stat_dist is None:
         stat_dist = stationary_dist(transition_matrix)
     if scipy.sparse.issparse(transition_matrix):
         transition_matrix = transition_matrix.todense()
     entropies = stats.entropy(transition_matrix, base=base) * stat_dist
     rate = np.sum(entropies[np.isfinite(entropies)])
-    assert np.isfinite(rate)
+    if not np.isfinite(rate):
+        print print_prefix + 'entropy rate not finite'
+        exit()
     return rate
