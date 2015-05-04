@@ -46,19 +46,24 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         return None
     elif biasname == 'eigenvector':
         try:
-            A_eigvector = np.load(dump_filename)
+            loaded_data = np.load(dump_filename)
+            A_eigvalue = np.float64(loaded_data[0])
+            A_eigvector = loaded_data[1:]
             loaded = True
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
+                A_eigvalue = data_dict['eigval']
+                loaded = True
             except KeyError:
                 A_eigvalue, A_eigvector = eigenvector(data_dict['net'])
-                A_eigvalue = np.float(A_eigvalue)
+                A_eigvalue = np.float64(A_eigvalue)
                 A_eigvector = np.array(A_eigvector.a)
                 data_dict['eigval'] = A_eigvalue
                 data_dict['eigvec'] = A_eigvector
+        dump_data = np.concatenate((np.array([A_eigvalue]), A_eigvector), axis=1)
         if dump and not loaded:
-            try_dump(A_eigvector, dump_filename)
+            try_dump(dump_data, dump_filename)
         return A_eigvector
     elif biasname == 'eigenvector_inverse':
         try:
