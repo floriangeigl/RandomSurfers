@@ -17,6 +17,9 @@ import pandas as pd
 import vector as vc
 import traceback
 from scipy.sparse import lil_matrix, csr_matrix
+from sklearn.preprocessing import normalize
+from scipy.sparse.csgraph import connected_components
+
 
 def adj_matrix(G, nodelist):
     A = nx.adjacency_matrix(G, nodelist)
@@ -48,7 +51,8 @@ def transition_matrix(M):
     return P
 
 
-def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1, print_prefix=''):
+def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1, print_prefix='',
+                        add_eps_c=0):
     print print_prefix + 'largest eigenvec',
     k = min(k, M.shape[0] - 2)
     if symmetric:
@@ -67,14 +71,34 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                 u = v[:, 0].real
                 return l1, u / u.sum()
             except Exception as e:
-                print traceback.format_exc()
+                tb = str(traceback.format_exc())
+                if 'ArpackNoConvergence:' not in tb:
+                    print traceback.format_exc()
                 tol += np.finfo(float).eps
-                if tol > np.finfo(float).eps * max_inc_tol_fac:
+                if add_eps_c < 1 and np.any(np.isclose(M.data, 0., rtol=0., atol=1e-12)) and connected_components(M,
+                                                                                                                  connection='strong',
+                                                                                                                  return_labels=False) > 1:
+                    print print_prefix + 'no eigvec found within iterations limit. Values near zero in Matrix -> add epsilon 1e-10'
+                    components = connected_components(M, connection='strong', return_labels=False)
+                    print print_prefix + '#components:', components
+                    add_eps_c += 1
+                    M.data += 1e-10
+                    while np.any(np.isclose(normalize(M, norm='l1', axis=0, copy=True).data, 0., rtol=0., atol=1e-10)):
+                        add_eps_c += 1
+                        print print_prefix, 'add eps:', add_eps_c
+                        M.data += 1e-10
+                    M = normalize(M, norm='l1', axis=0, copy=False)
+                    components = connected_components(M, connection='strong', return_labels=False)
+                    print 'added', add_eps_c * 1e-10, '(', add_eps_c, 'x)'
+                    print print_prefix + '#components:', components
+                    return leading_eigenvector(M, symmetric=symmetric, k=k, tol=0, max_inc_tol_fac=max_inc_tol_fac,
+                                               overwrite_a=overwrite_a, print_prefix=print_prefix, add_eps_c=add_eps_c)
+                elif tol > np.finfo(float).eps * max_inc_tol_fac:
                     print print_prefix + 'no eigvec found. retry dense mode...'
-                    return leading_eigenvector(M.todense(), overwrite_a=True, print_prefix=print_prefix)
+                    return leading_eigenvector(M.todense(), overwrite_a=True, k=k, print_prefix=print_prefix)
                 else:
                     print print_prefix + 'no eigvec found. retry with increased tol:', tol
-                    return leading_eigenvector(M, symmetric=symmetric, tol=tol, max_inc_tol_fac=max_inc_tol_fac,
+                    return leading_eigenvector(M, symmetric=symmetric, tol=tol, k=k, max_inc_tol_fac=max_inc_tol_fac,
                                                overwrite_a=overwrite_a, print_prefix=print_prefix)
     else:
         print 'dense',

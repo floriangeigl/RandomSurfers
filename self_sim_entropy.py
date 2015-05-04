@@ -45,8 +45,12 @@ def try_load(filename):
     try:
         data = np.load(filename)
     except IOError:
-        with open(filename, 'rb') as f:
-            data = cPickle.load(f)
+        try:
+            with open(filename, 'rb') as f:
+                data = cPickle.load(f)
+        except:
+            print traceback.format_exc()
+            raise IOError
     return data
 
 
@@ -64,6 +68,8 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
             loaded_data = try_load(dump_filename)
             A_eigvalue = np.float64(loaded_data[0])
             A_eigvector = loaded_data[1:]
+            data_dict['eigval'] = A_eigvalue
+            data_dict['eigvec'] = A_eigvector
             loaded = True
         except IOError:
             try:
