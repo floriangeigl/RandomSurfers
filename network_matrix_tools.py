@@ -99,6 +99,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
             print '\tunknown bias shape'
     else:
         weighted_trans = adjacency_matrix.copy()
+    # weighted_trans.eliminate_zeros()
     # weighted_trans = normalize_mat(weighted_trans)
     stat_dist = stationary_dist(weighted_trans)
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
