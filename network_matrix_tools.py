@@ -83,6 +83,7 @@ def stationary_dist(transition_matrix):
     close_zero = np.isclose(stat_dist, 0, atol=1e-10, rtol=0.)
     neg_stat_dist = stat_dist < 0
     stat_dist[close_zero & neg_stat_dist] = 0.
+    stat_dist /= stat_dist.sum()
 
     if not np.all(np.invert(stat_dist < 0)):
         vals = stat_dist[np.invert(stat_dist > 0)]
@@ -91,10 +92,6 @@ def stationary_dist(transition_matrix):
         print vals
         print '*' * 120
         exit()
-    # assert np.all(stat_dist > -0.1)
-    while not np.isclose(stat_dist.sum(), 1., atol=1e-10, rtol=0.):
-        stat_dist /= stat_dist.sum()
-    # assert np.all(stat_dist > -0.0001)
     assert np.isclose(stat_dist.sum(), 1., atol=1e-10, rtol=0.)
     return stat_dist
 

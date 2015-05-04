@@ -66,12 +66,12 @@ def main():
     basics.create_folder_structure(base_outdir)
 
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
-    toy_example = True
-    multip = False  # multiprocessing flag (warning: suppresses exceptions)
-    synthetic = False
-    empiric_crawled = False
-    empiric_downloaded = False
-    karate_club = False
+    toy_example = False
+    multip = True  # multiprocessing flag (warning: suppresses exceptions)
+    synthetic = True
+    empiric_crawled = True
+    empiric_downloaded = True
+    karate_club = True
     if first_two_only:
         multip = False
         synthetic = True

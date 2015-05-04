@@ -113,7 +113,7 @@ def katz_alpha(A):
 def katz_matrix(A, alpha, norm=None):
     m, n = A.shape
     if norm is None:
-        katz = np.eye(n) - alpha * A
+        katz = lil_matrix(np.eye(n)) - alpha * A
     elif len(norm.shape) == 1:
         katz = lil_matrix(np.diag(norm)) - alpha * A
     elif len(norm.shape) == 2:
