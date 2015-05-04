@@ -54,7 +54,8 @@ def stationary_dist(transition_matrix):
     eigval, stat_dist = la.leading_eigenvector(normed_transition_matrix)
     # print str(eigval).center(80, '*')
     assert np.all(np.isfinite(stat_dist))
-    if not np.allclose(stat_dist, normed_transition_matrix * stat_dist):
+    if not np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10) or not np.isclose(eigval, 1.,
+                                                                                                      atol=1e-10):
         eigvals, _ = la.leading_eigenvector(normed_transition_matrix, k=10)
         print '=' * 80
         print eigvals
