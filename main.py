@@ -168,9 +168,9 @@ def main():
         empiric_data_sets = list()
         empiric_data_sets.append('thinkgeek')
         empiric_data_sets.append('getdigital')
-        #empiric_data_sets.append('milan_spiele')
-        empiric_data_sets.append('tk_supersample')
-        empiric_data_sets.append('tk_com_sampled')
+        empiric_data_sets.append('milan_spiele')
+        # empiric_data_sets.append('tk_supersample')
+        # empiric_data_sets.append('tk_com_sampled')
         for name in empiric_data_sets:
             print name.center(80, '=')
             fname = empiric_data_dir + name + '/' + name + '.gt'

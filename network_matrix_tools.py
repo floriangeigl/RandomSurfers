@@ -25,7 +25,7 @@ def calc_cosine(adjacency_matrix, weight_direct_link=False):
 
 
 def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99):
-    alpha_max = 1.0 / largest_eigenvalue
+    alpha_max = 1. / largest_eigenvalue
     alpha = gamma * alpha_max
     try:
         katz = la.katz_matrix(adjacency_matrix, alpha)
@@ -42,7 +42,7 @@ def stationary_dist(transition_matrix):
     eigval, stat_dist = la.leading_eigenvector(normed_transition_matrix)
     # print str(eigval).center(80, '*')
     assert np.all(np.isfinite(stat_dist))
-    if not np.all(np.isclose(stat_dist, normed_transition_matrix * stat_dist)):
+    if not np.allclose(stat_dist, normed_transition_matrix * stat_dist):
         eigvals, _ = la.leading_eigenvector(normed_transition_matrix, k=10)
         print '=' * 80
         print eigvals
