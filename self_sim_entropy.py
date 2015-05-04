@@ -36,7 +36,7 @@ def try_dump(data, filename):
 
 
 def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
-    dump_filename = filename + '_' + biasname
+    dump_filename = filename + '_' + biasname + '.bias'
     name = filename.rsplit('/', 1)[-1].replace('.gt', '')
     if verbose > 0:
         print utils.color_string('[' + name + ']'), '[' + biasname + ']', '[' + str(
