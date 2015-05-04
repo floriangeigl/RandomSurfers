@@ -4,7 +4,9 @@ import linalg as la
 import scipy.linalg as lalg
 import scipy.stats as stats
 from scipy.sparse import lil_matrix, csr_matrix
+import scipy.sparse.linalg as sparse_linalg
 from sklearn.preprocessing import normalize
+import traceback
 
 
 def calc_common_neigh(adjacency_matrix):
@@ -36,15 +38,28 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
     alpha = gamma * alpha_max
     try:
         katz = la.katz_matrix(adjacency_matrix, alpha, norm=norm)
-        sigma = lalg.inv(katz)
+        if scipy.sparse.issparse(katz):
+            sigma = sparse_linalg.inv(katz.tocsc())
+        else:
+            sigma = lalg.inv(katz)
         if norm is not None:
             if len(norm.shape) == 1:
-                sigma *= np.diag(norm)
+                sigma *= lil_matrix(np.diag(norm))
             else:
                 sigma *= norm
+        #if norm is not None:
+        #    print sigma
+        #    exit()
         return sigma
-    except:
-        return la.calc_katz_iterative(adjacency_matrix, alpha, plot=False)
+    except Exception as e:
+        print traceback.format_exc()
+
+        if norm is None:
+            print 'use iterative katz'
+            return la.calc_katz_iterative(adjacency_matrix, alpha, plot=False)
+        else:
+            print 'could not calc katz'.center(120, '!')
+            raise Exception(e)
 
 
 def stationary_dist(transition_matrix):
@@ -58,16 +73,24 @@ def stationary_dist(transition_matrix):
                                                                                                                1.,
                                                                                                                atol=1e-10,
                                                                                                                rtol=0.):
+        print 'stat_dist = trans * stat_dist:', np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10, rtol=0.)
+        print 'eigval == 1:', np.isclose(eigval, 1., atol=1e-10, rtol=0.)
         eigvals, _ = la.leading_eigenvector(normed_transition_matrix, k=10)
         print '=' * 80
         print eigvals
         print '=' * 80
         exit()
-    if not np.all(stat_dist > 0):
+    close_zero = np.isclose(stat_dist, 0, atol=1e-10, rtol=0.)
+    neg_stat_dist = stat_dist < 0
+    stat_dist[close_zero & neg_stat_dist] = 0.
+
+    if not np.all(np.invert(stat_dist < 0)):
         vals = stat_dist[np.invert(stat_dist > 0)]
+        print 'negative stat dist values. #', len(vals)
         print '*' * 120
         print vals
         print '*' * 120
+        exit()
     # assert np.all(stat_dist > -0.1)
     while not np.isclose(stat_dist.sum(), 1., atol=1e-10, rtol=0.):
         stat_dist /= stat_dist.sum()

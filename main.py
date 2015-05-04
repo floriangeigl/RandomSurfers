@@ -66,14 +66,20 @@ def main():
     basics.create_folder_structure(base_outdir)
 
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
-    multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    synthetic = True
-    empiric_crawled = True
-    empiric_downloaded = True
+    toy_example = True
+    multip = False  # multiprocessing flag (warning: suppresses exceptions)
+    synthetic = False
+    empiric_crawled = False
+    empiric_downloaded = False
+    karate_club = False
     if first_two_only:
         multip = False
         synthetic = True
-    worker_pool = multiprocessing.Pool(processes=14)
+        karate_club = True
+    if multip:
+        worker_pool = multiprocessing.Pool(processes=14)
+    else:
+        worker_pool = None
     results = list()
     biases = ['adjacency', 'eigenvector', 'eigenvector_inverse', 'sigma', 'sigma_deg_corrected', 'cosine', 'betweenness',
               'inv_deg']
@@ -91,24 +97,43 @@ def main():
     num_nodes = 300
     num_blocks = 5
 
-    # karate ninja bam bam ============================================
-    print 'karate'.center(80, '=')
-    name = 'karate'
-    outdir = base_outdir + name + '/'
-    basics.create_folder_structure(outdir)
-    net = load_edge_list('/opt/datasets/karate/karate.edgelist', directed=False)
-    net.gp['type'] = net.new_graph_property('string')
-    net.gp['type'] = 'empiric'
-    if multip:
-        worker_pool.apply_async(self_sim_entropy, args=(net,),
-                                kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
-                                callback=async_callback)
-    else:
-        results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
-    write_network_properties(net, name, network_prop_file)
-    # generator.analyse_graph(net, outdir + name, draw_net=False)
+    if toy_example:
+        # strong sbm ============================================
+        print 'toy_example'.center(80, '=')
+        name = 'toy_example'
+        outdir = base_outdir + name + '/'
+        basics.create_folder_structure(outdir)
+        net = price_network(5, m=2, directed=False)
+        net.gp['type'] = net.new_graph_property('string')
+        net.gp['type'] = 'synthetic'
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,),
+                                    kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
+                                    callback=async_callback)
+        else:
+            results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
+        write_network_properties(net, name, network_prop_file)
+
+    if karate_club:
+        # karate ninja bam bam ============================================
+        print 'karate'.center(80, '=')
+        name = 'karate'
+        outdir = base_outdir + name + '/'
+        basics.create_folder_structure(outdir)
+        net = load_edge_list('/opt/datasets/karate/karate.edgelist', directed=False)
+        net.gp['type'] = net.new_graph_property('string')
+        net.gp['type'] = 'empiric'
+        if multip:
+            worker_pool.apply_async(self_sim_entropy, args=(net,),
+                                    kwds={'name': name, 'out_dir': outdir, 'biases': biases, 'error_q': error_q},
+                                    callback=async_callback)
+        else:
+            results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=error_q))
+        write_network_properties(net, name, network_prop_file)
+        # generator.analyse_graph(net, outdir + name, draw_net=False)
 
     if synthetic:
+
         # strong sbm ============================================
         print 'sbm strong'.center(80, '=')
         name = 'sbm_strong_n' + str(num_nodes) + '_m' + str(num_links)

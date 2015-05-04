@@ -25,14 +25,29 @@ font_size = 12
 matplotlib.rcParams.update({'font.size': font_size})
 np.set_printoptions(precision=2)
 np.set_printoptions(linewidth=225)
+import cPickle
 
 
 def try_dump(data, filename):
     try:
         data.dump(filename)
         return True
-    except SystemError:
+    except (SystemError, AttributeError):
+        try:
+            with open(filename, 'wb') as f:
+                cPickle.dump(data, f)
+        except:
+            pass
         return False
+
+
+def try_load(filename):
+    try:
+        data = np.load(filename)
+    except IOError:
+        with open(filename, 'rb') as f:
+            data = cPickle.load(f)
+    return data
 
 
 def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
@@ -46,7 +61,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         return None
     elif biasname == 'eigenvector':
         try:
-            loaded_data = np.load(dump_filename)
+            loaded_data = try_load(dump_filename)
             A_eigvalue = np.float64(loaded_data[0])
             A_eigvector = loaded_data[1:]
             loaded = True
@@ -67,7 +82,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         return A_eigvector
     elif biasname == 'eigenvector_inverse':
         try:
-            A_eigvector_inf = np.load(dump_filename)
+            A_eigvector_inf = try_load(dump_filename)
             loaded = True
         except IOError:
             try:
@@ -80,7 +95,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         return A_eigvector_inf
     elif biasname == 'sigma':
         try:
-            sigma = np.load(dump_filename)
+            sigma = try_load(dump_filename)
             loaded = True
         except IOError:
             try:
@@ -94,7 +109,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         return sigma
     elif biasname == 'sigma_deg_corrected':
         try:
-            sigma_deg_cor = np.load(dump_filename)
+            sigma_deg_cor = try_load(dump_filename)
             loaded = True
         except IOError:
             try:
@@ -110,7 +125,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         return sigma_deg_cor
     elif biasname == 'cosine':
         try:
-            cos = np.load(dump_filename)
+            cos = try_load(dump_filename)
             loaded = True
         except IOError:
             cos = network_matrix_tools.calc_cosine(data_dict['adj'], weight_direct_link=True)
@@ -119,7 +134,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         return cos
     elif biasname == 'betweenness':
         try:
-            bet = np.load(dump_filename)
+            bet = try_load(dump_filename)
             loaded = True
         except IOError:
             bet = np.array(betweenness(data_dict['net'])[0].a)

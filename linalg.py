@@ -16,6 +16,7 @@ import scipy.stats as stats
 import pandas as pd
 import vector as vc
 import traceback
+from scipy.sparse import lil_matrix, csr_matrix
 
 def adj_matrix(G, nodelist):
     A = nx.adjacency_matrix(G, nodelist)
@@ -49,6 +50,7 @@ def transition_matrix(M):
 
 def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1):
     print 'largest eigenvec',
+    k = min(k, M.shape[0] - 2)
     if symmetric:
         pass
     if scipy.sparse.issparse(M):
@@ -113,11 +115,14 @@ def katz_matrix(A, alpha, norm=None):
     if norm is None:
         katz = np.eye(n) - alpha * A
     elif len(norm.shape) == 1:
-        katz = np.diag(norm) - alpha * A
+        katz = lil_matrix(np.diag(norm)) - alpha * A
     elif len(norm.shape) == 2:
+        if not scipy.sparse.isspace(norm):
+            norm = lil_matrix(norm)
         katz = norm - alpha * A
     else:
-        katz = None
+        print 'katz norm unknown shape'.center(120, '!')
+        exit()
     return katz
 
 
