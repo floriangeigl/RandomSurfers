@@ -97,6 +97,11 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
             sigma_deg_cor = np.load(dump_filename)
             loaded = True
         except IOError:
+            try:
+                A_eigvalue = data_dict['eigval']
+            except KeyError:
+                _ = calc_bias(filename, 'eigenvector', data_dict, dump=dump, verbose=verbose-1)
+                A_eigvalue = data_dict['eigval']
             sigma_deg_cor = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue,
                                                                   norm=np.array(
                                                                       data_dict['net'].degreep_property_map('total').a))
