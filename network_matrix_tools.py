@@ -62,37 +62,33 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             raise Exception(e)
 
 
-def stationary_dist(transition_matrix):
+def stationary_dist(transition_matrix, print_prefix=''):
     normed_transition_matrix = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     assert np.all(normed_transition_matrix.data > 0)
     assert np.all(np.isfinite(normed_transition_matrix.data))
     eigval, stat_dist = la.leading_eigenvector(normed_transition_matrix)
-    # print str(eigval).center(80, '*')
+    stat_dist = stat_dist.astype(np.float64)
     assert np.all(np.isfinite(stat_dist))
-    if not np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10, rtol=0.) or not np.isclose(eigval,
-                                                                                                               1.,
-                                                                                                               atol=1e-10,
-                                                                                                               rtol=0.):
-        print 'stat_dist = trans * stat_dist:', np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10, rtol=0.)
-        print 'eigval == 1:', np.isclose(eigval, 1., atol=1e-10, rtol=0.)
+    if not np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10, rtol=0.) \
+            or not np.isclose(eigval, 1., atol=1e-10, rtol=0.):
+        print print_prefix + 'stat_dist = trans * stat_dist:', np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10, rtol=0.)
+        print print_prefix + 'eigval == 1:', np.isclose(eigval, 1., atol=1e-10, rtol=0.)
         eigvals, _ = la.leading_eigenvector(normed_transition_matrix, k=10)
-        print '=' * 80
-        print eigvals
-        print '=' * 80
+        print print_prefix, '=' * 80
+        print print_prefix, eigvals
+        print print_prefix, '=' * 80
         exit()
     close_zero = np.isclose(stat_dist, 0, atol=1e-10, rtol=0.)
     neg_stat_dist = stat_dist < 0
     stat_dist[close_zero & neg_stat_dist] = 0.
-    stat_dist /= stat_dist.sum()
-
-    if not np.all(np.invert(stat_dist < 0)):
-        vals = stat_dist[np.invert(stat_dist > 0)]
-        print 'negative stat dist values. #', len(vals)
-        print '*' * 120
-        print vals
-        print '*' * 120
-        exit()
-    assert np.isclose(stat_dist.sum(), 1., atol=1e-10, rtol=0.)
+    assert not np.any(stat_dist < 0)
+    while not np.isclose(stat_dist.sum(), 1, atol=1e-10, rtol=0.):
+        print print_prefix + 're-normalize stat. dist.'.center(20, '!')
+        stat_dist /= stat_dist.sum()
+        close_zero = np.isclose(stat_dist, 0, atol=1e-10, rtol=0.)
+        neg_stat_dist = stat_dist < 0
+        stat_dist[close_zero & neg_stat_dist] = 0.
+        assert not np.any(stat_dist < 0)
     return stat_dist
 
 
@@ -111,10 +107,10 @@ def normalize_mat(matrix, replace_nans_with=0):
     return matrix
 
 
-def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
+def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix=''):
     if bias is not None:
         if np.count_nonzero(bias) == 0:
-            print '\tall zero matrix as weights -> use ones-matrix'
+            print print_prefix + '\tall zero matrix as weights -> use ones-matrix'
             bias = lil_matrix(np.ones(bias.shape))
         if len(bias.shape) == 1:
             bias_m = lil_matrix(adjacency_matrix.shape)
@@ -124,12 +120,12 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None):
         elif len(bias.shape) == 2 and bias.shape[0] > 0 and bias.shape[1] > 0:
             weighted_trans = adjacency_matrix.multiply(lil_matrix(bias))
         else:
-            print '\tunknown bias shape'
+            print print_prefix + '\tunknown bias shape'
     else:
         weighted_trans = adjacency_matrix.copy()
     # weighted_trans.eliminate_zeros()
     # weighted_trans = normalize_mat(weighted_trans)
-    stat_dist = stationary_dist(weighted_trans)
+    stat_dist = stationary_dist(weighted_trans, print_prefix=print_prefix)
     return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
 
 
