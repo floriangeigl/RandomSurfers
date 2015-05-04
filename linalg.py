@@ -71,11 +71,11 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                 tol += np.finfo(float).eps
                 if tol > np.finfo(float).eps * max_inc_tol_fac:
                     print print_prefix + 'no eigvec found. retry dense mode...'
-                    return leading_eigenvector(M.todense(), overwrite_a=True)
+                    return leading_eigenvector(M.todense(), overwrite_a=True, print_prefix=print_prefix)
                 else:
                     print print_prefix + 'no eigvec found. retry with increased tol:', tol
                     return leading_eigenvector(M, symmetric=symmetric, tol=tol, max_inc_tol_fac=max_inc_tol_fac,
-                                               overwrite_a=overwrite_a)
+                                               overwrite_a=overwrite_a, print_prefix=print_prefix)
     else:
         print 'dense',
         if symmetric:

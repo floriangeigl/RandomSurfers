@@ -7,6 +7,7 @@ from scipy.sparse import lil_matrix, csr_matrix
 import scipy.sparse.linalg as sparse_linalg
 from sklearn.preprocessing import normalize
 import traceback
+from scipy.sparse.csgraph import connected_components
 
 
 def calc_common_neigh(adjacency_matrix):
@@ -63,33 +64,43 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
 
 
 def stationary_dist(transition_matrix, print_prefix=''):
-    normed_transition_matrix = normalize(transition_matrix, norm='l1', axis=0, copy=True)
-    assert np.all(normed_transition_matrix.data > 0)
-    assert np.all(np.isfinite(normed_transition_matrix.data))
-    eigval, stat_dist = la.leading_eigenvector(normed_transition_matrix)
-    stat_dist = stat_dist.astype(np.float64)
-    assert np.all(np.isfinite(stat_dist))
-    if not np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10, rtol=0.) \
+    P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
+    assert np.all(P.data > 0)
+    assert np.all(np.isfinite(P.data))
+    eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)
+    pi = pi.astype(np.float64)
+    assert np.all(np.isfinite(pi))
+    if not np.allclose(pi, P * pi, atol=1e-10, rtol=0.) \
             or not np.isclose(eigval, 1., atol=1e-10, rtol=0.):
-        print print_prefix + 'stat_dist = trans * stat_dist:', np.allclose(stat_dist, normed_transition_matrix * stat_dist, atol=1e-10, rtol=0.)
+        eigvals, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
+        components = connected_components(P, connection='strong', return_labels=False)
+        print print_prefix + 'pi = P * pi:', np.allclose(pi, P * pi, atol=1e-10, rtol=0.)
         print print_prefix + 'eigval == 1:', np.isclose(eigval, 1., atol=1e-10, rtol=0.)
-        eigvals, _ = la.leading_eigenvector(normed_transition_matrix, k=10, print_prefix=print_prefix)
         print print_prefix, '=' * 80
+        print '# components: ', components
         print print_prefix, eigvals
         print print_prefix, '=' * 80
         exit()
-    close_zero = np.isclose(stat_dist, 0, atol=1e-10, rtol=0.)
-    neg_stat_dist = stat_dist < 0
-    stat_dist[close_zero & neg_stat_dist] = 0.
-    assert not np.any(stat_dist < 0)
-    while not np.isclose(stat_dist.sum(), 1, atol=1e-10, rtol=0.):
+    close_zero = np.isclose(pi, 0, atol=1e-10, rtol=0.)
+    neg_stat_dist = pi < 0
+    pi[close_zero & neg_stat_dist] = 0.
+    if np.any(pi < 0):
+        eigvals, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
+        components = connected_components(P, connection='strong', return_labels=False)
+        print print_prefix + 'negative stat values'
+        print print_prefix, '=' * 80
+        print '# components: ', components
+        print print_prefix, eigvals
+        print print_prefix, '=' * 80
+        exit()
+    while not np.isclose(pi.sum(), 1, atol=1e-10, rtol=0.):
         print print_prefix + 're-normalize stat. dist.'.center(20, '!')
-        stat_dist /= stat_dist.sum()
-        close_zero = np.isclose(stat_dist, 0, atol=1e-10, rtol=0.)
-        neg_stat_dist = stat_dist < 0
-        stat_dist[close_zero & neg_stat_dist] = 0.
-        assert not np.any(stat_dist < 0)
-    return stat_dist
+        pi /= pi.sum()
+        close_zero = np.isclose(pi, 0, atol=1e-10, rtol=0.)
+        neg_stat_dist = pi < 0
+        pi[close_zero & neg_stat_dist] = 0.
+        assert not np.any(pi < 0)
+    return pi
 
 
 def normalize_mat(matrix, replace_nans_with=0):
@@ -126,7 +137,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix=''):
     # weighted_trans.eliminate_zeros()
     # weighted_trans = normalize_mat(weighted_trans)
     stat_dist = stationary_dist(weighted_trans, print_prefix=print_prefix)
-    return entropy_rate(weighted_trans, stat_dist=stat_dist), stat_dist
+    return entropy_rate(weighted_trans, stat_dist=stat_dist, print_prefix=print_prefix), stat_dist
 
 
 def entropy_rate(transition_matrix, stat_dist=None, base=2, print_prefix=''):
