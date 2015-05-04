@@ -104,7 +104,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                 A_eigvalue = data_dict['eigval']
             sigma_deg_cor = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue,
                                                                   norm=np.array(
-                                                                      data_dict['net'].degreep_property_map('total').a))
+                                                                      data_dict['net'].degree_property_map('total').a))
         if dump and not loaded:
             try_dump(sigma_deg_cor, dump_filename)
         return sigma_deg_cor
