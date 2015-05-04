@@ -24,10 +24,10 @@ def calc_cosine(adjacency_matrix, weight_direct_link=False):
     cos = cos.tocsr()
     deg_norm = np.sqrt(deg.T * deg)
     cos = cos.multiply(lil_matrix(1. / deg_norm))
-    cos[np.invert(np.isfinite(cos.data))] = 0
+    cos.data[np.invert(np.isfinite(cos.data))] = 0
     cos.eliminate_zeros()
     # cos.setdiag(1.)
-    assert np.all(np.isfinite(cos))
+    assert np.all(np.isfinite(cos.data))
     return cos
 
 
