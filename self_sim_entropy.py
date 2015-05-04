@@ -48,6 +48,8 @@ def try_load(filename):
         try:
             with open(filename, 'rb') as f:
                 data = cPickle.load(f)
+        except IOError:
+            raise IOError
         except:
             print traceback.format_exc()
             raise IOError
