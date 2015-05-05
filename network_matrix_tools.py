@@ -47,10 +47,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             if len(norm.shape) == 1:
                 sigma *= lil_matrix(np.diag(norm))
             else:
-                sigma *= norm
-        #if norm is not None:
-        #    print sigma
-        #    exit()
+                sigma *= lil_matrix(norm)
         return sigma
     except Exception as e:
         print traceback.format_exc()
@@ -170,18 +167,18 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             add_eps = eps/bias_o
             print print_prefix, 'absolute eps:', add_eps
             if len(bias.shape) == 1:
-                print print_prefix, 'vector bias'
+                # print print_prefix, 'vector bias'
                 bias /= bias.sum()
                 b_zeros = np.isclose(bias, 0., rtol=0., atol=1e-15).sum() / len(bias)
                 bias += add_eps
             else:
                 if scipy.sparse.issparse(bias):
-                    print print_prefix, 'sparse matrix bias'
+                    # print print_prefix, 'sparse matrix bias'
                     bias = normalize(bias, 'l1', axis=0, copy=False)
                     b_zeros = np.isclose(bias.data, 0., rtol=0., atol=1e-15).sum() / len(bias.data)
                     bias.data += add_eps
                 else:
-                    print print_prefix, 'dense matrix bias'
+                    # print print_prefix, 'dense matrix bias'
                     bias /= bias.sum(axis=0)
                     b_zeros = np.isclose(np.array(bias).flatten(), 0., rtol=0., atol=1e-15).sum() / (
                     bias.shape[0] * bias.shape[1])
