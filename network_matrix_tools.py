@@ -65,7 +65,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
 
 def stationary_dist(transition_matrix, print_prefix='', atol=1e-8, rtol=0.):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
-    assert np.all(P.data > 0)
+    assert not np.any(P.data < 0)
     zeros_near_z = np.isclose(P.data, 0., rtol=0., atol=1e-10).sum()
     if zeros_near_z > 0:
         components = connected_components(P, connection='strong', return_labels=False)
@@ -94,7 +94,7 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-8, rtol=0.):
         components = connected_components(P, connection='strong', return_labels=False)
         print print_prefix + 'negative stat values:', map(lambda i: "%.10f" % i, pi[pi < 0])
         print print_prefix + 'negative stat sum:', "%.10f" % pi[pi < 0].sum()
-        print print_prefix + 'negative stat max:', "%.10f" % pi[pi < 0].max()
+        print print_prefix + 'negative stat max:', "%.10f" % pi[pi < 0].min()
         print print_prefix, '=' * 80
         print '# components: ', components
         print print_prefix, 'eigval:', eigval
