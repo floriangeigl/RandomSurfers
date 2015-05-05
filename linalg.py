@@ -74,22 +74,20 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                 tb = str(traceback.format_exc())
                 if 'ArpackNoConvergence:' not in tb:
                     print traceback.format_exc()
-                tol += np.finfo(float).eps
-                if add_eps_c < 1 and np.any(np.isclose(M.data, 0., rtol=0., atol=1e-12)) and connected_components(M,
-                                                                                                                  connection='strong',
-                                                                                                                  return_labels=False) > 1:
-                    print print_prefix + 'no eigvec found within iterations limit. Values near zero in Matrix -> add epsilon 1e-10'
+                tol += 1e-10
+                if add_eps_c < 1 and np.any(np.isclose(M.data, 0., rtol=0., atol=1e-8)):
+                    print print_prefix + 'no eigvec found within iterations limit. Values near zero in Matrix -> add epsilon 1e-8'
                     components = connected_components(M, connection='strong', return_labels=False)
                     print print_prefix + '#components:', components
                     add_eps_c += 1
-                    M.data += 1e-10
-                    while np.any(np.isclose(normalize(M, norm='l1', axis=0, copy=True).data, 0., rtol=0., atol=1e-10)):
+                    M.data += 1e-8
+                    while np.any(np.isclose(normalize(M, norm='l1', axis=0, copy=True).data, 0., rtol=0., atol=1e-8)):
                         add_eps_c += 1
                         print print_prefix, 'add eps:', add_eps_c
                         M.data += 1e-10
                     M = normalize(M, norm='l1', axis=0, copy=False)
                     components = connected_components(M, connection='strong', return_labels=False)
-                    print 'added', add_eps_c * 1e-10, '(', add_eps_c, 'x)'
+                    print 'added', add_eps_c * 1e-8, '(', add_eps_c, 'x)'
                     print print_prefix + '#components:', components
                     return leading_eigenvector(M, symmetric=symmetric, k=k, tol=0, max_inc_tol_fac=max_inc_tol_fac,
                                                overwrite_a=overwrite_a, print_prefix=print_prefix, add_eps_c=add_eps_c)

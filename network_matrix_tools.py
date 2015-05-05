@@ -63,40 +63,41 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             raise Exception(e)
 
 
-def stationary_dist(transition_matrix, print_prefix=''):
+def stationary_dist(transition_matrix, print_prefix='', atol=1e-8, rtol=0.):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     assert np.all(P.data > 0)
     assert np.all(np.isfinite(P.data))
     eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)
     pi = pi.astype(np.float64)
     assert np.all(np.isfinite(pi))
-    if not np.allclose(pi, P * pi, atol=1e-10, rtol=0.) \
-            or not np.isclose(eigval, 1., atol=1e-10, rtol=0.):
+    if not np.allclose(pi, P * pi, atol=atol, rtol=rtol) \
+            or not np.isclose(eigval, 1., atol=atol, rtol=rtol):
         eigvals, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
         components = connected_components(P, connection='strong', return_labels=False)
-        print print_prefix + 'pi = P * pi:', np.allclose(pi, P * pi, atol=1e-10, rtol=0.)
-        print print_prefix + 'eigval == 1:', np.isclose(eigval, 1., atol=1e-10, rtol=0.)
+        print print_prefix + 'pi = P * pi:', np.allclose(pi, P * pi, atol=atol, rtol=rtol)
+        print print_prefix + 'eigval == 1:', np.isclose(eigval, 1., atol=atol, rtol=rtol)
         print print_prefix, '=' * 80
         print '# components: ', components
         print print_prefix, eigvals
         print print_prefix, '=' * 80
         exit()
-    close_zero = np.isclose(pi, 0, atol=1e-10, rtol=0.)
+    close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
     neg_stat_dist = pi < 0
     pi[close_zero & neg_stat_dist] = 0.
     if np.any(pi < 0):
-        eigvals, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
+        # eigvals, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
+        P.eliminate_zeros()
         components = connected_components(P, connection='strong', return_labels=False)
-        print print_prefix + 'negative stat values'
+        print print_prefix + 'negative stat values:', pi[pi < 0]
         print print_prefix, '=' * 80
         print '# components: ', components
-        print print_prefix, eigvals
+        print print_prefix, 'eigval:', eigvals
         print print_prefix, '=' * 80
         exit()
-    while not np.isclose(pi.sum(), 1, atol=1e-10, rtol=0.):
+    while not np.isclose(pi.sum(), 1, atol=atol, rtol=rtol):
         print print_prefix + 're-normalize stat. dist.'.center(20, '!')
         pi /= pi.sum()
-        close_zero = np.isclose(pi, 0, atol=1e-10, rtol=0.)
+        close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
         neg_stat_dist = pi < 0
         pi[close_zero & neg_stat_dist] = 0.
         assert not np.any(pi < 0)
