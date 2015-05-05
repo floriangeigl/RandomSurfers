@@ -65,7 +65,7 @@ def main():
     base_outdir = 'output/'
     basics.create_folder_structure(base_outdir)
 
-    first_two_only = True  # quick test flag (disables multiprocessing to get possibles exceptions)
+    first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
     toy_example = False
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     synthetic = True
@@ -81,8 +81,8 @@ def main():
     else:
         worker_pool = None
     results = list()
-    biases = ['adjacency', 'eigenvector', 'inv_log_eigenvector', 'sigma', 'sigma_deg_corrected', 'betweenness',
-              'inv_deg', 'inv_log_deg']
+    biases = ['adjacency', 'eigenvector', 'inv_log_eigenvector', 'inv_sqrt_eigenvector', 'sigma', 'sigma_deg_corrected',
+              'betweenness', 'inv_sqrt_deg', 'inv_log_deg']
     if multip:
         manager = multiprocessing.Manager()
         error_q = manager.Queue()

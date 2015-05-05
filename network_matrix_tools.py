@@ -63,7 +63,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             raise Exception(e)
 
 
-def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e10):
+def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e5):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     P.data *= scaling_factor
     assert not np.any(P.data < 0)
@@ -131,7 +131,6 @@ def normalize_mat(matrix, replace_nans_with=0):
 
 
 def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps=1e-10, orig_ma_mi_r=None):
-    adjacency_matrix.data *= 1e10
     bias_max_min_r = None
     if bias is not None:
         if np.count_nonzero(bias) == 0:
