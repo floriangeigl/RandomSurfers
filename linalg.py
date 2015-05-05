@@ -75,7 +75,7 @@ def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_to
                 if 'ArpackNoConvergence:' not in tb:
                     print traceback.format_exc()
                 tol += 1e-10
-                if add_eps_c < 1 and np.any(np.isclose(M.data, 0., rtol=0., atol=1e-8)):
+                if False and add_eps_c < 1 and np.any(np.isclose(M.data, 0., rtol=0., atol=1e-8)):
                     print print_prefix + 'no eigvec found within iterations limit. Values near zero in Matrix -> add epsilon 1e-8'
                     components = connected_components(M, connection='strong', return_labels=False)
                     print print_prefix + '#components:', components

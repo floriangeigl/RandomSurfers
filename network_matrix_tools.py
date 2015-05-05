@@ -66,19 +66,24 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
 def stationary_dist(transition_matrix, print_prefix='', atol=1e-8, rtol=0.):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     assert np.all(P.data > 0)
+    zeros_near_z = np.isclose(P.data, 0., rtol=0., atol=1e-10).sum()
+    if zeros_near_z > 0:
+        components = connected_components(P, connection='strong', return_labels=False)
+        print print_prefix, 'P values near zero: #', zeros_near_z
+        print print_prefix, '#components', components
+
     assert np.all(np.isfinite(P.data))
     eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)
-    pi = pi.astype(np.float64)
     assert np.all(np.isfinite(pi))
     if not np.allclose(pi, P * pi, atol=atol, rtol=rtol) \
             or not np.isclose(eigval, 1., atol=atol, rtol=rtol):
-        eigvals, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
+        eigval, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
         components = connected_components(P, connection='strong', return_labels=False)
         print print_prefix + 'pi = P * pi:', np.allclose(pi, P * pi, atol=atol, rtol=rtol)
         print print_prefix + 'eigval == 1:', np.isclose(eigval, 1., atol=atol, rtol=rtol)
         print print_prefix, '=' * 80
         print '# components: ', components
-        print print_prefix, eigvals
+        print print_prefix, "%.10f" % eigval
         print print_prefix, '=' * 80
         exit()
     close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
@@ -86,16 +91,17 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-8, rtol=0.):
     pi[close_zero & neg_stat_dist] = 0.
     if np.any(pi < 0):
         # eigvals, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
-        P.eliminate_zeros()
         components = connected_components(P, connection='strong', return_labels=False)
-        print print_prefix + 'negative stat values:', pi[pi < 0]
+        print print_prefix + 'negative stat values:', map(lambda i: "%.10f" % i, pi[pi < 0])
+        print print_prefix + 'negative stat sum:', "%.10f" % pi[pi < 0].sum()
+        print print_prefix + 'negative stat max:', "%.10f" % pi[pi < 0].max()
         print print_prefix, '=' * 80
         print '# components: ', components
-        print print_prefix, 'eigval:', eigvals
+        print print_prefix, 'eigval:', eigval
         print print_prefix, '=' * 80
         exit()
     while not np.isclose(pi.sum(), 1, atol=atol, rtol=rtol):
-        print print_prefix + 're-normalize stat. dist.'.center(20, '!')
+        print print_prefix + 're-normalize stat. dist.'.center(100, '!')
         pi /= pi.sum()
         close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
         neg_stat_dist = pi < 0
@@ -147,6 +153,7 @@ def entropy_rate(transition_matrix, stat_dist=None, base=2, print_prefix=''):
         stat_dist = stationary_dist(transition_matrix)
     if scipy.sparse.issparse(transition_matrix):
         transition_matrix = transition_matrix.todense()
+    assert not np.any(stat_dist < 0)
     entropies = stats.entropy(transition_matrix, base=base) * stat_dist
     rate = np.sum(entropies[np.isfinite(entropies)])
     if not np.isfinite(rate):

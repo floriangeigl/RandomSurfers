@@ -273,7 +273,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
-            if True:
+            if False:
                 if pos is None:
                     print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
                     try:
@@ -283,6 +283,8 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
                 plotting.draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=vertex_size,
                                     groups='com', output=out_dir + name + '_graph_' + bias_name, pos=pos)
                 plt.close('all')
+            else:
+                print print_prefix, 'skip draw graph'
 
             # create scatter plot
             if False:
@@ -321,7 +323,10 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         if len(trapped_df) > 50:
             trapped_df['idx'] = trapped_df['idx'].astype('int')
             trapped_df['idx'] = trapped_df['idx'].apply(lambda x: int(x / 5) * 5)
+            trapped_df.iloc[-1]['idx'] = 101
             trapped_df.drop_duplicates(subset=['idx'], inplace=True)
+            trapped_df.iloc[-1]['idx'] = 100
+            trapped_df.drop_duplicates(subset=['idx'], inplace=True,take_last=True)
         matplotlib.rcParams.update({'font.size': 15})
         trapped_df.plot(x='idx', lw=2, alpha=0.9, style=['-o', '-v', '-^', '-s', '-+', '-D', '-<', '->', '-p', '-*', '-x'])
         trapped_df.to_pickle(out_data_dir + name + '_trapped.df')
