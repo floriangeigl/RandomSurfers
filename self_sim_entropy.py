@@ -123,7 +123,8 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                 A_eigvector = data_dict['eigvec']
             except KeyError:
                 A_eigvector = calc_bias(filename, 'eigenvector', data_dict, dump=dump, verbose=verbose-1)
-            A_sqrt_log_eigvector = 1. / np.sqrt(A_eigvector + 1)
+            A_sqrt_log_eigvector = 1. / np.sqrt(A_eigvector)
+            A_sqrt_log_eigvector[np.invert(np.isfinite(A_sqrt_log_eigvector))] = 0.
         if dump and not loaded:
             try_dump(A_sqrt_log_eigvector, dump_filename)
         return A_sqrt_log_eigvector
@@ -182,7 +183,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'inv_log_deg':
         return 1. / np.log(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 2)
     elif biasname == 'inv_sqrt_deg':
-        return 1. / np.sqrt(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 1)
+        return 1. / np.sqrt(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1))
     else:
         print 'unknown bias:', biasname
         exit()
