@@ -323,9 +323,9 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         if len(trapped_df) > 50:
             trapped_df['idx'] = trapped_df['idx'].astype('int')
             trapped_df['idx'] = trapped_df['idx'].apply(lambda x: int(x / 5) * 5)
-            trapped_df.iloc[-1]['idx'] = 101
+            trapped_df.at[trapped_df.index[-1], 'idx'] = 101
             trapped_df.drop_duplicates(subset=['idx'], inplace=True)
-            trapped_df.iloc[-1]['idx'] = 100
+            trapped_df.at[trapped_df.index[-1], 'idx'] = 100
             trapped_df.drop_duplicates(subset=['idx'], inplace=True,take_last=True)
         matplotlib.rcParams.update({'font.size': 15})
         trapped_df.plot(x='idx', lw=2, alpha=0.9, style=['-o', '-v', '-^', '-s', '-+', '-D', '-<', '->', '-p', '-*', '-x'])

@@ -67,7 +67,7 @@ def main():
 
     first_two_only = False  # quick test flag (disables multiprocessing to get possibles exceptions)
     toy_example = False
-    multip = True  # multiprocessing flag (warning: suppresses exceptions)
+    multip = False  # multiprocessing flag (warning: suppresses exceptions)
     synthetic = False
     empiric_crawled = True
     empiric_downloaded = False
@@ -81,7 +81,7 @@ def main():
     else:
         worker_pool = None
     results = list()
-    biases = ['adjacency', 'eigenvector', 'eigenvector_inverse', 'sigma', 'sigma_deg_corrected', 'cosine', 'betweenness',
+    biases = ['adjacency', 'eigenvector', 'eigenvector_inverse', 'sigma', 'sigma_deg_corrected', 'betweenness',
               'inv_deg']
     if multip:
         manager = multiprocessing.Manager()
@@ -191,9 +191,10 @@ def main():
     if empiric_crawled:
         empiric_data_dir = '/opt/datasets/'
         empiric_data_sets = list()
-        empiric_data_sets.append('thinkgeek')
-        empiric_data_sets.append('getdigital')
         empiric_data_sets.append('milan_spiele')
+        empiric_data_sets.append('getdigital')
+        empiric_data_sets.append('thinkgeek')
+
         for name in empiric_data_sets:
             print name.center(80, '=')
             fname = empiric_data_dir + name + '/' + name + '.gt'

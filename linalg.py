@@ -51,53 +51,25 @@ def transition_matrix(M):
     return P
 
 
-def leading_eigenvector(M, symmetric=False, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1, print_prefix='',
+def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1,
+                        print_prefix='',
                         add_eps_c=0):
     print print_prefix + 'largest eigenvec',
     k = min(k, M.shape[0] - 2)
     if symmetric:
         pass
     if scipy.sparse.issparse(M):
-        while True:
-            try:
-                print 'sparse',
-                if symmetric:
-                    print 'symmetric'
-                    l, v = linalg.eigsh(M, k=k, which="LA")
-                else:
-                    print 'asymmetric'
-                    l, v = linalg.eigs(M, k=k, which="LR")  # maxiter=100) #np.iinfo(np.int32).max)
-                l1 = l.real
-                u = v[:, 0].real
-                return l1, u / u.sum()
-            except Exception as e:
-                tb = str(traceback.format_exc())
-                if 'ArpackNoConvergence:' not in tb:
-                    print traceback.format_exc()
-                tol += 1e-10
-                if False and add_eps_c < 1 and np.any(np.isclose(M.data, 0., rtol=0., atol=1e-8)):
-                    print print_prefix + 'no eigvec found within iterations limit. Values near zero in Matrix -> add epsilon 1e-8'
-                    components = connected_components(M, connection='strong', return_labels=False)
-                    print print_prefix + '#components:', components
-                    add_eps_c += 1
-                    M.data += 1e-8
-                    while np.any(np.isclose(normalize(M, norm='l1', axis=0, copy=True).data, 0., rtol=0., atol=1e-8)):
-                        add_eps_c += 1
-                        print print_prefix, 'add eps:', add_eps_c
-                        M.data += 1e-10
-                    M = normalize(M, norm='l1', axis=0, copy=False)
-                    components = connected_components(M, connection='strong', return_labels=False)
-                    print 'added', add_eps_c * 1e-8, '(', add_eps_c, 'x)'
-                    print print_prefix + '#components:', components
-                    return leading_eigenvector(M, symmetric=symmetric, k=k, tol=0, max_inc_tol_fac=max_inc_tol_fac,
-                                               overwrite_a=overwrite_a, print_prefix=print_prefix, add_eps_c=add_eps_c)
-                elif tol > np.finfo(float).eps * max_inc_tol_fac:
-                    print print_prefix + 'no eigvec found. retry dense mode...'
-                    return leading_eigenvector(M.todense(), overwrite_a=True, k=k, print_prefix=print_prefix)
-                else:
-                    print print_prefix + 'no eigvec found. retry with increased tol:', tol
-                    return leading_eigenvector(M, symmetric=symmetric, tol=tol, k=k, max_inc_tol_fac=max_inc_tol_fac,
-                                               overwrite_a=overwrite_a, print_prefix=print_prefix)
+        print 'sparse',
+        if symmetric:
+            print 'symmetric'
+            l, v = linalg.eigsh(M, k=k, which="LA")
+        else:
+            print 'asymmetric'
+            l, v = linalg.eigs(M, k=k, which="LR", v0=init_v,
+                               maxiter=max(M.shape[0], 1000))  # maxiter=100) #np.iinfo(np.int32).max)
+        l1 = l.real
+        u = v[:, 0].real
+        return l1, u / u.sum()
     else:
         print 'dense',
         if symmetric:
