@@ -165,7 +165,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
         if 'ArpackNoConvergence' not in tb:
             print tb
         print print_prefix, 'no converge. add epsilon to bias', eps
-        b_zeros = None
+        b_zeros = 0
         if bias is not None:
             bias_o = np.float(10 ** int(np.ceil(np.log10(bias.shape[0]))))
             add_eps = eps/bias_o

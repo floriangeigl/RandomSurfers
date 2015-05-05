@@ -52,21 +52,23 @@ def transition_matrix(M):
 
 
 def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1,
-                        print_prefix='',
-                        add_eps_c=0):
+                        print_prefix='', add_eps_c=0):
     print print_prefix + 'largest eigenvec',
     k = min(k, M.shape[0] - 2)
-    if symmetric:
-        pass
     if scipy.sparse.issparse(M):
         print 'sparse',
         if symmetric:
             print 'symmetric'
             l, v = linalg.eigsh(M, k=k, which="LA")
         else:
-            print 'asymmetric'
-            l, v = linalg.eigs(M, k=k, which="LR", v0=init_v,
-                               maxiter=max(M.shape[0], 1000))  # maxiter=100) #np.iinfo(np.int32).max)
+            try:
+                print 'asymmetric'
+                l, v = linalg.eigs(M, k=k, which="LR", v0=init_v,
+                                   maxiter=max(M.shape[0], 1000))  # maxiter=100) #np.iinfo(np.int32).max)
+            except:
+                print print_prefix, 'sparse eigvec failed. retry dense.'
+                return leading_eigenvector(M.todense(), init_v=init_v, overwrite_a=overwrite_a, tol=tol,
+                                           max_inc_tol_fac=max_inc_tol_fac, k=k)
         l1 = l.real
         u = v[:, 0].real
         return l1, u / u.sum()
