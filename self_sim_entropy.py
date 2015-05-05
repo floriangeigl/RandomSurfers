@@ -101,6 +101,32 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         if dump and not loaded:
             try_dump(A_eigvector_inf, dump_filename)
         return A_eigvector_inf
+    elif biasname == 'inv_log_eigenvector':
+        try:
+            A_inf_log_eigvector = try_load(dump_filename)
+            loaded = True
+        except IOError:
+            try:
+                A_eigvector = data_dict['eigvec']
+            except KeyError:
+                A_eigvector = calc_bias(filename, 'eigenvector', data_dict, dump=dump, verbose=verbose-1)
+            A_inf_log_eigvector = 1. / np.log(A_eigvector + 2)
+        if dump and not loaded:
+            try_dump(A_inf_log_eigvector, dump_filename)
+        return A_inf_log_eigvector
+    elif biasname == 'inv_sqrt_eigenvector':
+        try:
+            A_sqrt_log_eigvector = try_load(dump_filename)
+            loaded = True
+        except IOError:
+            try:
+                A_eigvector = data_dict['eigvec']
+            except KeyError:
+                A_eigvector = calc_bias(filename, 'eigenvector', data_dict, dump=dump, verbose=verbose-1)
+            A_sqrt_log_eigvector = 1. / np.sqrt(A_eigvector + 1)
+        if dump and not loaded:
+            try_dump(A_sqrt_log_eigvector, dump_filename)
+        return A_sqrt_log_eigvector
     elif biasname == 'sigma':
         try:
             sigma = try_load(dump_filename)
@@ -152,7 +178,11 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'deg':
         return np.array(data_dict['net'].degree_property_map('total').a)
     elif biasname == 'inv_deg':
-        return 1. / calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose-1)
+        return 1. / (calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 1)
+    elif biasname == 'inv_log_deg':
+        return 1. / np.log(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 2)
+    elif biasname == 'inv_sqrt_deg':
+        return 1. / np.sqrt(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 1)
     else:
         print 'unknown bias:', biasname
         exit()
@@ -179,15 +209,6 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         except KeyError:
             print print_prefix + ' newman modularity:', 'no com mapping'
         adjacency_matrix = adjacency(network)
-        name_to_legend = dict()
-        name_to_legend['eigenvector'] = '$v_1$'
-        name_to_legend['adjacency'] = 'A'
-        name_to_legend['betweenness'] = 'B'
-        name_to_legend['cosine'] = 'cos'
-        name_to_legend['eigenvector_inverse'] = '$v_1^{-1}$'
-        name_to_legend['inv_deg'] = '$k^{-1}$'
-        name_to_legend['sigma'] = '$\\sigma$'
-        name_to_legend['sigma_deg_corrected'] = '$\\sigma_{dc}$'
 
         deg_map = network.degree_property_map('total')
         if network.gp['type'] == 'empiric':
@@ -219,7 +240,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
                     if num_nans > 0 or num_infs > 0:
                         print print_prefix, '[' + bias_name + ']:', utils.color_string(
                             'shape:' + str(bias.shape) + '|replace nans(' + str(num_nans) + ') and infs (' + str(
-                                num_infs) + ') of metric with zero', type=utils.bcolor.RED)
+                                num_infs) + ') of metric with zero', type=utils.bcolors.RED)
                         bias[np.isnan(bias) | np.isinf(bias)] = 0
                 except TypeError:
                     assert scipy.sparse.issparse(bias)
@@ -273,7 +294,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
-            if False:
+            if True:
                 if pos is None:
                     print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
                     try:
@@ -289,7 +310,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
             # create scatter plot
             if False:
                 x = ('stationary value of adjacency', base_line_abs_vals)
-                y = (name_to_legend[bias_name] + ' prob. ratio', stat_dist_diff)
+                y = (bias_name + ' prob. ratio', stat_dist_diff)
                 plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + bias_name)
 
             # plot stationary distribution
@@ -300,7 +321,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
             stat_dist_ser.index = range(len(stat_dist_ser))
             gcoef = utils.gini_coeff(stat_dist_ser)
             gini_coef_df.at[bias_name, name] = gcoef
-            bias_name = name_to_legend[bias_name]
+            # bias_name = name_to_legend[bias_name]
             bias_name += ' $' + ('%.4f' % gcoef) + '$'
             trapped_df[bias_name] = stat_dist_ser.cumsum()
             trapped_df[bias_name] /= trapped_df[bias_name].max()
