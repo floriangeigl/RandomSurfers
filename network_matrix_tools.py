@@ -40,17 +40,13 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
     try:
         katz = la.katz_matrix(adjacency_matrix, alpha, norm=norm)
         if scipy.sparse.issparse(katz):
-            sigma = sparse_linalg.inv(katz.tocsc())
-        else:
-            sigma = lalg.inv(katz)
+            katz = katz.todense()
+        sigma = lalg.inv(katz)
         if norm is not None:
             if len(norm.shape) == 1:
                 sigma *= lil_matrix(np.diag(norm))
             else:
                 sigma *= norm
-        #if norm is not None:
-        #    print sigma
-        #    exit()
         return sigma
     except Exception as e:
         print traceback.format_exc()
@@ -63,10 +59,9 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             raise Exception(e)
 
 
-def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e30):
+def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e5):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     P.data *= scaling_factor
-    atol *= scaling_factor
     assert not np.any(P.data < 0)
     zeros_near_z = np.isclose(P.data, 0., rtol=0., atol=1e-10).sum()
     components = connected_components(P, connection='strong', return_labels=False)
@@ -76,18 +71,19 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
     assert np.all(np.isfinite(P.data))
     eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)
     assert np.all(np.isfinite(pi))
-    if not np.allclose(pi, normalize(transition_matrix, norm='l1', axis=0, copy=True) * pi, atol=atol, rtol=rtol) \
-            or not np.isclose(eigval, scaling_factor, atol=atol, rtol=rtol):
+    normed_P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
+    if not np.allclose(pi, normed_P * pi, atol=atol, rtol=rtol) \
+            or not np.isclose(eigval, scaling_factor, atol=atol*scaling_factor, rtol=rtol):
         # eigval, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
         components = connected_components(P, connection='strong', return_labels=False)
-        print print_prefix + 'pi = P * pi:', np.allclose(pi, P * pi, atol=atol, rtol=rtol)
-        print print_prefix + 'eigval == 1:', np.isclose(eigval, scaling_factor, atol=atol, rtol=rtol)
+        print print_prefix + 'pi = P * pi:', np.allclose(pi, normed_P * pi, atol=atol, rtol=rtol)
+        print print_prefix + 'eigval == 1:', np.isclose(eigval, scaling_factor, atol=atol*scaling_factor, rtol=rtol)
         print print_prefix, '=' * 80
         if components > 1:
             print print_prefix, utils.color_string('# components: ' + str(components), utils.bcolors.RED)
         else:
             print '# components: ', components
-        print print_prefix, "%.10f" % eigval.real[0]
+        print print_prefix, "eigval: %.10f" % eigval.real[0]
         print print_prefix, '=' * 80
         exit()
     close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
@@ -131,7 +127,6 @@ def normalize_mat(matrix, replace_nans_with=0):
 
 
 def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps=1e-10, orig_ma_mi_r=None):
-    adjacency_matrix.data *= 1e10
     bias_max_min_r = None
     if bias is not None:
         if np.count_nonzero(bias) == 0:
@@ -144,10 +139,10 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             bias_max_min_r = bias.max() / bias.min()
             weighted_trans = bias_m.tocsr() * adjacency_matrix
         elif len(bias.shape) == 2 and bias.shape[0] > 0 and bias.shape[1] > 0:
-            if scipy.sparse.issparse(bias):
-                bias_max_min_r = bias.data.max() / bias.data.min()
-            else:
-                bias_max_min_r = bias.max() / bias.min()
+            try:
+                bias_max_min_r = (bias.max()) / (bias.min())
+            except:
+                bias_max_min_r = (bias.max()) / (bias.min())
             weighted_trans = adjacency_matrix.multiply(lil_matrix(bias))
         else:
             print print_prefix + '\tunknown bias shape'
@@ -169,20 +164,20 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
         if bias is not None:
             bias_o = np.float(10 ** int(np.ceil(np.log10(bias.shape[0]))))
             add_eps = eps/bias_o
-            print print_prefix, 'absolute eps:', add_eps
+            print print_prefix, 'absolute eps:', utils.color_string(str(add_eps), utils.bcolors.RED)
             if len(bias.shape) == 1:
-                print print_prefix, 'vector bias'
+                # print print_prefix, 'vector bias'
                 bias /= bias.sum()
                 b_zeros = np.isclose(bias, 0., rtol=0., atol=1e-15).sum() / len(bias)
                 bias += add_eps
             else:
                 if scipy.sparse.issparse(bias):
-                    print print_prefix, 'sparse matrix bias'
+                    # print print_prefix, 'sparse matrix bias'
                     bias = normalize(bias, 'l1', axis=0, copy=False)
                     b_zeros = np.isclose(bias.data, 0., rtol=0., atol=1e-15).sum() / len(bias.data)
                     bias.data += add_eps
                 else:
-                    print print_prefix, 'dense matrix bias'
+                    # print print_prefix, 'dense matrix bias'
                     bias /= bias.sum(axis=0)
                     b_zeros = np.isclose(np.array(bias).flatten(), 0., rtol=0., atol=1e-15).sum() / (
                     bias.shape[0] * bias.shape[1])

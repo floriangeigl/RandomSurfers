@@ -52,7 +52,7 @@ def transition_matrix(M):
 
 
 def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1,
-                        print_prefix='', add_eps_c=0):
+                        print_prefix='', dense_fallback=False):
     print print_prefix + 'largest eigenvec',
     k = min(k, M.shape[0] - 2)
     if scipy.sparse.issparse(M):
@@ -65,10 +65,13 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
                 print 'asymmetric'
                 l, v = linalg.eigs(M, k=k, which="LR", v0=init_v,
                                    maxiter=max(M.shape[0], 1000))  # maxiter=100) #np.iinfo(np.int32).max)
-            except:
-                print print_prefix, 'sparse eigvec failed. retry dense.'
-                return leading_eigenvector(M.todense(), init_v=init_v, overwrite_a=overwrite_a, tol=tol,
-                                           max_inc_tol_fac=max_inc_tol_fac, k=k)
+            except Exception as e:
+                if dense_fallback:
+                    print print_prefix, 'sparse eigvec failed. retry dense.'
+                    return leading_eigenvector(M.todense(), init_v=init_v, overwrite_a=overwrite_a, tol=tol,
+                        max_inc_tol_fac=max_inc_tol_fac, k=k)
+                else:
+                    raise e
         l1 = l.real
         u = v[:, 0].real
         return l1, u / u.sum()
@@ -81,8 +84,8 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
             print 'asymmetric'
             l, v = lalg.eig(M, overwrite_a=overwrite_a)
         l1index = largest_eigenvalue_index(l)
-        u = np.array(vc.real_part(v[:, l1index]))
-        return l[l1index].real, u
+        u = np.array(v[:, l1index].real)
+        return l[l1index].real, u / u.sum()
 
 
 def deg_matrix_inv(A):
@@ -109,9 +112,9 @@ def katz_alpha(A):
 def katz_matrix(A, alpha, norm=None):
     m, n = A.shape
     if norm is None:
-        katz = np.eye(n) - alpha * A
+        katz = scipy.sparse.eye(n) - alpha * A
     elif len(norm.shape) == 1:
-        katz = np.diag(norm) - alpha * A
+        katz = scipy.sparse.spdiags(norm, 0, A.shape[0], A.shape[0]) - alpha * A
     elif len(norm.shape) == 2:
         katz = norm - alpha * A
     else:
