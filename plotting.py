@@ -197,7 +197,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
         cbar.ax.set_yticklabels(tick_labels)
         cbar.ax.tick_params(labelsize=20)
         #var = stats.tvar(orig_color)
-        #cbar.set_label('')
+        cbar.set_label('SPR')
     plt.axis('off')
     plt.savefig(output, bbox_tight=True, dpi=dpi)
     plt.close('all')
