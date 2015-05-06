@@ -112,14 +112,11 @@ def katz_alpha(A):
 def katz_matrix(A, alpha, norm=None):
     m, n = A.shape
     if norm is None:
-        katz = lil_matrix(np.eye(n)) - alpha * A
+        katz = np.eye(n) - alpha * A
     elif len(norm.shape) == 1:
-        katz = lil_matrix(np.diag(norm)) - alpha * A
+        katz = np.diag(norm) - alpha * A
     elif len(norm.shape) == 2:
-        if scipy.sparse.issparse(norm):
-            katz = norm - alpha * A
-        else:
-            katz = lil_matrix(norm) - alpha * A
+        katz = norm - alpha * A
     else:
         print 'katz norm unknown shape'.center(120, '!')
         exit()
