@@ -164,7 +164,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
         if bias is not None:
             bias_o = np.float(10 ** int(np.ceil(np.log10(bias.shape[0]))))
             add_eps = eps/bias_o
-            print print_prefix, 'absolute eps:', add_eps
+            print print_prefix, 'absolute eps:', utils.color_string(str(add_eps), utils.bcolors.RED)
             if len(bias.shape) == 1:
                 # print print_prefix, 'vector bias'
                 bias /= bias.sum()
