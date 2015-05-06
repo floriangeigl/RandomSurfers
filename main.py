@@ -70,7 +70,7 @@ def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     synthetic = True
     empiric_crawled = True
-    empiric_downloaded = False
+    empiric_downloaded = True
     karate_club = True
     if first_two_only:
         multip = False
@@ -81,8 +81,7 @@ def main():
     else:
         worker_pool = None
     results = list()
-    biases = ['adjacency', 'eigenvector', 'inv_log_eigenvector', 'inv_sqrt_eigenvector', 'sigma', 'sigma_deg_corrected',
-              'sigma_log_deg_corrected', 'betweenness', 'inv_sqrt_deg', 'inv_log_deg']
+    biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
     if multip:
         manager = multiprocessing.Manager()
         error_q = manager.Queue()

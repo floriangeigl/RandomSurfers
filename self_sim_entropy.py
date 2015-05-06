@@ -175,6 +175,23 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         if dump and not loaded:
             try_dump(sigma_log_deg_cor, dump_filename)
         return sigma_log_deg_cor
+    elif biasname == 'sigma_sqrt_deg_corrected':
+        try:
+            sigma_sqrt_deg_cor = try_load(dump_filename)
+            loaded = True
+        except IOError:
+            try:
+                A_eigvalue = data_dict['eigval']
+            except KeyError:
+                _ = calc_bias(filename, 'eigenvector', data_dict, dump=dump, verbose=verbose-1)
+                A_eigvalue = data_dict['eigval']
+            sigma_sqrt_deg_cor = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue,
+                                                                      norm=np.sqrt(np.array(
+                                                                          data_dict['net'].degree_property_map(
+                                                                              'total').a, dtype=np.float)))
+        if dump and not loaded:
+            try_dump(sigma_sqrt_deg_cor, dump_filename)
+        return sigma_sqrt_deg_cor
     elif biasname == 'cosine':
         try:
             cos = try_load(dump_filename)
@@ -194,7 +211,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
             try_dump(bet, dump_filename)
         return bet
     elif biasname == 'deg':
-        return np.array(data_dict['net'].degree_property_map('total').a)
+        return np.array(data_dict['net'].degree_property_map('total').a, dtype=np.float)
     elif biasname == 'inv_deg':
         return 1. / (calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 1)
     elif biasname == 'inv_log_deg':
@@ -312,7 +329,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
-            if True and network.num_vertices() < 5000:
+            if True and network.num_vertices() < 3000:
                 if pos is None:
                     print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
                     try:
@@ -359,12 +376,16 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         trapped_df.index += 1
         trapped_df['idx'] = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
 
-        if len(trapped_df) > 50:
+        if False and len(trapped_df) > 50:
             trapped_df['idx'] = trapped_df['idx'].astype('int')
+            if len(trapped_df) > 1000:
+                trapped_df['idx'] = trapped_df['idx'].apply(lambda x: x * 5 if x >= 90 else x)
             trapped_df['idx'] = trapped_df['idx'].apply(lambda x: int(x / 5) * 5)
-            trapped_df.at[trapped_df.index[-1], 'idx'] = 101
+            if len(trapped_df) > 1000:
+                trapped_df['idx'] = trapped_df['idx'].apply(lambda x: x / 5 if x >= 90 else x)
+            #trapped_df.at[trapped_df.index[-1], 'idx'] = 101
             trapped_df.drop_duplicates(subset=['idx'], inplace=True)
-            trapped_df.at[trapped_df.index[-1], 'idx'] = 100
+            #trapped_df.at[trapped_df.index[-1], 'idx'] = 100
             trapped_df.drop_duplicates(subset=['idx'], inplace=True,take_last=True)
         matplotlib.rcParams.update({'font.size': 15})
         trapped_df.plot(x='idx', lw=2, alpha=0.9, style=['-o', '-v', '-^', '-s', '-+', '-D', '-<', '->', '-p', '-*', '-x'])
