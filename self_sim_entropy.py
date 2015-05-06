@@ -158,6 +158,23 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         if dump and not loaded:
             try_dump(sigma_deg_cor, dump_filename)
         return sigma_deg_cor
+    elif biasname == 'sigma_log_deg_corrected':
+        try:
+            sigma_log_deg_cor = try_load(dump_filename)
+            loaded = True
+        except IOError:
+            try:
+                A_eigvalue = data_dict['eigval']
+            except KeyError:
+                _ = calc_bias(filename, 'eigenvector', data_dict, dump=dump, verbose=verbose-1)
+                A_eigvalue = data_dict['eigval']
+            sigma_log_deg_cor = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue,
+                                                                      norm=np.log(np.array(
+                                                                          data_dict['net'].degree_property_map(
+                                                                              'total').a, dtype=np.float) + 2))
+        if dump and not loaded:
+            try_dump(sigma_log_deg_cor, dump_filename)
+        return sigma_log_deg_cor
     elif biasname == 'cosine':
         try:
             cos = try_load(dump_filename)

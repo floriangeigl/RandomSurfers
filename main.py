@@ -82,7 +82,7 @@ def main():
         worker_pool = None
     results = list()
     biases = ['adjacency', 'eigenvector', 'inv_log_eigenvector', 'inv_sqrt_eigenvector', 'sigma', 'sigma_deg_corrected',
-              'betweenness', 'inv_sqrt_deg', 'inv_log_deg']
+              'sigma_log_deg_corrected', 'betweenness', 'inv_sqrt_deg', 'inv_log_deg']
     if multip:
         manager = multiprocessing.Manager()
         error_q = manager.Queue()
