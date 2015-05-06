@@ -39,10 +39,12 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
     alpha = gamma * alpha_max
     try:
         katz = la.katz_matrix(adjacency_matrix, alpha, norm=norm)
+        if scipy.sparse.issparse(katz):
+            katz = katz.todense()
         sigma = lalg.inv(katz)
         if norm is not None:
             if len(norm.shape) == 1:
-                sigma *= np.diag(norm)
+                sigma *= lil_matrix(np.diag(norm))
             else:
                 sigma *= norm
         return sigma
@@ -81,7 +83,7 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
             print print_prefix, utils.color_string('# components: ' + str(components), utils.bcolors.RED)
         else:
             print '# components: ', components
-        print print_prefix, "%.10f" % eigval.real[0]
+        print print_prefix, "eigval: %.10f" % eigval.real[0]
         print print_prefix, '=' * 80
         exit()
     close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)

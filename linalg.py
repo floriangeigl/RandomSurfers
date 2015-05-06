@@ -84,8 +84,8 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
             print 'asymmetric'
             l, v = lalg.eig(M, overwrite_a=overwrite_a)
         l1index = largest_eigenvalue_index(l)
-        u = np.array(vc.real_part(v[:, l1index]))
-        return l[l1index].real, u
+        u = np.array(v[:, l1index].real)
+        return l[l1index].real, u / u.sum()
 
 
 def deg_matrix_inv(A):
@@ -112,9 +112,9 @@ def katz_alpha(A):
 def katz_matrix(A, alpha, norm=None):
     m, n = A.shape
     if norm is None:
-        katz = np.eye(n) - alpha * A
+        katz = scipy.sparse.eye(n) - alpha * A
     elif len(norm.shape) == 1:
-        katz = np.diag(norm) - alpha * A
+        katz = scipy.sparse.spdiags(norm, 0, A.shape[0], A.shape[0]) - alpha * A
     elif len(norm.shape) == 2:
         katz = norm - alpha * A
     else:
