@@ -195,10 +195,10 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
                 if non_zero_dig == 0:
                     break
         cbar.ax.set_yticklabels(tick_labels)
-        cbar.ax.tick_params(labelsize=20)
+        cbar.ax.tick_params(labelsize=40)
         #var = stats.tvar(orig_color)
-        cbar.set_label('SPR')
-    matplotlib.rcParams.update({'font.size': 20})
+        cbar.set_label('SPR', labelpad=+30)
+    matplotlib.rcParams.update({'font.size': 40})
     plt.axis('off')
     plt.savefig(output, bbox_tight=True, dpi=dpi)
     plt.close('all')
