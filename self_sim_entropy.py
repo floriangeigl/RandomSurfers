@@ -273,7 +273,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
-            if False:
+            if True and network.num_vertices() < 5000:
                 if pos is None:
                     print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
                     try:
@@ -284,7 +284,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
                                     groups='com', output=out_dir + name + '_graph_' + bias_name, pos=pos)
                 plt.close('all')
             else:
-                print print_prefix, 'skip draw graph'
+                print print_prefix, 'skip draw graph', '#v:', network.num_vertices()
 
             # create scatter plot
             if False:

@@ -14,6 +14,7 @@ import numpy as np
 from graph_tool.all import *
 import scipy.stats as stats
 import utils
+import datetime
 
 
 def create_scatter(x, y, fname, **kwargs):
@@ -96,7 +97,8 @@ def create_scatter(x, y, fname, **kwargs):
 def draw_graph(network, color, min_color=None, max_color=None, groups=None, sizep=None, colormap_name='bwr', min_vertex_size_shrinking_factor=4, output='graph.png', output_size=(15, 15), dpi=80, standardize=False, color_bar=True, **kwargs):
     output_splitted = output.rsplit('/', 1)[-1].split('_graph_')
     net_name, prop_key = output_splitted[0], output_splitted[-1]
-    print_prefix = utils.color_string('[' + net_name + '] ') + '[' + prop_key + '] draw graph'
+    print_prefix = utils.color_string('[' + net_name + '] ') + '[' + prop_key + '] [' + str(
+        datetime.datetime.now().replace(microsecond=0)) + '] draw graph'
     print print_prefix
     print_prefix += ': '
     num_nodes = network.num_vertices()
