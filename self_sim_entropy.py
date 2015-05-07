@@ -225,9 +225,9 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
 
 def self_sim_entropy(network, name, out_dir, biases, error_q):
     try:
-        if False:
+        if True:
             # network.set_directed(False)
-            remove_parallel_edges(network)
+            # remove_parallel_edges(network)
             remove_self_loops(network)
         start_time = datetime.datetime.now()
         base_line_type = 'adjacency'
