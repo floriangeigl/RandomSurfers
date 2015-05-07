@@ -329,7 +329,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
-            if True and network.num_vertices() < 3000:
+            if True and network.num_vertices() < 5000:
                 if pos is None:
                     print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
                     try:
