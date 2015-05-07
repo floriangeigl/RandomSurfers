@@ -70,7 +70,7 @@ def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     synthetic = True
     empiric_crawled = True
-    empiric_downloaded = True
+    empiric_downloaded = False
     karate_club = True
     if first_two_only:
         multip = False
