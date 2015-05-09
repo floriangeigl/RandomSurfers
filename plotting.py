@@ -15,6 +15,7 @@ from graph_tool.all import *
 import scipy.stats as stats
 import utils
 import datetime
+import os
 
 
 def create_scatter(x, y, fname, **kwargs):
@@ -94,7 +95,7 @@ def create_scatter(x, y, fname, **kwargs):
     plt.close('all')
 
 
-def draw_graph(network, color, min_color=None, max_color=None, groups=None, sizep=None, colormap_name='bwr', min_vertex_size_shrinking_factor=4, output='graph.png', output_size=(15, 15), dpi=80, standardize=False, color_bar=True, **kwargs):
+def draw_graph(network, color, min_color=None, max_color=None, groups=None, sizep=None, colormap_name='bwr', min_vertex_size_shrinking_factor=4, output='graph.png', output_size=(15, 15), dpi=80, standardize=False, color_bar=True, crop=True, **kwargs):
     output_splitted = output.rsplit('/', 1)[-1].split('_graph_')
     net_name, prop_key = output_splitted[0], output_splitted[-1]
     print_prefix = utils.color_string('[' + net_name + '] ') + '[' + prop_key + '] [' + str(
@@ -172,7 +173,7 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
     color_pmap.set_2d_array(tmp.T)
     plt.switch_backend('cairo')
     f, ax = plt.subplots(figsize=(15, 15))
-    output_size = (output_size[0], output_size[1]*.8)  # make space for colorbar
+    output_size = (output_size[0], output_size[1]*.3)  # make space for colorbar
     edge_alpha = 0.3 if network.num_vertices() < 1000 else 0.01
     pen_width = 0.8 if network.num_vertices() < 1000 else 0.1
     v_pen_color = [0., 0., 0., 1] if network.num_vertices() < 1000 else [0.0, 0.0, 0.0, edge_alpha]
@@ -197,12 +198,18 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
         cbar.ax.set_yticklabels(tick_labels)
         cbar.ax.tick_params(labelsize=40)
         #var = stats.tvar(orig_color)
-        cbar.set_label('SPR', labelpad=+30)
+        cbar.set_label('Bias Factor', labelpad=+30)
     matplotlib.rcParams.update({'font.size': 40})
     plt.axis('off')
     plt.savefig(output, bbox_tight=True, dpi=dpi)
     plt.close('all')
     plt.switch_backend('Agg')
+    if crop:
+        if output.endswith('.pdf'):
+            os.system('pdfcrop ' + output + ' ' + output)
+        else:
+            pass
+            #os.system('convert ' + output + ' -trim ' + output)
     # print print_prefix + 'done'
 
 

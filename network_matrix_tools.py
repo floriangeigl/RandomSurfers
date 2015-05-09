@@ -137,7 +137,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             bias_m = lil_matrix(adjacency_matrix.shape)
             bias_m.setdiag(bias)
             bias_max_min_r = bias.max() / bias.min()
-            weighted_trans = bias_m.tocsr() * adjacency_matrix
+            weighted_trans = bias_m.dot(adjacency_matrix)
         elif len(bias.shape) == 2 and bias.shape[0] > 0 and bias.shape[1] > 0:
             try:
                 bias_max_min_r = (bias.max()) / (bias.min())
@@ -198,7 +198,10 @@ def entropy_rate(transition_matrix, stat_dist=None, base=2, print_prefix=''):
     assert not np.any(stat_dist < 0)
     assert np.isclose(stat_dist.sum(), 1.)
     assert np.all(transition_matrix.sum(axis=0) > 0)
-    entropies = stats.entropy(transition_matrix, base=base) * stat_dist
+    entropies = np.array(stats.entropy(transition_matrix, base=base)).flatten()
+    stat_dist = np.array(stat_dist).flatten()
+    assert stat_dist.shape == entropies.shape
+    entropies *= stat_dist
     rate = np.sum(entropies[np.isfinite(entropies)])
     if not np.isfinite(rate):
         print print_prefix + 'entropy rate not finite'
