@@ -198,7 +198,7 @@ def entropy_rate(transition_matrix, stat_dist=None, base=2, print_prefix=''):
     assert np.all(transition_matrix.sum(axis=0) > 0)
     if scipy.sparse.issparse(transition_matrix):
         if not isinstance(transition_matrix, csc_matrix):
-            matrix = transition_matrix.tocsc()
+            transition_matrix = transition_matrix.tocsc()
         col_entropy = np.array(
             [stats.entropy(transition_matrix[:, i].data, base=base) for i in range(transition_matrix.shape[0])]).flatten()
     else:
