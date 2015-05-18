@@ -287,7 +287,6 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
                                 num_infs) + ') of metric with zero', type=utils.bcolor.RED)
                         bias.data[np.isnan(bias.data) | np.isinf(bias.data)] = 0
 
-
             assert scipy.sparse.issparse(adjacency_matrix)
             ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias,
                                                                              print_prefix=print_prefix + ' [' + bias_name + '] ')

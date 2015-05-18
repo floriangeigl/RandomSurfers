@@ -3,7 +3,7 @@ import scipy
 import linalg as la
 import scipy.linalg as lalg
 import scipy.stats as stats
-from scipy.sparse import lil_matrix, csr_matrix
+from scipy.sparse import lil_matrix, csr_matrix, csc_matrix
 import scipy.sparse.linalg as sparse_linalg
 from sklearn.preprocessing import normalize
 import traceback
@@ -193,16 +193,20 @@ def entropy_rate(transition_matrix, stat_dist=None, base=2, print_prefix=''):
     print print_prefix + 'calc entropy rate'
     if stat_dist is None:
         stat_dist = stationary_dist(transition_matrix)
-    if scipy.sparse.issparse(transition_matrix):
-        transition_matrix = transition_matrix.todense()
     assert not np.any(stat_dist < 0)
     assert np.isclose(stat_dist.sum(), 1.)
     assert np.all(transition_matrix.sum(axis=0) > 0)
-    entropies = np.array(stats.entropy(transition_matrix, base=base)).flatten()
+    if scipy.sparse.issparse(transition_matrix):
+        if not isinstance(transition_matrix, csc_matrix):
+            matrix = transition_matrix.tocsc()
+        col_entropy = np.array(
+            [stats.entropy(transition_matrix[:, i].data, base=base) for i in range(transition_matrix.shape[0])]).flatten()
+    else:
+        col_entropy = np.array(stats.entropy(transition_matrix, base=base)).flatten()
     stat_dist = np.array(stat_dist).flatten()
-    assert stat_dist.shape == entropies.shape
-    entropies *= stat_dist
-    rate = np.sum(entropies[np.isfinite(entropies)])
+    assert stat_dist.shape == col_entropy.shape
+    col_entropy *= stat_dist
+    rate = np.sum(col_entropy[np.isfinite(col_entropy)])
     if not np.isfinite(rate):
         print print_prefix + 'entropy rate not finite'
         exit()
