@@ -219,8 +219,11 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'inv_sqrt_deg':
         return 1. / np.sqrt(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1))
     else:
-        print 'unknown bias:', biasname
-        exit()
+        try:
+            return try_load(biasname)
+        except:
+            print 'unknown bias:', biasname
+            exit()
 
 
 def self_sim_entropy(network, name, out_dir, biases, error_q):
@@ -263,7 +266,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         for bias_name in sorted(biases):
             # calc bias
             bias = calc_bias(dump_base_fn, bias_name, data_dict, dump=network.gp['type'] == 'empiric')
-
+            bias_name = bias_name.rsplit('/', 1)[-1]
             print print_prefix, '[' + bias_name + ']', '['+str(datetime.datetime.now().replace(
                 microsecond=0))+']', 'calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
 
@@ -335,8 +338,9 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
                         pos = sfdp_layout(network, groups=network.vp['com'], mu=3.0)
                     except KeyError:
                         pos = sfdp_layout(network)
-                plotting.draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val, sizep=vertex_size,
-                                    groups='com', output=out_dir + name + '_graph_' + bias_name, pos=pos)
+                plotting.draw_graph(network, color=stat_dist_diff, min_color=min_val, max_color=max_val,
+                                    sizep=vertex_size,
+                                    groups='com', output=out_dir + name + '_graph_' + bias_name.split('/')[-1], pos=pos)
                 plt.close('all')
             else:
                 print print_prefix, 'skip draw graph', '#v:', network.num_vertices()

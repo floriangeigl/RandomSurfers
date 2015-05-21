@@ -140,7 +140,6 @@ def draw_graph(network, color, min_color=None, max_color=None, groups=None, size
         [0 if np.isclose(color[int(v)], 1.) else (1 if color[int(v)] > 1. else 4) for v in network.vertices()],
         dtype='int')
 
-
     try:
         _ = color.a
     except AttributeError:
