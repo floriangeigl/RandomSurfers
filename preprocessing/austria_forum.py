@@ -39,6 +39,7 @@ def create_mapping(user_map, net_map):
     transf_map = dict()
     print 'create user to net mapping'
     unmapped = 0
+    unmapped_urls = set()
     for url, url_id in user_map.iteritems():
         try:
             net_id = net_map[url]
@@ -46,10 +47,15 @@ def create_mapping(user_map, net_map):
         except KeyError:
             print 'can not map:', url, url_id
             unmapped += 1
+            unmapped_urls.add(url)
     if unmapped:
         print 'unmapped urls:', unmapped
         print unmapped / len(user_map) * 100, '%'
     print 'done'
+    with open('unmapped_urls.txt', 'w') as f:
+        for i in unmapped_urls:
+            f.write(i + '\n')
+
     return transf_map
 
 def read_edge_list(filename):
