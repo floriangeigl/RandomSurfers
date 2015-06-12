@@ -12,9 +12,13 @@ import datetime
 import traceback
 
 def convert_url(url):
+    url = url.strip().decode('utf8')
     try:
-        return urllib.unquote(url.strip().decode('utf8').encode('latin1').decode('utf8')).encode('utf8')
-        # return urllib.unquote(urllib.quote(url.strip(), ':/%')).encode('utf8').decode('utf8').lower()
+        try:
+            url = url.encode('latin1')
+        except UnicodeDecodeError:
+            pass
+        return str(urllib.unquote(url))
     except:
         print traceback.format_exc()
         print 'FAILED:', url, type(url)
@@ -49,7 +53,7 @@ def read_and_map_hdf5(filename, mapping, shape=None):
     return csr_matrix((data, (row_idx, col_idx)), shape=shape)
 
 
-def create_mapping(user_map, net_map, find_best_match=True):
+def create_mapping(user_map, net_map, find_best_match=False):
     net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
     transf_map = dict()
     print 'create user to net mapping'
@@ -103,7 +107,9 @@ def read_edge_list(filename):
                         s, t = get_v[convert_url(s_link)], get_v[convert_url(t_link)]
                         g.add_edge(s, t)
                     except ValueError:
+                        print '-' * 80
                         print line
+                        print '-' * 80
         url_pmap = g.new_vertex_property('string')
         for link, v in get_v.iteritems():
             url_pmap[v] = link
@@ -163,6 +169,6 @@ def main():
 
 
 if __name__ == '__main__':
-    print 'start:', datetime.datetime.now()
+    print 'start:', datetime.datetime.now().replace(microsecond=0)
     main()
-    print 'ALL DONE', datetime.datetime.now()
+    print 'ALL DONE', datetime.datetime.now().replace(microsecond=0)
