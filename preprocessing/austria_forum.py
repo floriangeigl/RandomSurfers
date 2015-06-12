@@ -13,7 +13,7 @@ import traceback
 
 def convert_url(url):
     try:
-        return urllib.unquote(url.strip().decode('utf8').encode('latin1').decode('utf8'))
+        return urllib.unquote(url.strip().decode('utf8').encode('latin1').decode('utf8')).lower()
         # return urllib.unquote(urllib.quote(url.strip(), ':/%')).encode('utf8').decode('utf8').lower()
     except:
         print traceback.format_exc()
