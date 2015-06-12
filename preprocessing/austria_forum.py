@@ -9,11 +9,14 @@ import difflib
 import urllib
 import multiprocessing as mp
 import datetime
+import traceback
 
 def convert_url(url):
     try:
-        return urllib.unquote(urllib.quote(url.strip(), ':/%')).decode('utf-8').lower()
+        return urllib.unquote(url.strip()).lower()
+        # return urllib.unquote(urllib.quote(url.strip(), ':/%')).encode('utf8').decode('utf8').lower()
     except:
+        print traceback.format_exc()
         print 'FAILED:', url
         exit()
 
