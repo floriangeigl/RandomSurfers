@@ -5,6 +5,17 @@ import tables as tb
 import numpy as np
 from collections import defaultdict
 import os
+import difflib
+import urllib
+import multiprocessing as mp
+import datetime
+
+def convert_url(url):
+    try:
+        return urllib.unquote(urllib.quote(url.strip(), ':/%')).decode('utf-8').lower()
+    except:
+        print 'FAILED:', url
+        exit()
 
 
 def read_and_map_hdf5(filename, mapping, shape=None):
@@ -34,7 +45,8 @@ def read_and_map_hdf5(filename, mapping, shape=None):
             print 'unmapped clicks:', unmapped_clicks, unmapped_clicks / np.array(h5.root.data).sum() * 100, '%'
     return csr_matrix((data, (row_idx, col_idx)), shape=shape)
 
-def create_mapping(user_map, net_map):
+
+def create_mapping(user_map, net_map, find_best_match=True):
     net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
     transf_map = dict()
     print 'create user to net mapping'
@@ -45,7 +57,18 @@ def create_mapping(user_map, net_map):
             net_id = net_map[url]
             transf_map[url_id] = net_id
         except KeyError:
-            print 'can not map:', url, url_id
+            print 'can not map:', url
+            if find_best_match:
+                print ' best match:',
+                pool = mp.Pool(processes=15)
+                res = []
+                call_back = lambda x: res.append(x)
+                for i in net_map.keys():
+                    pool.apply_async(string_sim, args=(i, url,), callback=call_back)
+                pool.close()
+                pool.join()
+                best, best_url = max(res, key=lambda x: x[0])
+                print best_url, 'val:', best
             unmapped += 1
             unmapped_urls.add(url)
     if unmapped:
@@ -55,8 +78,12 @@ def create_mapping(user_map, net_map):
     with open('unmapped_urls.txt', 'w') as f:
         for i in unmapped_urls:
             f.write(i + '\n')
-
     return transf_map
+
+
+def string_sim(s1, s2):
+    return difflib.SequenceMatcher(None, a=s1, b=s2).ratio(), s1
+
 
 def read_edge_list(filename):
     store_fname = filename + '.gt'
@@ -70,7 +97,7 @@ def read_edge_list(filename):
                 if not line.startswith('#'):
                     try:
                         s_link, t_link = line.split('\t')
-                        s, t = get_v[s_link], get_v[t_link]
+                        s, t = get_v[convert_url(s_link)], get_v[convert_url(t_link)]
                         g.add_edge(s, t)
                     except ValueError:
                         print line
@@ -99,6 +126,7 @@ def read_edge_list(filename):
         print 'loaded af-network:', g.num_vertices(), 'vertices', g.num_edges(), 'edges'
     return g, get_v
 
+
 def read_tmat_map(filename):
     map = dict()
     visits = dict()
@@ -107,9 +135,10 @@ def read_tmat_map(filename):
             line = line.strip()
             if not line.startswith('#'):
                 line = line.split('\t')
-                map[line[1]] = int(line[0])
+                map[convert_url(line[1])] = int(line[0])
                 visits[line[1]] = int(line[2])
     return map, visits
+
 
 def main():
     af_f = 'data/austria_forum_org_cleaned.txt'
@@ -131,4 +160,6 @@ def main():
 
 
 if __name__ == '__main__':
+    print 'start:', datetime.datetime.now()
     main()
+    print 'ALL DONE', datetime.datetime.now()
