@@ -83,7 +83,7 @@ def create_mapping(user_map, net_map, find_best_match=False):
         print unmapped / len(user_map) * 100, '%'
     print 'done'
     with open('unmapped_urls.txt', 'w') as f:
-        for i in unmapped_urls:
+        for i in sorted(unmapped_urls):
             f.write(i + '\n')
     return transf_map
 
