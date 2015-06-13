@@ -164,8 +164,8 @@ def main():
     ones_adj_mat = adj_mat.copy()
     ones_adj_mat.data = np.array([1] * len(ones_adj_mat.data))
     trans_mat = user_mat.multiply(ones_adj_mat)
-    print 'adj links:', ones_adj_mat.sum()
-    print 'possible clicks:', trans_mat.sum()
+    print 'adj links:', ones_adj_mat.sum(), 'nodes:', ones_adj_mat.shape[0]
+    print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)) / ones_adj_mat.shape[0] * 100, '%'
 
 
 if __name__ == '__main__':
