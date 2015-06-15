@@ -25,36 +25,7 @@ font_size = 12
 matplotlib.rcParams.update({'font.size': font_size})
 np.set_printoptions(precision=2)
 np.set_printoptions(linewidth=225)
-import cPickle
-
-
-def try_dump(data, filename):
-    try:
-        data.dump(filename)
-        return True
-    except (SystemError, AttributeError):
-        try:
-            with open(filename, 'wb') as f:
-                cPickle.dump(data, f)
-        except:
-            pass
-        return False
-
-
-def try_load(filename):
-    try:
-        data = np.load(filename)
-    except IOError:
-        try:
-            with open(filename, 'rb') as f:
-                data = cPickle.load(f)
-        except IOError:
-            raise IOError
-        except:
-            print traceback.format_exc()
-            raise IOError
-    return data
-
+from data_io import *
 
 def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     dump_filename = filename + '_' + biasname + '.bias'

@@ -2,27 +2,25 @@ from __future__ import division
 from graph_tool.all import *
 from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 import tables as tb
-import numpy as np
 from collections import defaultdict
 import os
 import difflib
 import urllib
 import multiprocessing as mp
 import datetime
-import traceback
+from data_io import *
 
 def convert_url(url):
-    url = url.strip().decode('utf8')
+    url = url.strip()
     try:
         try:
-            url = url.encode('latin1')
+            url = url.decode('utf8').encode('latin1')
         except UnicodeDecodeError:
             pass
-        return str(urllib.unquote(url))
+        return urllib.unquote(url.strip())
     except:
         print traceback.format_exc()
         print 'FAILED:', url, type(url)
-        exit()
 
 
 def read_and_map_hdf5(filename, mapping, shape=None):
@@ -92,50 +90,6 @@ def string_sim(s1, s2):
     return difflib.SequenceMatcher(None, a=s1, b=s2).ratio(), s1
 
 
-def read_edge_list(filename):
-    store_fname = filename + '.gt'
-    if not os.path.isfile(store_fname):
-        print 'read edgelist:', filename
-        g = Graph(directed=True)
-        get_v = defaultdict(lambda: g.add_vertex())
-        with open(filename, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line.startswith('#'):
-                    try:
-                        s_link, t_link = line.split('\t')
-                        s, t = get_v[convert_url(s_link)], get_v[convert_url(t_link)]
-                        g.add_edge(s, t)
-                    except ValueError:
-                        print '-' * 80
-                        print line
-                        print '-' * 80
-        url_pmap = g.new_vertex_property('string')
-        for link, v in get_v.iteritems():
-            url_pmap[v] = link
-        g.vp['url'] = url_pmap
-        g.gp['vgen'] = g.new_graph_property('object', {i: int(j) for i, j in get_v.iteritems()})
-        g.gp['mtime'] = g.new_graph_property('object', os.path.getmtime(filename))
-        print 'created af-network:', g.num_vertices(), 'vertices,', g.num_edges(), 'edges'
-        g.save(store_fname)
-    else:
-        print 'load graph:', store_fname
-        try:
-            g = load_graph(store_fname)
-        except:
-            print 'failed loading. re-create graph'
-            os.remove(filename + '.gt')
-            return read_edge_list(filename)
-        if 'mtime' in g.gp.keys():
-            if g.gp['mtime'] != os.path.getmtime(filename):
-                print 'modified edge-list. re-create graph'
-                os.remove(filename + '.gt')
-                return read_edge_list(filename)
-        get_v = g.gp['vgen']
-        print 'loaded af-network:', g.num_vertices(), 'vertices', g.num_edges(), 'edges'
-    return g, get_v
-
-
 def read_tmat_map(filename):
     map = dict()
     visits = dict()
@@ -145,15 +99,32 @@ def read_tmat_map(filename):
             if not line.startswith('#'):
                 line = line.split('\t')
                 map[convert_url(line[1])] = int(line[0])
-                visits[line[1]] = int(line[2])
+                try:
+                    visits[line[1]] = int(line[2])
+                except IndexError:
+                    pass
     return map, visits
 
+def filter_sparse_matrix(mat, mapping):
+    row_idx, col_idx = mat.nonzero()
+    n_row_idx, n_col_idx, n_data = list(), list(), list()
+    for r, c, d in zip(row_idx, col_idx, mat.data):
+        try:
+            r = mapping[r]
+            c = mapping[c]
+            n_row_idx.append(r)
+            n_col_idx.append(c)
+            n_data.append(d)
+        except KeyError:
+            pass
+    shape = len(mapping)
+    return csr_matrix((n_data, (n_row_idx, n_col_idx)), shape=(shape, shape))
 
 def main():
     af_f = 'data/austria_forum_org_cleaned.txt'
     user_tmat = 'data/transition_matrix.h5'
     user_tmat_map = 'data/mapping.csv'
-    net, net_map = read_edge_list(af_f)
+    net, net_map = read_edge_list(af_f, encoder=convert_url)
     user_map, visits = read_tmat_map(user_tmat_map)
     user_to_net = create_mapping(user_map, net_map)
     user_mat = read_and_map_hdf5(user_tmat, user_to_net, shape=(net.num_vertices(), net.num_vertices()))
@@ -166,6 +137,27 @@ def main():
     trans_mat = user_mat.multiply(ones_adj_mat)
     print 'adj links:', ones_adj_mat.sum(), 'nodes:', ones_adj_mat.shape[0]
     print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)) / ones_adj_mat.shape[0] * 100, '%'
+    print 'store click matrix'
+    try_dump(trans_mat, 'data/af_click_matrix')
+    print 'store adj matrix'
+    try_dump(adj_mat, 'data/af_adj_matrix')
+    print 'store network'
+    net.save('data/af.gt')
+    print 'network vertices:', net.num_vertices()
+    print 'filter largest component'
+    lc = label_largest_component(net, directed=True)
+    net.set_vertex_filter(lc)
+    shift_map = {v: i for v, i in zip(sorted(map(int, net.vertices())), range(net.num_vertices()))}
+    trans_mat = filter_sparse_matrix(trans_mat, shift_map)
+    net.purge_vertices()
+    print 'network vertices:', net.num_vertices()
+    adj_mat = adjacency(net)
+    print 'store click matrix'
+    try_dump(trans_mat, 'data/af_click_matrix_lc')
+    print 'store adj matrix'
+    try_dump(adj_mat, 'data/af_adj_matrix_lc')
+    print 'store network'
+    net.save('data/af_lc.gt')
 
 
 if __name__ == '__main__':
