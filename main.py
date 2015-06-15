@@ -226,7 +226,12 @@ def main():
     gini_dfs = gini_dfs[0].join(gini_dfs[1:])
     print 'gini coefs\n', gini_dfs
     gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
-    gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2)
+    # col_names.append(list(filter(lambda x: 'karate' in x, df.columns))[0])
+    col_names = list()
+    col_names.append(list(filter(lambda x: 'price_net_n' in x, df.columns))[0])
+    col_names.append(list(filter(lambda x: 'sbm_weak_n' in x, df.columns))[0])
+    col_names.append(list(filter(lambda x: 'sbm_strong_n' in x, df.columns))[0])
+    gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2, columns=col_names)
     # import filter_output
 
 

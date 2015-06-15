@@ -1,4 +1,5 @@
 from __future__ import division
+from tools.gt_tools import net_from_sparse_adj
 from graph_tool.all import *
 from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 import tables as tb
@@ -10,6 +11,7 @@ import multiprocessing as mp
 import datetime
 from data_io import *
 
+
 def convert_url(url):
     url = url.strip()
     try:
@@ -17,7 +19,10 @@ def convert_url(url):
             url = url.decode('utf8').encode('latin1')
         except UnicodeDecodeError:
             pass
-        return urllib.unquote(url.strip())
+        url = urllib.unquote(url)
+        while len(url) > 1 and url.endswith('/'):
+            url = url[:-1]
+        return url
     except:
         print traceback.format_exc()
         print 'FAILED:', url, type(url)
@@ -125,6 +130,7 @@ def main():
     user_tmat = 'data/transition_matrix.h5'
     user_tmat_map = 'data/mapping.csv'
     net, net_map = read_edge_list(af_f, encoder=convert_url)
+    remove_self_loops(net)
     user_map, visits = read_tmat_map(user_tmat_map)
     user_to_net = create_mapping(user_map, net_map)
     user_mat = read_and_map_hdf5(user_tmat, user_to_net, shape=(net.num_vertices(), net.num_vertices()))
@@ -132,11 +138,10 @@ def main():
     print user_mat.shape
     print adj_mat.shape
     print 'user clicks:', user_mat.sum()
-    ones_adj_mat = adj_mat.copy()
-    ones_adj_mat.data = np.array([1] * len(ones_adj_mat.data))
+    ones_adj_mat = (adj_mat > 0).astype('int')
     trans_mat = user_mat.multiply(ones_adj_mat)
     print 'adj links:', ones_adj_mat.sum(), 'nodes:', ones_adj_mat.shape[0]
-    print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)) / ones_adj_mat.shape[0] * 100, '%'
+    print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)), '(',len(set(trans_mat.indices)) / ones_adj_mat.shape[0] * 100, '%)'
     print 'store click matrix'
     try_dump(trans_mat, 'data/af_click_matrix')
     print 'store adj matrix'
@@ -152,12 +157,40 @@ def main():
     net.purge_vertices()
     print 'network vertices:', net.num_vertices()
     adj_mat = adjacency(net)
+    print 'store biased nodes array'
+    biased_nodes = map(set, trans_mat.nonzero())
+    biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
+    try_dump(biased_nodes,'data/af_clicked_nodes')
+    trans_mat += (adj_mat * 0.000001)
     print 'store click matrix'
     try_dump(trans_mat, 'data/af_click_matrix_lc')
     print 'store adj matrix'
     try_dump(adj_mat, 'data/af_adj_matrix_lc')
     print 'store network'
     net.save('data/af_lc.gt')
+
+    if False:
+        trans_mat += (adj_mat * 0.000001)
+        net = net_from_sparse_adj(trans_mat, directed=False)
+        print 'trans mat network:', net
+        print 'filter largest component of click data'
+        lc = label_largest_component(net)
+        net.set_vertex_filter(lc)
+        print net
+        shift_map = {v: i for v, i in zip(sorted(map(int, net.vertices())), range(net.num_vertices()))}
+        try_dump(shift_map, 'data/af_lc_to_clicklc')
+        trans_mat = filter_sparse_matrix(trans_mat, shift_map)
+        net.purge_vertices()
+        print 'network vertices:', net.num_vertices()
+        adj_mat = adjacency(net)
+        print 'store click matrix'
+        try_dump(trans_mat, 'data/af_click_matrix_clicklc')
+        print 'store adj matrix'
+        try_dump(adj_mat, 'data/af_adj_matrix_clicklc')
+        print 'store network'
+        net.save('data/af_lc.gt')
+
+
 
 
 if __name__ == '__main__':

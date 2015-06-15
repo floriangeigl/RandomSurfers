@@ -42,23 +42,23 @@ def read_edge_list(filename, encoder=None):
             g = load_graph(store_fname)
         except:
             print 'failed loading. recreate graph'
-            os.remove(filename + '.gt')
+            os.remove(store_fname)
             return read_edge_list(filename)
         if 'mtime' in g.gp.keys():
             if g.gp['mtime'] != os.path.getmtime(filename):
-                print 'modified edge-list. re-create graph'
+                print 'modified edge-list. recreate graph'
                 os.remove(filename + '.gt')
                 return read_edge_list(filename)
         get_v = g.gp['vgen']
         print 'loaded network:', g.num_vertices(), 'vertices', g.num_edges(), 'edges'
     return g, get_v
 
-def gini_to_table(df, out_fname, digits=2):
-    col_names = list()
-    # col_names.append(list(filter(lambda x: 'karate' in x, df.columns))[0])
-    col_names.append(list(filter(lambda x: 'price_net_n' in x, df.columns))[0])
-    col_names.append(list(filter(lambda x: 'sbm_weak_n' in x, df.columns))[0])
-    col_names.append(list(filter(lambda x: 'sbm_strong_n' in x, df.columns))[0])
+def gini_to_table(df, out_fname, digits=2,columns=None):
+    if columns is None:
+        col_names = list()
+    else:
+        col_names = columns
+
     print col_names
     digits = str(digits)
     with open(out_fname,'w') as f:

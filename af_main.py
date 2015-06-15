@@ -15,13 +15,13 @@ def main():
     basics.create_folder_structure(base_outdir)
 
     results = list()
-    biases = ['adjacency', 'preprocessing/data/af_click_matrix_lc']
+    biases = ['adjacency', 'preprocessing/data/af_click_matrix_lc', 'deg']
     network_prop_file = base_outdir + 'network_properties.txt'
     if os.path.isfile(network_prop_file):
         os.remove(network_prop_file)
 
     print 'austria-forum'.center(80, '=')
-    name = 'forum'
+    name = 'austria_forum'
     outdir = base_outdir + name + '/'
     basics.create_folder_structure(outdir)
     fname = 'preprocessing/data/af_lc.gt'
