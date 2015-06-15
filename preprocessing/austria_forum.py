@@ -161,20 +161,18 @@ def main():
     biased_nodes = map(set, trans_mat.nonzero())
     biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
     try_dump(biased_nodes,'data/af_clicked_nodes')
-    trans_mat += (adj_mat * 0.000001)
     print 'store click matrix'
-    try_dump(trans_mat, 'data/af_click_matrix_lc')
+    try_dump(trans_mat + (adj_mat * 0.000001), 'data/af_click_matrix_lc')
     print 'store adj matrix'
     try_dump(adj_mat, 'data/af_adj_matrix_lc')
     print 'store network'
     net.save('data/af_lc.gt')
 
-    if False:
-        trans_mat += (adj_mat * 0.000001)
-        net = net_from_sparse_adj(trans_mat, directed=False)
+    if True:
+        net = net_from_sparse_adj(trans_mat)
         print 'trans mat network:', net
         print 'filter largest component of click data'
-        lc = label_largest_component(net)
+        lc = label_largest_component(net, directed=True)
         net.set_vertex_filter(lc)
         print net
         shift_map = {v: i for v, i in zip(sorted(map(int, net.vertices())), range(net.num_vertices()))}
