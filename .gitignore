@@ -54,3 +54,6 @@ docs/_build/
 target/
 .idea/
 output/
+
+# OS X Indexing
+.DS_Store
