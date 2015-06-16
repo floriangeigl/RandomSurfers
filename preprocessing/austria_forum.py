@@ -126,7 +126,7 @@ def filter_sparse_matrix(mat, mapping):
     return csr_matrix((n_data, (n_row_idx, n_col_idx)), shape=(shape, shape))
 
 
-def store(adj, trans, net, post_fix=''):
+def store(adj, trans, net, post_fix='', draw=True):
     print 'network vertices:', net.num_vertices()
     print 'store click matrix'
     try_dump(trans, 'data/af_click_matrix' + post_fix)
@@ -134,11 +134,12 @@ def store(adj, trans, net, post_fix=''):
     try_dump(adj, 'data/af_adj_matrix' + post_fix)
     print 'store network'
     net.save('data/af' + post_fix + '.gt')
-    print 'calc layout'
-    pos = sfdp_layout(net, max_iter=10)
-    print 'draw network'
-    graph_draw(net, pos=pos, output='data/af' + post_fix + '.png', output_size=(1200, 1200),
-               bg_color=[255, 255, 255, 0])
+    if draw:
+        print 'calc layout'
+        pos = sfdp_layout(net, max_iter=10)
+        print 'draw network'
+        graph_draw(net, pos=pos, output='data/af' + post_fix + '.png', output_size=(1200, 1200),
+                   bg_color=[255, 255, 255, 0])
 
 def main():
     af_f = 'data/austria_forum_org_cleaned.txt'
@@ -158,7 +159,7 @@ def main():
     trans_mat = user_mat.multiply(ones_adj_mat)
     print 'adj links:', ones_adj_mat.sum(), 'nodes:', ones_adj_mat.shape[0]
     print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)), '(',len(set(trans_mat.indices)) / ones_adj_mat.shape[0] * 100, '%)'
-    store(adj_mat, trans_mat, net)
+    store(adj_mat, trans_mat, net, draw=False)
 
     print '=' * 80
     print 'filter largest component'
@@ -174,7 +175,7 @@ def main():
     biased_nodes = map(set, trans_mat.nonzero())
     biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
     try_dump(biased_nodes, 'data/af_clicked_nodes' + post_fix)
-    store(adj_mat, trans_mat + (adj_mat * added_probability), net, post_fix=post_fix)
+    store(adj_mat, trans_mat + (adj_mat * added_probability), net, post_fix=post_fix, draw=False)
 
     print '=' * 80
     post_fix = '_clicklc'
