@@ -15,16 +15,18 @@ def main():
     basics.create_folder_structure(base_outdir)
 
     results = list()
-    biases = ['adjacency', 'preprocessing/data/af_click_matrix_lc', 'deg']
+    post_fix = '_clicklc'
+    # post_fix = '_lc'
+    biases = ['adjacency', 'preprocessing/data/af_click_matrix' + post_fix]#, 'deg', 'eigenvector', 'inv_sqrt_deg']
     network_prop_file = base_outdir + 'network_properties.txt'
     if os.path.isfile(network_prop_file):
         os.remove(network_prop_file)
 
     print 'austria-forum'.center(80, '=')
-    name = 'austria_forum'
+    name = 'austria_forum' + post_fix
     outdir = base_outdir + name + '/'
     basics.create_folder_structure(outdir)
-    fname = 'preprocessing/data/af_lc.gt'
+    fname = 'preprocessing/data/af' + post_fix + '.gt'
     net = load_graph(fname)
     net.gp['type'] = net.new_graph_property('string', 'empiric')
     net.gp['filename'] = net.new_graph_property('string', fname)

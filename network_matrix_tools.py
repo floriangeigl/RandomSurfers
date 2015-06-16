@@ -18,14 +18,17 @@ def calc_common_neigh(adjacency_matrix):
 
 def calc_cosine(adjacency_matrix, weight_direct_link=False):
     if weight_direct_link:
-        b = adjacency_matrix + lil_matrix(np.eye(adjacency_matrix.shape[0]))
+        shape = adjacency_matrix.shape[0]
+        diag_ones = csr_matrix(([1] * shape, (range(shape), range(shape))), shape=(shape, shape))
+        b = adjacency_matrix + diag_ones
     else:
         b = adjacency_matrix
     deg = adjacency_matrix.sum(axis=0)
-    cos = lil_matrix(adjacency_matrix * b)
+    cos = lil_matrix(adjacency_matrix.dot(b))
     cos.setdiag(np.array(deg).flatten())
+    deg = csr_matrix(deg)
     cos = cos.tocsr()
-    deg_norm = np.sqrt(deg.T * deg)
+    deg_norm = np.sqrt(deg.T.dot(deg))
     cos = cos.multiply(lil_matrix(1. / deg_norm))
     cos.data[np.invert(np.isfinite(cos.data))] = 0
     cos.eliminate_zeros()
