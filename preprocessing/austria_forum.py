@@ -1,5 +1,5 @@
 from __future__ import division
-from tools.gt_tools import net_from_sparse_adj
+from tools.gt_tools import net_from_adj
 from graph_tool.all import *
 from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 import tables as tb
@@ -169,7 +169,7 @@ def main():
     net.save('data/af_lc.gt')
 
     if True:
-        net = net_from_sparse_adj(trans_mat)
+        net = net_from_adj(trans_mat)
         print 'trans mat network:', net
         print 'filter largest component of click data'
         lc = label_largest_component(net, directed=True)
