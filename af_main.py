@@ -32,6 +32,7 @@ def main():
     print 'find clicked nodes'
     clicked_nodes = map(set, click_mat.nonzero())
     clicked_nodes = clicked_nodes[0] | clicked_nodes[1]
+    print 'percentage clicked nodes:', len(clicked_nodes) / click_mat.shape[0]
     diag_data = np.array([1 if i in clicked_nodes else 0 for i in xrange(click_mat.shape[0])])
     stat_dist['clicked_nodes'] = diag_data
     print 'create sub click mat'
@@ -41,7 +42,6 @@ def main():
     stat_dist['clicked_sub'] = stationary_dist(click_mat + af_click_sub)
     print stat_dist
     clicked_nodes_sd = stat_dist[stat_dist['clicked_nodes'] == 1]
-    print 'percentage clicked nodes:', len(clicked_nodes_sd) / len(stat_dist) * 100, '%'
     print clicked_nodes_sd.sum()
 
 

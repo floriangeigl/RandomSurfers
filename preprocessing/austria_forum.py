@@ -147,7 +147,7 @@ def main():
     user_tmat = 'data/transition_matrix.h5'
     user_tmat_map = 'data/mapping.csv'
     view_counts_f = 'data/page_count_df.csv'
-    added_probability = 0.01
+    # added_probability = 0.0
     net, net_map = read_edge_list(af_f, encoder=convert_url)
     remove_self_loops(net)
     user_map, visits = read_tmat_map(user_tmat_map)
@@ -189,7 +189,7 @@ def main():
     biased_nodes = map(set, trans_mat.nonzero())
     biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
     try_dump(biased_nodes, 'data/af_clicked_nodes' + post_fix)
-    store(adj_mat, trans_mat + (adj_mat * added_probability), net, post_fix=post_fix, draw=False)
+    store(adj_mat, trans_mat, net, post_fix=post_fix, draw=False)
 
     print '=' * 80
     post_fix = '_clicknb'
@@ -210,8 +210,7 @@ def main():
     #net.purge_vertices()
     print net
     adj_mat = adjacency(net)
-    store(adj_mat, trans_mat + (adj_mat * added_probability), net, post_fix=post_fix)
-
+    store(adj_mat, trans_mat, net, post_fix=post_fix)
 
 
 if __name__ == '__main__':
