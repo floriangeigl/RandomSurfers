@@ -19,6 +19,7 @@ import traceback
 from scipy.sparse import lil_matrix, csr_matrix
 from sklearn.preprocessing import normalize
 from scipy.sparse.csgraph import connected_components
+import datetime
 
 
 def adj_matrix(G, nodelist):
@@ -63,9 +64,14 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
         else:
             try:
                 print 'asymmetric'
-                l, v = linalg.eigs(M, k=k, which="LR", v0=init_v,
-                                   maxiter=max(M.shape[0], 1000))  # maxiter=100) #np.iinfo(np.int32).max)
-            except Exception as e:
+                #print datetime.datetime.now(), 'normal calc'
+                l, v = linalg.eigs(M, k=k, which="LR", v0=init_v, maxiter=max(M.shape[0], 1000))
+                #print datetime.datetime.now(), 'sigma calc'
+                #ls, vs = linalg.eigs(M, k=k, which="SM", OPpart='r', v0=init_v, maxiter=max(M.shape[0], 1000), sigma=1.)
+                #print l, ls
+                #print v, vs
+                #exit()
+            except scipy.sparse.linalg.ArpackNoConvergence as e:
                 if dense_fallback:
                     print print_prefix, 'sparse eigvec failed. retry dense.'
                     return leading_eigenvector(M.todense(), init_v=init_v, overwrite_a=overwrite_a, tol=tol,

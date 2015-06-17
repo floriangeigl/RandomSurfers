@@ -72,7 +72,7 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
     print print_prefix, '#components', components
 
     assert np.all(np.isfinite(P.data))
-    eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)
+    eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)#, init_v=np.array(P.sum(axis=1)).flatten())
     assert np.all(np.isfinite(pi))
     normed_P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     if not np.allclose(pi, normed_P * pi, atol=atol, rtol=rtol) \
@@ -158,10 +158,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
         if orig_ma_mi_r is not None:
             print 'orig bias max/min:', orig_ma_mi_r
             print 'normalized max/min:', bias_max_min_r
-    except Exception as e:
-        tb = str(traceback.format_exc())
-        if 'ArpackNoConvergence' not in tb:
-            print tb
+    except scipy.sparse.linalg.ArpackNoConvergence as e:
         print print_prefix, 'no converge. add epsilon to bias', eps
         b_zeros = 0
         if bias is not None:

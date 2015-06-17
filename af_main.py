@@ -8,7 +8,7 @@ from self_sim_entropy import self_sim_entropy
 import os
 from data_io import *
 import utils
-
+from graph_tool.all import *
 
 def main():
     base_outdir = 'output/iknow/'
