@@ -9,45 +9,41 @@ import os
 from data_io import *
 import utils
 from graph_tool.all import *
+import pandas as pd
+from network_matrix_tools import stationary_dist
+from scipy.sparse import csr_matrix, dia_matrix
 
 def main():
     base_outdir = 'output/iknow/'
     basics.create_folder_structure(base_outdir)
+    stat_dist = pd.DataFrame()
+    print 'load network'
+    af_net = load_graph('/home/fgeigl/navigability_of_networks/preprocessing/data/af_lc.gt')
+    print af_net
+    a = adjacency(af_net)
+    print 'calc stat dist adj matrix'
+    stat_dist['adj'] = stationary_dist(a)
+    print 'load click matrix'
+    click_mat = try_load('/home/fgeigl/navigability_of_networks/preprocessing/data/af_click_matrix_lc')
+    assert af_net.num_vertices() == click_mat.shape[0] == click_mat.shape[1]
+    # views = try_load('/home/fgeigl/navigability_of_networks/preprocessing/data/view_counts')
+    # assert len(views) == af_net.num_vertices()
+    # stat_dist['views'] = views / views.sum()
+    print 'find clicked nodes'
+    clicked_nodes = map(set, click_mat.nonzero())
+    clicked_nodes = clicked_nodes[0] | clicked_nodes[1]
+    diag_data = np.array([1 if i in clicked_nodes else 0 for i in xrange(click_mat.shape[0])])
+    stat_dist['clicked_nodes'] = diag_data
+    print 'create sub click mat'
+    diag = dia_matrix((diag_data, 0), shape=click_mat.shape)
+    af_click_sub = diag * a * diag
+    print 'calc stat dist of clicked sub'
+    stat_dist['clicked_sub'] = stationary_dist(click_mat + af_click_sub)
+    print stat_dist
+    clicked_nodes_sd = stat_dist[stat_dist['clicked_nodes'] == 1]
+    print 'percentage clicked nodes:', len(clicked_nodes_sd) / len(stat_dist) * 100, '%'
+    print clicked_nodes_sd.sum()
 
-    results = list()
-    post_fix = '_clicklc'
-    # post_fix = '_lc'
-    biases = ['adjacency', 'preprocessing/data/af_click_matrix' + post_fix]#, 'deg', 'eigenvector', 'inv_sqrt_deg']
-    network_prop_file = base_outdir + 'network_properties.txt'
-    if os.path.isfile(network_prop_file):
-        os.remove(network_prop_file)
-
-    print 'austria-forum'.center(80, '=')
-    name = 'austria_forum' + post_fix
-    outdir = base_outdir + name + '/'
-    basics.create_folder_structure(outdir)
-    fname = 'preprocessing/data/af' + post_fix + '.gt'
-    net = load_graph(fname)
-    net.gp['type'] = net.new_graph_property('string', 'empiric')
-    net.gp['filename'] = net.new_graph_property('string', fname)
-    results.append(self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=None))
-    write_network_properties(net, name, network_prop_file)
-    # generator.analyse_graph(net, outdir + name, draw_net=False)
-
-    while True:
-        try:
-            q_elem = error_q.get(timeout=3)
-            print 'Error'.center(80, '-')
-            print utils.color_string('[' + str(q_elem[0]) + ']')
-            print q_elem[-1]
-        except:
-            break
-    results = filter(lambda x: isinstance(x, dict), results)
-    gini_dfs = [i['gini'] for i in results]
-    gini_dfs = gini_dfs[0].join(gini_dfs[1:])
-    print 'gini coefs\n', gini_dfs
-    gini_dfs.to_csv(base_outdir + 'gini_coefs.csv')
-    gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2)
 
 
 if __name__ == '__main__':

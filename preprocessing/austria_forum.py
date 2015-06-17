@@ -10,6 +10,7 @@ import urllib
 import multiprocessing as mp
 import datetime
 from data_io import *
+import pandas as pd
 
 
 def convert_url(url):
@@ -145,6 +146,7 @@ def main():
     af_f = 'data/austria_forum_org_cleaned.txt'
     user_tmat = 'data/transition_matrix.h5'
     user_tmat_map = 'data/mapping.csv'
+    view_counts_f = 'data/page_count_df.csv'
     added_probability = 0.01
     net, net_map = read_edge_list(af_f, encoder=convert_url)
     remove_self_loops(net)
@@ -160,7 +162,19 @@ def main():
     print 'adj links:', ones_adj_mat.sum(), 'nodes:', ones_adj_mat.shape[0]
     print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)), '(',len(set(trans_mat.indices)) / ones_adj_mat.shape[0] * 100, '%)'
     store(adj_mat, trans_mat, net, draw=False)
+    biased_nodes = map(set, trans_mat.nonzero())
+    biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
+    try_dump(biased_nodes, 'data/af_clicked_nodes')
+    df_dict = dict()
+    with open(view_counts_f,'r') as f:
+        for line in f:
+            line = line.strip().split('\t')
+            df_dict[line[1]] = int(line[2])
+    df_to_net = create_mapping(df_dict, net_map, find_best_match=True)
+    df_dict = {df_to_net[i]: j for i, j in df_dict if i in df_dict}
+    print df_dict[0]
 
+    exit()
     print '=' * 80
     print 'filter largest component'
     post_fix = '_lc'
@@ -178,20 +192,22 @@ def main():
     store(adj_mat, trans_mat + (adj_mat * added_probability), net, post_fix=post_fix, draw=False)
 
     print '=' * 80
-    post_fix = '_clicklc'
-    print 'filter largest component of click data'
+    post_fix = '_clicknb'
+    print 'filter click data and neighbours'
     row_idx, col_idx = adj_mat.nonzero()
     biased_nodes = set(biased_nodes)
+    neighbours = {n for v in net.vertices() if int(v) in biased_nodes for n in map(int, v.out_neighbours())}
+    biased_nodes |= neighbours
     row_idx, col_idx, data = zip(*[(r, c, d) for r, c, d in zip(row_idx, col_idx, adj_mat.data) if
                               c in biased_nodes and r in biased_nodes])
     filtered_adj = csr_matrix((data, (row_idx, col_idx)), shape=adj_mat.shape)
     net = net_from_adj(((trans_mat + filtered_adj) > 0).astype('float'))
-    lc = label_largest_component(net, directed=True)
-    net.set_vertex_filter(lc)
-    shift_map = {v: i for v, i in zip(sorted(map(int, net.vertices())), range(net.num_vertices()))}
-    try_dump(shift_map, 'data/af_lc_to' + post_fix)
-    trans_mat = filter_sparse_matrix(trans_mat, shift_map)
-    net.purge_vertices()
+    # lc = label_largest_component(net, directed=True)
+    #net.set_vertex_filter(lc)
+    #shift_map = {v: i for v, i in zip(sorted(map(int, net.vertices())), range(net.num_vertices()))}
+    #try_dump(shift_map, 'data/af_lc_to' + post_fix)
+    #trans_mat = filter_sparse_matrix(trans_mat, shift_map)
+    #net.purge_vertices()
     print net
     adj_mat = adjacency(net)
     store(adj_mat, trans_mat + (adj_mat * added_probability), net, post_fix=post_fix)

@@ -4,11 +4,14 @@ import linalg as la
 import scipy.linalg as lalg
 import scipy.stats as stats
 from scipy.sparse import lil_matrix, csr_matrix, csc_matrix
+import scipy.sparse as sparse
 import scipy.sparse.linalg as sparse_linalg
 from sklearn.preprocessing import normalize
 import traceback
 from scipy.sparse.csgraph import connected_components
 import utils
+from tools import gt_tools
+from graph_tool.all import *
 
 def calc_common_neigh(adjacency_matrix):
     com_neigh = adjacency_matrix.dot(adjacency_matrix).todense()
@@ -18,9 +21,7 @@ def calc_common_neigh(adjacency_matrix):
 
 def calc_cosine(adjacency_matrix, weight_direct_link=False):
     if weight_direct_link:
-        shape = adjacency_matrix.shape[0]
-        diag_ones = csr_matrix(([1] * shape, (range(shape), range(shape))), shape=(shape, shape))
-        b = adjacency_matrix + diag_ones
+        b = adjacency_matrix + sparse.eye(adjacency_matrix.shape[0])
     else:
         b = adjacency_matrix
     deg = adjacency_matrix.sum(axis=0)
@@ -61,18 +62,29 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             print 'could not calc katz'.center(120, '!')
             raise Exception(e)
 
+def pagerank_from_transmat(transition_matrix, print_prefix=''):
+    net = gt_tools.net_from_adj(transition_matrix, parallel_edges=False)
+    pi = np.array(pagerank(net, weight=net.ep['weights']).a)
+    return pi / pi.sum()
 
 def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e5):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     P.data *= scaling_factor
     assert not np.any(P.data < 0)
     zeros_near_z = np.isclose(P.data, 0., rtol=0., atol=1e-10).sum()
-    components = connected_components(P, connection='strong', return_labels=False)
-    print print_prefix, 'P values near zero: #', zeros_near_z
-    print print_prefix, '#components', components
 
     assert np.all(np.isfinite(P.data))
-    eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)#, init_v=np.array(P.sum(axis=1)).flatten())
+    try:
+        components = connected_components(P, connection='strong', return_labels=False)
+        if components > 1:
+            print print_prefix, 'more than 1 component -> create network, use pagerank'
+            return pagerank_from_transmat(transition_matrix, print_prefix)
+        print print_prefix, 'P values near zero: #', zeros_near_z
+        print print_prefix, '#components', components
+        eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)  # , init_v=np.array(P.sum(axis=1)).flatten())
+    except scipy.sparse.linalg.ArpackNoConvergence:
+        print print_prefix, 'eigenvector no converge -> create network, use pagerank'
+        return pagerank_from_transmat(transition_matrix, print_prefix)
     assert np.all(np.isfinite(pi))
     normed_P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     if not np.allclose(pi, normed_P * pi, atol=atol, rtol=rtol) \
@@ -195,7 +207,7 @@ def entropy_rate(transition_matrix, stat_dist=None, base=2, print_prefix=''):
         stat_dist = stationary_dist(transition_matrix)
     assert not np.any(stat_dist < 0)
     assert np.isclose(stat_dist.sum(), 1.)
-    assert np.all(transition_matrix.sum(axis=0) > 0)
+    # assert np.all(transition_matrix.sum(axis=0) > 0)
     if scipy.sparse.issparse(transition_matrix):
         if not isinstance(transition_matrix, csc_matrix):
             transition_matrix = transition_matrix.tocsc()
