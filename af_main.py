@@ -17,14 +17,15 @@ def main():
     base_outdir = 'output/iknow/'
     basics.create_folder_structure(base_outdir)
     stat_dist = pd.DataFrame()
+    post_fix = ''
     print 'load network'
-    af_net = load_graph('/home/fgeigl/navigability_of_networks/preprocessing/data/af_lc.gt')
+    af_net = load_graph('/home/fgeigl/navigability_of_networks/preprocessing/data/af.gt' + post_fix)
     print af_net
     a = adjacency(af_net)
     print 'calc stat dist adj matrix'
     stat_dist['adj'] = stationary_dist(a)
     print 'load click matrix'
-    click_mat = try_load('/home/fgeigl/navigability_of_networks/preprocessing/data/af_click_matrix_lc')
+    click_mat = try_load('/home/fgeigl/navigability_of_networks/preprocessing/data/af_click_matrix' + post_fix)
     assert af_net.num_vertices() == click_mat.shape[0] == click_mat.shape[1]
     # views = try_load('/home/fgeigl/navigability_of_networks/preprocessing/data/view_counts')
     # assert len(views) == af_net.num_vertices()
@@ -40,8 +41,8 @@ def main():
     af_click_sub = diag * a * diag
     print 'calc stat dist of clicked sub'
     stat_dist['clicked_sub'] = stationary_dist(click_mat + af_click_sub)
-    print stat_dist
     clicked_nodes_sd = stat_dist[stat_dist['clicked_nodes'] == 1]
+    print clicked_nodes_sd
     print clicked_nodes_sd.sum()
 
 

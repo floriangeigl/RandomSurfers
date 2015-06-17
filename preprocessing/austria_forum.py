@@ -54,8 +54,9 @@ def read_and_map_hdf5(filename, mapping, shape=None):
             print 'unmapped cells:', unmapped, unmapped / len(h5.root.data) * 100, '%'
 
             print 'unmapped clicks:', unmapped_clicks, unmapped_clicks / np.array(h5.root.data).sum() * 100, '%'
-    return csr_matrix((data, (row_idx, col_idx)), shape=shape)
-
+    mat = csr_matrix((data, (row_idx, col_idx)), shape=shape)
+    mat.eliminate_zeros()
+    return mat
 
 def create_mapping(user_map, net_map, find_best_match=False):
     net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
@@ -68,8 +69,8 @@ def create_mapping(user_map, net_map, find_best_match=False):
             net_id = net_map[url]
             transf_map[url_id] = net_id
         except KeyError:
-            print 'can not map:', url
             if find_best_match:
+                print 'can not map:', url
                 print ' best match:',
                 pool = mp.Pool(processes=15)
                 res = []
@@ -83,13 +84,15 @@ def create_mapping(user_map, net_map, find_best_match=False):
             unmapped += 1
             unmapped_urls.add(url)
     if unmapped:
-        print 'unmapped urls:', unmapped
-        print unmapped / len(user_map) * 100, '%'
+        print 'unmapped urls:\n\t', '\n\t'.join(random.sample(unmapped_urls, min(10, len(unmapped_urls))))
+        print '\t', unmapped / len(user_map) * 100, '%'
+        with open('unmapped_urls.txt', 'w') as f:
+            for i in sorted(unmapped_urls):
+                f.write(i + '\n')
     print 'done'
-    with open('unmapped_urls.txt', 'w') as f:
-        for i in sorted(unmapped_urls):
-            f.write(i + '\n')
     return transf_map
+
+
 
 
 def string_sim(s1, s2):
@@ -124,14 +127,17 @@ def filter_sparse_matrix(mat, mapping):
         except KeyError:
             pass
     shape = len(mapping)
-    return csr_matrix((n_data, (n_row_idx, n_col_idx)), shape=(shape, shape))
-
+    mat = csr_matrix((n_data, (n_row_idx, n_col_idx)), shape=(shape, shape))
+    mat.eliminate_zeros()
+    return mat
 
 def store(adj, trans, net, post_fix='', draw=True):
     print 'network vertices:', net.num_vertices()
     print 'store click matrix'
+    trans.eliminate_zeros()
     try_dump(trans, 'data/af_click_matrix' + post_fix)
     print 'store adj matrix'
+    adj.eliminate_zeros()
     try_dump(adj, 'data/af_adj_matrix' + post_fix)
     print 'store network'
     net.save('data/af' + post_fix + '.gt')
@@ -165,32 +171,44 @@ def main():
     biased_nodes = map(set, trans_mat.nonzero())
     biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
     try_dump(biased_nodes, 'data/af_clicked_nodes')
-    df_dict = dict()
-    with open(view_counts_f,'r') as f:
-        for line in f:
-            line = line.strip().split('\t')
-            df_dict[line[1]] = int(line[2])
-    df_to_net = create_mapping(df_dict, net_map, find_best_match=True)
-    df_dict = {df_to_net[i]: j for i, j in df_dict if i in df_dict}
-    print df_dict[0]
-
-    exit()
+    # df_dict = dict()
+    # net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
+    # orig_lines = 0
+    #with open(view_counts_f,'r') as f:
+    #    for line in f:
+    #        line = line.strip().split('\t')
+    #        orig_lines += 1
+    #        try:
+    #            df_dict[net_map[convert_url(line[1])]] = int(line[2])
+    #        except KeyError:
+    #            pass
+    #print 'mapping len', len(df_dict), '(of ', orig_lines, ')'
     print '=' * 80
     print 'filter largest component'
     post_fix = '_lc'
     lc = label_largest_component(net, directed=True)
+    # print 'lc nodes:', np.array(lc.a).sum()
+    # for v in net.vertices():
+    #    if int(v) not in df_dict and lc[v]:
+    #        lc[v] = False
+    # print 'lc unmapped views:', np.array(lc.a).sum()
     net.set_vertex_filter(lc)
     shift_map = {v: i for v, i in zip(sorted(map(int, net.vertices())), range(net.num_vertices()))}
+    # df_dict = {shift_map[i]: j for i, j in shift_map.iteritems() if i in shift_map}
     trans_mat = filter_sparse_matrix(trans_mat, shift_map)
     net.purge_vertices()
     print 'network vertices:', net.num_vertices()
+    # print 'view counts vertices:', len(df_dict)
+    print 'transition vertices:', trans_mat.shape[0]
     adj_mat = adjacency(net)
     print 'store biased nodes array'
     biased_nodes = map(set, trans_mat.nonzero())
     biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
     try_dump(biased_nodes, 'data/af_clicked_nodes' + post_fix)
+    # try_dump(np.array([df_dict[i] for i in xrange(trans_mat.shape[0])]), 'data/af_views' + post_fix)
     store(adj_mat, trans_mat, net, post_fix=post_fix, draw=False)
 
+    exit()
     print '=' * 80
     post_fix = '_clicknb'
     print 'filter click data and neighbours'
