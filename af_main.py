@@ -111,7 +111,7 @@ def main():
     gini_df = pd.DataFrame()
     for i in clicked_stat_dist.columns:
         if i is not 'url':
-            gini_df.at[1, i] = utils.gini_coeff(clicked_stat_dist[clicked_stat_dist[i] > 0])
+            gini_df.at[1, i] = utils.gini_coeff(clicked_stat_dist[clicked_stat_dist[i] > 0][i])
     print 'gini'.center(80,'-')
     print gini_df
     gini_df.to_pickle(base_outdir + 'gini.df')
