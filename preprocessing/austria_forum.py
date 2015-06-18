@@ -39,7 +39,7 @@ def read_and_map_hdf5(filename, mapping, shape=None):
         orig_clicks = np.array(h5.root.data).sum()
         print 'clicks in hdf5 file:', orig_clicks
         unmapped_cells = set()
-        for d, r, c in zip(h5.root.data, map(int, h5.root.row_indices), map(int, h5.root.column_indices)):
+        for d, r, c in zip(h5.root.data, h5.root.row_indices, h5.root.column_indices):
             try:
                 mr = mapping[r]
                 mc = mapping[c]
@@ -180,10 +180,8 @@ def main():
     net.ep['click_transitions'] = click_transitions
     net.vp['clicked_nodes'] = clicked_nodes
 
-    orig_lines = 0
     view_counts = net.new_vertex_property('int')
     view_counts_df = pd.read_pickle(view_counts_f)
-    print view_counts_df.columns
     view_counts_df.drop('ID', inplace=True, axis=1)
     view_counts_df['Page'] = view_counts_df['Page'].apply(convert_url)
     view_counts_df['Page'] = view_counts_df['Page'].apply(lambda x: net.vertex(net_map[x]) if x in net_map else '')
