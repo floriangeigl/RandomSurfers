@@ -159,76 +159,63 @@ def main():
     user_map, visits = read_tmat_map(user_tmat_map)
     user_to_net = create_mapping(user_map, net_map)
     user_mat = read_and_map_hdf5(user_tmat, user_to_net, shape=(net.num_vertices(), net.num_vertices()))
-    adj_mat = adjacency(net)
-    print user_mat.shape
-    print adj_mat.shape
-    print 'user clicks:', user_mat.sum()
-    ones_adj_mat = (adj_mat > 0).astype('float')
-    trans_mat = user_mat.multiply(ones_adj_mat)
-    print 'adj links:', ones_adj_mat.sum(), 'nodes:', ones_adj_mat.shape[0]
-    print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)), '(',len(set(trans_mat.indices)) / ones_adj_mat.shape[0] * 100, '%)'
-    store(adj_mat, trans_mat, net, draw=False)
-    biased_nodes = map(set, trans_mat.nonzero())
-    biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
-    try_dump(biased_nodes, 'data/af_clicked_nodes')
-    # df_dict = dict()
-    # net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
-    # orig_lines = 0
-    #with open(view_counts_f,'r') as f:
-    #    for line in f:
-    #        line = line.strip().split('\t')
-    #        orig_lines += 1
-    #        try:
-    #            df_dict[net_map[convert_url(line[1])]] = int(line[2])
-    #        except KeyError:
-    #            pass
-    #print 'mapping len', len(df_dict), '(of ', orig_lines, ')'
-    print '=' * 80
-    print 'filter largest component'
-    post_fix = '_lc'
-    lc = label_largest_component(net, directed=True)
-    # print 'lc nodes:', np.array(lc.a).sum()
-    # for v in net.vertices():
-    #    if int(v) not in df_dict and lc[v]:
-    #        lc[v] = False
-    # print 'lc unmapped views:', np.array(lc.a).sum()
-    net.set_vertex_filter(lc)
-    shift_map = {v: i for v, i in zip(sorted(map(int, net.vertices())), range(net.num_vertices()))}
-    # df_dict = {shift_map[i]: j for i, j in shift_map.iteritems() if i in shift_map}
-    trans_mat = filter_sparse_matrix(trans_mat, shift_map)
-    net.purge_vertices()
-    print 'network vertices:', net.num_vertices()
-    # print 'view counts vertices:', len(df_dict)
-    print 'transition vertices:', trans_mat.shape[0]
-    adj_mat = adjacency(net)
-    print 'store biased nodes array'
-    biased_nodes = map(set, trans_mat.nonzero())
-    biased_nodes = np.array(sorted(biased_nodes[0] | biased_nodes[1]))
-    try_dump(biased_nodes, 'data/af_clicked_nodes' + post_fix)
-    # try_dump(np.array([df_dict[i] for i in xrange(trans_mat.shape[0])]), 'data/af_views' + post_fix)
-    store(adj_mat, trans_mat, net, post_fix=post_fix, draw=False)
+    #adj_mat = adjacency(net)
+    #print user_mat.shape
+    #print adj_mat.shape
+    # print 'user clicks:', user_mat.sum()
+    #ones_adj_mat = (adj_mat > 0).astype('float')
+    #trans_mat = user_mat.multiply(ones_adj_mat)
+    #print 'adj links:', ones_adj_mat.sum(), 'nodes:', ones_adj_mat.shape[0]
+    #print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)), '(', len(set(trans_mat.indices)) / \
+    #                                                                                      ones_adj_mat.shape[
+    #                                                                                          0] * 100, '%)'
 
-    exit()
-    print '=' * 80
-    post_fix = '_clicknb'
-    print 'filter click data and neighbours'
-    row_idx, col_idx = adj_mat.nonzero()
-    biased_nodes = set(biased_nodes)
-    neighbours = {n for v in net.vertices() if int(v) in biased_nodes for n in map(int, v.out_neighbours())}
-    biased_nodes |= neighbours
-    row_idx, col_idx, data = zip(*[(r, c, d) for r, c, d in zip(row_idx, col_idx, adj_mat.data) if
-                              c in biased_nodes and r in biased_nodes])
-    filtered_adj = csr_matrix((data, (row_idx, col_idx)), shape=adj_mat.shape)
-    net = net_from_adj(((trans_mat + filtered_adj) > 0).astype('float'))
-    # lc = label_largest_component(net, directed=True)
-    #net.set_vertex_filter(lc)
-    #shift_map = {v: i for v, i in zip(sorted(map(int, net.vertices())), range(net.num_vertices()))}
-    #try_dump(shift_map, 'data/af_lc_to' + post_fix)
-    #trans_mat = filter_sparse_matrix(trans_mat, shift_map)
-    #net.purge_vertices()
-    print net
-    adj_mat = adjacency(net)
-    store(adj_mat, trans_mat, net, post_fix=post_fix)
+    click_teleportations = net.new_edge_property('int')
+    click_loops = net.new_edge_property('int')
+    click_transitions = net.new_edge_property('int')
+    clicked_nodes = net.new_vertex_property('bool')
+    src_idx, target_idx = user_mat.nonzero()
+    for s, t, d in zip(src_idx, target_idx, map(int, user_mat.data)):
+        s, t = net.vertex(s), net.vertex(t)
+        clicked_nodes[s] = True
+        clicked_nodes[t] = True
+        e = net.edge(net.vertex(s), net.vertex(t))
+        if e is None:
+            e = net.add_edge(s, t)
+            if s != t:
+                click_teleportations[e] = d
+            else:
+                click_loops[e] = d
+        click_transitions[e] = d
+    net.ep['click_teleportations'] = click_teleportations
+    net.ep['click_loops'] = click_loops
+    net.ep['click_transitions'] = click_transitions
+    net.vp['clicked_nodes'] = clicked_nodes
+    net.vp['strong_lcc'] = label_largest_component(net, directed=True)
+
+    net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
+    orig_lines = 0
+    view_counts = net.new_vertex_property('int')
+    with open(view_counts_f, 'r') as f:
+        for line in f:
+            line = line.strip().split('\t')
+            orig_lines += 1
+            v_views = int(line[2])
+            try:
+                v_id = net_map[convert_url(line[1])]
+            except KeyError:
+                continue
+            view_counts[net.vertex(v_id)] = v_views
+    net.vp['view_counts'] = view_counts
+    print 'unfiltered transitions:', click_transitions.a.sum()
+    print 'teleportations in click-data:', click_teleportations.a.sum() / click_transitions.a.sum() * 100, '%'
+    print 'self-loops in click-data:', click_loops.a.sum() / click_transitions.a.sum() * 100, '%'
+    print 'largest strongly connected component:', net.vp['strong_lcc'].a.sum() / net.num_vertices() * 100, '%'
+    print 'view counts available for vertices:', (np.array(view_counts.a) > 0).sum() / net.num_vertices() * 100, '%'
+    print 'clicked nodes:', clicked_nodes.a.sum() / net.num_vertices() * 100, '%'
+    print 'vprops:', net.vp.keys()
+    print 'eprops:', net.ep.keys()
+    net.save('data/af.gt')
 
 
 if __name__ == '__main__':
