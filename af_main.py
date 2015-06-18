@@ -56,9 +56,11 @@ def main():
     post_fix = ''
     print 'load network'
     net = load_graph('/home/fgeigl/navigability_of_networks/preprocessing/data/af.gt')
-    net.set_vertex_filter(net.vp['strong_lcc'])
-    net.purge_vertices()
-    net.clear_filters()
+    remove_self_loops(net)
+    if False:
+        net.set_vertex_filter(net.vp['strong_lcc'])
+        net.purge_vertices()
+        net.clear_filters()
     print net
 
     assert net.get_vertex_filter()[0] is None
@@ -74,7 +76,7 @@ def main():
     for e in net.edges():
         e_trans = trans_map[e]
         if e_trans and not loops_map[e] and not tele_map[e]:
-            s, t = e.source(),e.target()
+            s, t = e.source(), e.target()
             clicked_nodes[s] = True
             clicked_nodes[t] = True
             click_pmap[e] = e_trans
@@ -86,10 +88,22 @@ def main():
     stat_dist['url'] = [urls_pmap[v] for v in net.vertices()]
     print stat_dist
     print stat_dist[['adj', 'click_sub', 'page_counts']].sum()
+    print 'adj top10'
     print stat_dist.sort('adj', ascending=False).head()
+    print 'click top10'
     print stat_dist.sort('click_sub', ascending=False).head()
+    print 'page views top10'
     print stat_dist.sort('page_counts', ascending=False).head()
+    print 'adj last10'
+    print stat_dist.sort('adj', ascending=True).head()
+    print 'click last10'
+    print stat_dist.sort('click_sub', ascending=True).head()
+    print 'page views last10'
+    print stat_dist.sort('page_counts', ascending=True).head()
 
+    clicked_stat_dist = stat_dist[stat_dist['click_sub'] > 0]
+    print 'clicked pages'.center(80, '-')
+    clicked_stat_dist[['adj', 'click_sub', 'page_counts']].sum()
 
 if __name__ == '__main__':
     start = datetime.datetime.now()

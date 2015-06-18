@@ -12,7 +12,6 @@ import datetime
 from data_io import *
 import pandas as pd
 
-
 def convert_url(url):
     url = url.strip()
     try:
@@ -92,12 +91,8 @@ def create_mapping(user_map, net_map, find_best_match=False):
     print 'done'
     return transf_map
 
-
-
-
 def string_sim(s1, s2):
     return difflib.SequenceMatcher(None, a=s1, b=s2).ratio(), s1
-
 
 def read_tmat_map(filename):
     map = dict()
@@ -169,7 +164,7 @@ def main():
     #print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)), '(', len(set(trans_mat.indices)) / \
     #                                                                                      ones_adj_mat.shape[
     #                                                                                          0] * 100, '%)'
-
+    net.vp['strong_lcc'] = label_largest_component(net, directed=True)
     click_teleportations = net.new_edge_property('int')
     click_loops = net.new_edge_property('int')
     click_transitions = net.new_edge_property('int')
@@ -191,7 +186,6 @@ def main():
     net.ep['click_loops'] = click_loops
     net.ep['click_transitions'] = click_transitions
     net.vp['clicked_nodes'] = clicked_nodes
-    net.vp['strong_lcc'] = label_largest_component(net, directed=True)
 
     net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
     orig_lines = 0
