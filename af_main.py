@@ -12,7 +12,6 @@ from graph_tool.all import *
 import pandas as pd
 from network_matrix_tools import stationary_dist, calc_entropy_and_stat_dist
 from scipy.sparse import csr_matrix, dia_matrix
-
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 300)
 
@@ -67,7 +66,7 @@ def main():
     assert net.get_vertex_filter()[0] is None
     a = adjacency(net)
     print 'calc stat dist adj matrix'
-    entropy_rate['adj'], stat_dist['adj'] = calc_entropy_and_stat_dist(a)
+    entropy_rate.at[1, 'adj'], stat_dist['adj'] = calc_entropy_and_stat_dist(a)
     print 'calc stat dist weighted click subgraph'
     click_pmap = net.new_edge_property('float')
     clicked_nodes = net.new_vertex_property('bool')
@@ -81,9 +80,9 @@ def main():
             clicked_nodes[s] = True
             clicked_nodes[t] = True
             click_pmap[e] = e_trans
-    entropy_rate['click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap, vfilt=clicked_nodes)
+    entropy_rate.at[1, 'click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap, vfilt=clicked_nodes)
     page_c_pmap = net.vp['view_counts']
-    entropy_rate['page_counts'], stat_dist['page_counts'] = np.nan, page_c_pmap.a / page_c_pmap.a.sum()
+    entropy_rate.at[1, 'page_counts'], stat_dist['page_counts'] = np.nan, page_c_pmap.a / page_c_pmap.a.sum()
 
     urls_pmap = net.vp['url']
     stat_dist['url'] = [urls_pmap[v] for v in net.vertices()]
@@ -104,10 +103,19 @@ def main():
 
     clicked_stat_dist = stat_dist[stat_dist['click_sub'] > 0]
     print 'clicked pages'.center(80, '-')
-    clicked_stat_dist[['adj', 'click_sub', 'page_counts']].sum()
+    print clicked_stat_dist[['adj', 'click_sub', 'page_counts']].sum()
     stat_dist.to_pickle(base_outdir + 'stationary_dist.df')
     print 'entropy rates'.center(80, '-')
+    print entropy_rate
     entropy_rate.to_pickle(base_outdir + 'entropy_rate.df')
+    gini_df = pd.DataFrame()
+    for i in clicked_stat_dist.columns:
+        if i is not 'url':
+            gini_df.at[1, i] = utils.gini_coeff(clicked_stat_dist[clicked_stat_dist[i] > 0])
+    print 'gini'.center(80,'-')
+    print gini_df
+    gini_df.to_pickle(base_outdir + 'gini.df')
+
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
