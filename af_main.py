@@ -10,7 +10,7 @@ from data_io import *
 import utils
 from graph_tool.all import *
 import pandas as pd
-from network_matrix_tools import stationary_dist
+from network_matrix_tools import stationary_dist, calc_entropy_and_stat_dist
 from scipy.sparse import csr_matrix, dia_matrix
 
 pd.set_option('display.width', 600)
@@ -44,15 +44,16 @@ def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+'):
             a += w_mat
         elif merge_type == '*':
             a = a.multiply(w_mat)
-    stat_dist = stationary_dist(a)
+    entropy_rate, stat_dist = calc_entropy_and_stat_dist(a)
     stat_dist = defaultdict(int, {mapping[i]: j for i, j in enumerate(stat_dist)})
     net.clear_filters()
-    return np.array([stat_dist[v] for v in net.vertices()])
+    return entropy_rate, np.array([stat_dist[v] for v in net.vertices()])
 
 def main():
     base_outdir = 'output/iknow/'
     basics.create_folder_structure(base_outdir)
     stat_dist = pd.DataFrame()
+    entropy_rate = pd.DataFrame()
     post_fix = ''
     print 'load network'
     net = load_graph('/home/fgeigl/navigability_of_networks/preprocessing/data/af.gt')
@@ -66,7 +67,7 @@ def main():
     assert net.get_vertex_filter()[0] is None
     a = adjacency(net)
     print 'calc stat dist adj matrix'
-    stat_dist['adj'] = stationary_dist(a)
+    entropy_rate['adj'], stat_dist['adj'] = calc_entropy_and_stat_dist(a)
     print 'calc stat dist weighted click subgraph'
     click_pmap = net.new_edge_property('float')
     clicked_nodes = net.new_vertex_property('bool')
@@ -80,9 +81,9 @@ def main():
             clicked_nodes[s] = True
             clicked_nodes[t] = True
             click_pmap[e] = e_trans
-    stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap, vfilt=clicked_nodes)
+    entropy_rate['click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap, vfilt=clicked_nodes)
     page_c_pmap = net.vp['view_counts']
-    stat_dist['page_counts'] = page_c_pmap.a / page_c_pmap.a.sum()
+    entropy_rate['page_counts'], stat_dist['page_counts'] = np.nan, page_c_pmap.a / page_c_pmap.a.sum()
 
     urls_pmap = net.vp['url']
     stat_dist['url'] = [urls_pmap[v] for v in net.vertices()]
@@ -104,6 +105,9 @@ def main():
     clicked_stat_dist = stat_dist[stat_dist['click_sub'] > 0]
     print 'clicked pages'.center(80, '-')
     clicked_stat_dist[['adj', 'click_sub', 'page_counts']].sum()
+    stat_dist.to_pickle(base_outdir + 'stationary_dist.df')
+    print 'entropy rates'.center(80, '-')
+    entropy_rate.to_pickle(base_outdir + 'entropy_rate.df')
 
 if __name__ == '__main__':
     start = datetime.datetime.now()

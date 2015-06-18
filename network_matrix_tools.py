@@ -143,6 +143,7 @@ def normalize_mat(matrix, replace_nans_with=0):
 
 def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps=1e-10, orig_ma_mi_r=None):
     bias_max_min_r = None
+    weighted_trans = None
     if bias is not None:
         if np.count_nonzero(bias) == 0:
             print print_prefix + '\tall zero matrix as weights -> use ones-matrix'
@@ -172,6 +173,8 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             print 'normalized max/min:', bias_max_min_r
     except scipy.sparse.linalg.ArpackNoConvergence as e:
         print print_prefix, 'no converge. add epsilon to bias', eps
+        if bias is None:
+            raise e
         b_zeros = 0
         if bias is not None:
             bias_o = np.float(10 ** int(np.ceil(np.log10(bias.shape[0]))))

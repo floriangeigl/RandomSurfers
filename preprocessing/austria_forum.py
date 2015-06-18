@@ -27,7 +27,6 @@ def convert_url(url):
         print traceback.format_exc()
         print 'FAILED:', url, type(url)
 
-
 def read_and_map_hdf5(filename, mapping, shape=None):
     print 'read and map hdf5'
     with tb.open_file(filename, 'r') as h5:
@@ -36,29 +35,38 @@ def read_and_map_hdf5(filename, mapping, shape=None):
         col_idx = list()
         unmapped = 0
         unmapped_clicks = 0
+        unmapped_clicks_dict = defaultdict(int)
         orig_clicks = np.array(h5.root.data).sum()
         print 'clicks in hdf5 file:', orig_clicks
-        for d, r, c in zip(h5.root.data, h5.root.row_indices, h5.root.column_indices):
+        unmapped_cells = set()
+        for d, r, c in zip(h5.root.data, map(int, h5.root.row_indices), map(int, h5.root.column_indices)):
             try:
-                r = mapping[r]
-                c = mapping[c]
+                mr = mapping[r]
+                mc = mapping[c]
                 data.append(d)
-                row_idx.append(r)
-                col_idx.append(c)
+                row_idx.append(mr)
+                col_idx.append(mc)
             except KeyError:
                 unmapped += 1
                 unmapped_clicks += d
+                if r not in mapping:
+                    unmapped_cells.add(r)
+                    unmapped_clicks_dict[r] += d
+                if c not in mapping:
+                    unmapped_cells.add(c)
+                    unmapped_clicks_dict[c] += d
         shape = (h5.root.shape_dimensions[0, 0], h5.root.shape_dimensions[0, 1]) if shape is None else shape
         if unmapped:
-            print 'unmapped cells:', unmapped, unmapped / len(h5.root.data) * 100, '%'
-
-            print 'unmapped clicks:', unmapped_clicks, unmapped_clicks / np.array(h5.root.data).sum() * 100, '%'
+            print 'unmapped cells:', len(unmapped_cells) / shape[0] * 100, '%'
+            print 'unmapped links:', unmapped / len(h5.root.data) * 100, '%'
+            print 'unmapped clicks:', unmapped_clicks / np.array(h5.root.data).sum() * 100, '%'
+            print 'unmapped cells with most influence:', sorted(unmapped_clicks_dict.iteritems(), key=lambda x: x[-1],
+                                                                reverse=True)[:10]
     mat = csr_matrix((data, (row_idx, col_idx)), shape=shape)
     mat.eliminate_zeros()
     return mat
 
 def create_mapping(user_map, net_map, find_best_match=False):
-    net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
     transf_map = dict()
     print 'create user to net mapping'
     unmapped = 0
@@ -66,7 +74,7 @@ def create_mapping(user_map, net_map, find_best_match=False):
     for url, url_id in user_map.iteritems():
         try:
             net_id = net_map[url]
-            transf_map[url_id] = net_id
+            transf_map[int(url_id)] = int(net_id)
         except KeyError:
             if find_best_match:
                 print 'can not map:', url
@@ -95,19 +103,13 @@ def string_sim(s1, s2):
     return difflib.SequenceMatcher(None, a=s1, b=s2).ratio(), s1
 
 def read_tmat_map(filename):
-    map = dict()
-    visits = dict()
-    with open(filename, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line.startswith('#'):
-                line = line.split('\t')
-                map[convert_url(line[1])] = int(line[0])
-                try:
-                    visits[line[1]] = int(line[2])
-                except IndexError:
-                    pass
-    return map, visits
+    print 'read user mat mapping'
+    df = pd.read_pickle(filename)
+    print df.columns
+    df['ID'] = df['ID'].astype('int')
+    df['Page'] = df['Page'].apply(convert_url)
+    print df.head()
+    return {i: j for i, j in zip(df['Page'], df['ID'])}
 
 def filter_sparse_matrix(mat, mapping):
     row_idx, col_idx = mat.nonzero()
@@ -146,24 +148,15 @@ def store(adj, trans, net, post_fix='', draw=True):
 def main():
     af_f = 'data/austria_forum_org_cleaned.txt'
     user_tmat = 'data/transition_matrix.h5'
-    user_tmat_map = 'data/mapping.csv'
-    view_counts_f = 'data/page_count_df.csv'
+    user_tmat_map = 'data/id_name_mapping_pickled'
+    view_counts_f = 'data/page_count_df_pickled'
     # added_probability = 0.0
-    net, net_map = read_edge_list(af_f, encoder=convert_url)
+    net, net_map = read_edge_list(af_f, encoder=lambda x: convert_url(x.replace('http://austria-forum.org', '')))
+    net_map = {i: int(j) for i, j in net_map.iteritems()}
     remove_self_loops(net)
-    user_map, visits = read_tmat_map(user_tmat_map)
+    user_map = read_tmat_map(user_tmat_map)
     user_to_net = create_mapping(user_map, net_map)
     user_mat = read_and_map_hdf5(user_tmat, user_to_net, shape=(net.num_vertices(), net.num_vertices()))
-    #adj_mat = adjacency(net)
-    #print user_mat.shape
-    #print adj_mat.shape
-    # print 'user clicks:', user_mat.sum()
-    #ones_adj_mat = (adj_mat > 0).astype('float')
-    #trans_mat = user_mat.multiply(ones_adj_mat)
-    #print 'adj links:', ones_adj_mat.sum(), 'nodes:', ones_adj_mat.shape[0]
-    #print 'possible clicks:', trans_mat.sum(), 'nodes:', len(set(trans_mat.indices)), '(', len(set(trans_mat.indices)) / \
-    #                                                                                      ones_adj_mat.shape[
-    #                                                                                          0] * 100, '%)'
     net.vp['strong_lcc'] = label_largest_component(net, directed=True)
     click_teleportations = net.new_edge_property('int')
     click_loops = net.new_edge_property('int')
@@ -187,19 +180,16 @@ def main():
     net.ep['click_transitions'] = click_transitions
     net.vp['clicked_nodes'] = clicked_nodes
 
-    net_map = {i.replace('http://austria-forum.org', ''): int(j) for i, j in net_map.iteritems()}
     orig_lines = 0
     view_counts = net.new_vertex_property('int')
-    with open(view_counts_f, 'r') as f:
-        for line in f:
-            line = line.strip().split('\t')
-            orig_lines += 1
-            v_views = int(line[2])
-            try:
-                v_id = net_map[convert_url(line[1])]
-            except KeyError:
-                continue
-            view_counts[net.vertex(v_id)] = v_views
+    view_counts_df = pd.read_pickle(view_counts_f)
+    print view_counts_df.columns
+    view_counts_df.drop('ID', inplace=True, axis=1)
+    view_counts_df['Page'] = view_counts_df['Page'].apply(convert_url)
+    view_counts_df['Page'] = view_counts_df['Page'].apply(lambda x: net.vertex(net_map[x]) if x in net_map else '')
+    for v, views in zip(view_counts_df['Page'], view_counts_df['Visits']):
+        if isinstance(v, Vertex):
+            view_counts[v] = views
     net.vp['view_counts'] = view_counts
     print 'unfiltered transitions:', click_transitions.a.sum()
     print 'teleportations in click-data:', click_teleportations.a.sum() / click_transitions.a.sum() * 100, '%'
