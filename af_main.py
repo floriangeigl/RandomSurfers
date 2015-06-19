@@ -64,6 +64,7 @@ def main():
     if False:
         net.set_vertex_filter(net.vp['strong_lcc'])
         net.purge_vertices()
+        net.purge_edges()
         net.clear_filters()
     print net
 
@@ -120,12 +121,15 @@ def main():
     print gini_df
     gini_df.to_pickle(base_outdir + 'gini.df')
     print 'analyze link categories'
+    assert net.get_vertex_filter()[0] is None
     url_pmap = net.vp['url']
-    edge_cat = net.new_edge_property('int')
+    edge_cat = net.new_edge_property('bool')
     clicked_edge_cat = net.new_edge_property('int')
-    edge_cat.a = [is_hierarchical_link(url_pmap[e.source()], url_pmap[e.target()]) for e in net.edges()]
+    e_idx = net.edge_index
+    valid_e_idx = [e_idx[e] for e in net.edges()]
+    edge_cat.a[valid_e_idx] = [is_hierarchical_link(url_pmap[e.source()], url_pmap[e.target()]) for e in net.edges()]
     print 'network hierarchical links:', edge_cat.a.sum() / net.num_edges() * 100, '%'
-    clicked_edge_cat.a = edge_cat.a * click_pmap.a
+    clicked_edge_cat.a = np.array(edge_cat.a) * np.array(click_pmap.a)
     print 'clicked hierarchical links:', clicked_edge_cat.a.sum() / (np.array(click_pmap.a) > 0).sum() * 100, '%'
 
 if __name__ == '__main__':
