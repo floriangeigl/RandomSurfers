@@ -11,8 +11,8 @@ stat_dist_df = pd.read_pickle(stationary_dist_fn)
 entropy_rate_df = pd.read_pickle(entropy_rate_fn)
 print stat_dist_df.columns
 
-#bias_factors_df = create_bf_scatters_from_df(stat_dist_df, 'adj', ['click_sub', 'page_counts'], output_folder=base_dir + 'bf_scatter/')
-#create_scatters_from_df(stat_dist_df, ['adj', 'click_sub', 'page_counts'], output_folder=base_dir + 'scatter/')
+bias_factors_df = create_bf_scatters_from_df(stat_dist_df, 'adj', ['click_sub', 'page_counts'], output_folder=base_dir + 'bf_scatter/')
+create_scatters_from_df(stat_dist_df, ['adj', 'click_sub', 'page_counts'], output_folder=base_dir + 'scatter/')
 create_ginis_from_df(stat_dist_df, ['adj', 'click_sub', 'page_counts'], output_folder=base_dir + 'gini/', lw=3, ms=15,
                      font_size=15)
 
