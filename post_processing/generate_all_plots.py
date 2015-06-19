@@ -1,5 +1,5 @@
 import pandas as pd
-from plot_scatter_bias_factor import create_bf_scatters_from_df, create_scatters_from_df
+from plotting import create_bf_scatters_from_df, create_scatters_from_df, create_ginis_from_df
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
 
@@ -13,6 +13,7 @@ print stat_dist_df.columns
 
 bias_factors_df = create_bf_scatters_from_df(stat_dist_df, 'adj', ['click_sub', 'page_counts'], output_folder=base_dir + 'bf_scatter/')
 create_scatters_from_df(stat_dist_df, ['adj', 'click_sub', 'page_counts'], output_folder=base_dir + 'scatter/')
+create_ginis_from_df(stat_dist_df, ['adj', 'click_sub', 'page_counts'], output_folder=base_dir + 'gini/')
 
 bias_factors_df['url'] = stat_dist_df['url']
 print bias_factors_df.sort('click_sub', ascending=False)[['click_sub','url']].head()

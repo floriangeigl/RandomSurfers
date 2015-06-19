@@ -128,9 +128,11 @@ def main():
     e_idx = net.edge_index
     valid_e_idx = [e_idx[e] for e in net.edges()]
     edge_cat.a[valid_e_idx] = [is_hierarchical_link(url_pmap[e.source()], url_pmap[e.target()]) for e in net.edges()]
-    print 'network hierarchical links:', edge_cat.a.sum() / net.num_edges() * 100, '%'
+    net_hier_links = edge_cat.a.sum() / net.num_edges()
+    print 'network hierarchical links:', net_hier_links * 100, '%'
     clicked_edge_cat.a = np.array(edge_cat.a) * np.array(click_pmap.a)
-    print 'clicked hierarchical links:', clicked_edge_cat.a.sum() / (np.array(click_pmap.a) > 0).sum() * 100, '%'
+    click_hier_links = clicked_edge_cat.a.sum() / (np.array(click_pmap.a) > 0).sum()
+    print 'clicked hierarchical links:', click_hier_links * 100, '%'
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
