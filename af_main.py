@@ -15,6 +15,10 @@ from scipy.sparse import csr_matrix, dia_matrix
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 300)
 
+
+def is_hierarchical_link(source, target):
+    return source.rsplit('/', 1)[0] != target.rsplit('/', 1)[0]
+
 def generate_weighted_matrix(net, eweights):
     if net.get_vertex_filter()[0] is not None:
         v_map = {v: i for i, v in enumerate(net.vertices())}
@@ -115,7 +119,14 @@ def main():
     print 'gini'.center(80,'-')
     print gini_df
     gini_df.to_pickle(base_outdir + 'gini.df')
-
+    print 'analyze link categories'
+    url_pmap = net.vp['url']
+    edge_cat = net.new_edge_property('int')
+    clicked_edge_cat = net.new_edge_property('int')
+    edge_cat.a = [is_hierarchical_link(url_pmap[e.source()], url_pmap[e.target()]) for e in net.edges()]
+    print 'network hierarchical links:', edge_cat.a.sum() / net.num_edges() * 100, '%'
+    clicked_edge_cat.a = edge_cat.a * click_pmap.a
+    print 'clicked hierarchical links:', clicked_edge_cat.a.sum() / (np.array(click_pmap.a) > 0).sum() * 100, '%'
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
