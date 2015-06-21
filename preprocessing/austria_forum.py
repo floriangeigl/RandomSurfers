@@ -21,9 +21,9 @@ def convert_url(url):
         except UnicodeDecodeError:
             pass
         url = urllib.unquote(url)
-        while len(url) > 1 and url.endswith('/'):
+        while len(url) > 1 and url.endswith(('/', '=')):
             url = url[:-1]
-        return url
+        return url.replace(' ', '_').replace('//', '/')
     except:
         print traceback.format_exc()
         print 'FAILED:', url, type(url)
@@ -40,7 +40,7 @@ def read_and_map_hdf5(filename, mapping, shape=None):
         orig_clicks = np.array(h5.root.data).sum()
         print 'clicks in hdf5 file:', orig_clicks
         unmapped_cells = set()
-        for d, r, c in zip(h5.root.data, h5.root.row_indices, h5.root.column_indices):
+        for d, r, c in zip(h5.root.data, map(int,h5.root.row_indices), map(int,h5.root.column_indices)):
             try:
                 mr = mapping[r]
                 mc = mapping[c]
@@ -67,18 +67,21 @@ def read_and_map_hdf5(filename, mapping, shape=None):
     mat.eliminate_zeros()
     return mat
 
-def create_mapping(user_map, net_map, find_best_match=True):
+def create_mapping(user_map, net_map, find_best_match=False):
     transf_map = dict()
     print 'create user to net mapping'
     unmapped = 0
     unmapped_urls = set()
-    for url, url_id in user_map.iteritems():
+    tmp = list(user_map.iteritems())
+    random.shuffle(tmp)
+    for url, url_id in tmp:
         try:
             net_id = net_map[url]
-            transf_map[int(url_id)] = int(net_id)
+            for i in map(int, url_id):
+                transf_map[i] = int(net_id)
         except KeyError:
             if find_best_match:
-                print 'can not map:', url
+                print 'can not map:', url, type(url)
                 print ' best match:',
                 pool = mp.Pool(processes=15)
                 res = []
@@ -88,15 +91,18 @@ def create_mapping(user_map, net_map, find_best_match=True):
                 pool.close()
                 pool.join()
                 best, best_url = max(res, key=lambda x: x[0])
-                print best_url, 'val:', best
-                print url.decode('utf8')
-                print best_url.decode('utf8')
+                print best_url, 'val:', best, type(best_url)
+                print '==', url == best_url
+                for i, j in zip(url, best_url):
+                    if i != j:
+                        print i, '==', j, ':', i == j
+                        break
                 print chardet.detect(url)
                 print chardet.detect(best_url)
             unmapped += 1
             unmapped_urls.add(url)
     if unmapped:
-        print 'unmapped urls:\n\t', '\n\t'.join(random.sample(unmapped_urls, min(10, len(unmapped_urls))))
+        print 'unmapped urls:\n\t', '\n\t'.join(random.sample(unmapped_urls, min(15, len(unmapped_urls))))
         print '\t', unmapped / len(user_map) * 100, '%'
         with open('unmapped_urls.txt', 'w') as f:
             for i in sorted(unmapped_urls):
@@ -114,7 +120,10 @@ def read_tmat_map(filename):
     df['ID'] = df['ID'].astype('int')
     df['Page'] = df['Page'].apply(convert_url)
     print df.head()
-    return {i: j for i, j in zip(df['Page'], df['ID'])}
+    result = defaultdict(set)
+    for i, j in zip(df['Page'], df['ID']):
+        result[i].add(j)
+    return result
 
 def filter_sparse_matrix(mat, mapping):
     row_idx, col_idx = mat.nonzero()
