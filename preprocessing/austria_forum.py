@@ -11,12 +11,13 @@ import multiprocessing as mp
 import datetime
 from data_io import *
 import pandas as pd
+import chardet
 
 def convert_url(url):
-    url = url.strip()
+    url = url.strip().decode('utf8')
     try:
         try:
-            url = url.decode('utf8').encode('latin1')
+            url = url.encode('latin1')
         except UnicodeDecodeError:
             pass
         url = urllib.unquote(url)
@@ -66,7 +67,7 @@ def read_and_map_hdf5(filename, mapping, shape=None):
     mat.eliminate_zeros()
     return mat
 
-def create_mapping(user_map, net_map, find_best_match=False):
+def create_mapping(user_map, net_map, find_best_match=True):
     transf_map = dict()
     print 'create user to net mapping'
     unmapped = 0
@@ -88,6 +89,10 @@ def create_mapping(user_map, net_map, find_best_match=False):
                 pool.join()
                 best, best_url = max(res, key=lambda x: x[0])
                 print best_url, 'val:', best
+                print url.decode('utf8')
+                print best_url.decode('utf8')
+                print chardet.detect(url)
+                print chardet.detect(best_url)
             unmapped += 1
             unmapped_urls.add(url)
     if unmapped:

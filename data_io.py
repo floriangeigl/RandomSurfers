@@ -13,21 +13,23 @@ def read_edge_list(filename, encoder=None):
     if not os.path.isfile(store_fname):
         print 'read edgelist:', filename
         g = Graph(directed=True)
-        get_v = defaultdict(lambda: g.add_vertex())
+        get_v = defaultdict(g.add_vertex)
+        edge_list = []
+        edge_list_a = edge_list.append
         with open(filename, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line.startswith('#'):
-                    try:
-                        s_link, t_link = line.split('\t')
-                        if encoder is not None:
-                            s_link, t_link = encoder(s_link), encoder(t_link)
-                        s, t = get_v[s_link], get_v[t_link]
-                        g.add_edge(s, t)
-                    except ValueError:
-                        print '-' * 80
-                        print line
-                        print '-' * 80
+            for line in map(lambda x: x.strip().split('\t'), filter(lambda x: not x.startswith('#'), f)):
+                try:
+                    if encoder is not None:
+                        s_link, t_link = map(encoder, line)
+                    else:
+                        s_link, t_link = line
+                    edge_list_a((int(get_v[s_link]), int(get_v[t_link])))
+                except ValueError:
+                    print '-' * 80
+                    print line
+                    print '-' * 80
+        print 'insert', len(edge_list), 'edges'
+        g.add_edge_list(edge_list)
         url_pmap = g.new_vertex_property('string')
         for link, v in get_v.iteritems():
             url_pmap[v] = link

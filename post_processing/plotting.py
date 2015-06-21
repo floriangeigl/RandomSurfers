@@ -168,8 +168,8 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
 
     alpha = 1 / np.log10(len(x_data))
     f, ax = plt.subplots()
-    c = 'blue'
-    marker = 'o'
+    c = 'black'
+    marker = 'x'
     ax.scatter(x=x_data, y=y_data, alpha=alpha, s=90, color=c, lw=1, marker=marker, facecolors='none')
     min_x, max_x = x_data.min(), x_data.max()
     min_y, max_y = y_data.min(), y_data.max()
