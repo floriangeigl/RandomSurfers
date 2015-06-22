@@ -118,12 +118,12 @@ def read_tmat_map(filename):
     df = pd.read_pickle(filename)
     print df.columns
     df['ID'] = df['ID'].astype('int')
-    df['Page'] = df['Page'].apply(convert_url)
+    # df['Page'] = df['Page'].apply(convert_url)
     print df.head()
     result = defaultdict(set)
     for i, j in zip(df['Page'], df['ID']):
         result[i].add(j)
-    return result
+    return result, df[['Page', 'Visits']]
 
 def filter_sparse_matrix(mat, mapping):
     row_idx, col_idx = mat.nonzero()
@@ -163,12 +163,13 @@ def main():
     af_f = 'data/austria_forum_org_cleaned.txt'
     user_tmat = 'data/transition_matrix.h5'
     user_tmat_map = 'data/id_name_mapping_pickled'
-    view_counts_f = 'data/page_count_df_pickled'
-    # added_probability = 0.0
+    # view_counts_f = 'data/page_count_df_pickled'
+    insert_tele = False
+
     net, net_map = read_edge_list(af_f, encoder=lambda x: convert_url(x.replace('http://austria-forum.org', '')))
     net_map = {i: int(j) for i, j in net_map.iteritems()}
     remove_self_loops(net)
-    user_map = read_tmat_map(user_tmat_map)
+    user_map, view_counts_df = read_tmat_map(user_tmat_map)
     user_to_net = create_mapping(user_map, net_map)
     user_mat = read_and_map_hdf5(user_tmat, user_to_net, shape=(net.num_vertices(), net.num_vertices()))
     net.vp['strong_lcc'] = label_largest_component(net, directed=True)
@@ -182,22 +183,23 @@ def main():
         clicked_nodes[s] = True
         clicked_nodes[t] = True
         e = net.edge(net.vertex(s), net.vertex(t))
-        if e is None:
+        if e is None and insert_tele:
             e = net.add_edge(s, t)
             if s != t:
                 click_teleportations[e] = d
             else:
                 click_loops[e] = d
-        click_transitions[e] = d
+        elif e is not None:
+            click_transitions[e] = d
     net.ep['click_teleportations'] = click_teleportations
     net.ep['click_loops'] = click_loops
     net.ep['click_transitions'] = click_transitions
     net.vp['clicked_nodes'] = clicked_nodes
 
     view_counts = net.new_vertex_property('int')
-    view_counts_df = pd.read_pickle(view_counts_f)
-    view_counts_df.drop('ID', inplace=True, axis=1)
-    view_counts_df['Page'] = view_counts_df['Page'].apply(convert_url)
+    # view_counts_df = pd.read_pickle(view_counts_f)
+    # view_counts_df.drop('ID', inplace=True, axis=1)
+    # view_counts_df['Page'] = view_counts_df['Page'].apply(convert_url)
     view_counts_df['Page'] = view_counts_df['Page'].apply(lambda x: net.vertex(net_map[x]) if x in net_map else '')
     for v, views in zip(view_counts_df['Page'], view_counts_df['Visits']):
         if isinstance(v, Vertex):

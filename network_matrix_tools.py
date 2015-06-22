@@ -12,6 +12,8 @@ from scipy.sparse.csgraph import connected_components
 import utils
 from tools import gt_tools
 from graph_tool.all import *
+import operator
+import multiprocessing
 
 def calc_common_neigh(adjacency_matrix):
     com_neigh = adjacency_matrix.dot(adjacency_matrix).todense()
@@ -214,8 +216,9 @@ def entropy_rate(transition_matrix, stat_dist=None, base=2, print_prefix=''):
     if scipy.sparse.issparse(transition_matrix):
         if not isinstance(transition_matrix, csc_matrix):
             transition_matrix = transition_matrix.tocsc()
-        col_entropy = np.array(
-            [stats.entropy(transition_matrix[:, i].data, base=base) for i in range(transition_matrix.shape[0])]).flatten()
+        get_col = transition_matrix.getcol
+        col_entropy = (get_col(i).data for i in xrange(transition_matrix.shape[0]))
+        col_entropy = np.array(map(lambda x: stats.entropy(x, base=base), col_entropy)).flatten()
     else:
         col_entropy = np.array(stats.entropy(transition_matrix, base=base)).flatten()
     stat_dist = np.array(stat_dist).flatten()

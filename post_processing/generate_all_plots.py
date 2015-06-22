@@ -17,5 +17,5 @@ create_ginis_from_df(stat_dist_df, ['adj', 'click_sub', 'page_counts'], output_f
                      font_size=15)
 
 bias_factors_df['url'] = stat_dist_df['url']
-print bias_factors_df.sort('click_sub', ascending=False)[['click_sub','url']].head()
-print bias_factors_df.sort('page_counts', ascending=False)[['page_counts','url']].head()
+print bias_factors_df.sort('click_sub', ascending=False)[['click_sub', 'url']].head()
+print bias_factors_df.sort('page_counts', ascending=False)[['page_counts', 'url']].head()

@@ -93,17 +93,17 @@ def main():
     stat_dist['url'] = [urls_pmap[v] for v in net.vertices()]
     print stat_dist
     print stat_dist[['adj', 'click_sub', 'page_counts']].sum()
-    print 'adj top10'
+    print 'adj top'
     print stat_dist.sort('adj', ascending=False).head()
-    print 'click top10'
+    print 'click top'
     print stat_dist.sort('click_sub', ascending=False).head()
-    print 'page views top10'
+    print 'page views top'
     print stat_dist.sort('page_counts', ascending=False).head()
-    print 'adj last10'
+    print 'adj last'
     print stat_dist.sort('adj', ascending=True).head()
-    print 'click last10'
+    print 'click last'
     print stat_dist.sort('click_sub', ascending=True).head()
-    print 'page views last10'
+    print 'page views last'
     print stat_dist.sort('page_counts', ascending=True).head()
 
     clicked_stat_dist = stat_dist[stat_dist['click_sub'] > 0]
