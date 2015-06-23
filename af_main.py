@@ -1,11 +1,12 @@
 from __future__ import division
-from tools.gt_tools import SBMGenerator, load_edge_list, load_property
+from sys import platform as _platform
+import matplotlib
+
+if _platform == "linux" or _platform == "linux2":
+    matplotlib.use('Agg')
+import matplotlib.pylab as plt
 import tools.basics as basics
-import multiprocessing
 import datetime
-import traceback
-from self_sim_entropy import self_sim_entropy
-import os
 from data_io import *
 import utils
 from graph_tool.all import *
@@ -85,7 +86,18 @@ def main():
             clicked_nodes[s] = True
             clicked_nodes[t] = True
             click_pmap[e] = e_trans
-    entropy_rate.at[1, 'click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap, vfilt=clicked_nodes)
+    click_pmap.a = np.sqrt(np.array(click_pmap.a))
+    click_pmap.a /= (click_pmap.a.max() / 100)
+    click_map_ser = pd.Series(click_pmap.a)
+    click_map_ser.plot(kind='hist')
+    plt.savefig('link_clicks_histo.png')
+    plt.close('all')
+    click_map_ser[click_map_ser > 0].plot(kind='hist')
+    plt.savefig('link_clicks_histo_filtzero.png')
+    plt.close('all')
+    print 'max click:', click_pmap.a.max()
+    entropy_rate.at[1, 'click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap,
+                                                                              vfilt=clicked_nodes)
     page_c_pmap = net.vp['view_counts']
     entropy_rate.at[1, 'page_counts'], stat_dist['page_counts'] = np.nan, page_c_pmap.a / page_c_pmap.a.sum()
 
@@ -120,19 +132,20 @@ def main():
     print 'gini'.center(80,'-')
     print gini_df
     gini_df.to_pickle(base_outdir + 'gini.df')
-    print 'analyze link categories'
-    assert net.get_vertex_filter()[0] is None
-    url_pmap = net.vp['url']
-    edge_cat = net.new_edge_property('bool')
-    clicked_edge_cat = net.new_edge_property('int')
-    e_idx = net.edge_index
-    valid_e_idx = [e_idx[e] for e in net.edges()]
-    edge_cat.a[valid_e_idx] = [is_hierarchical_link(url_pmap[e.source()], url_pmap[e.target()]) for e in net.edges()]
-    net_hier_links = edge_cat.a.sum() / net.num_edges()
-    print 'network hierarchical links:', net_hier_links * 100, '%'
-    clicked_edge_cat.a = np.array(edge_cat.a) * np.array(click_pmap.a)
-    click_hier_links = clicked_edge_cat.a.sum() / (np.array(click_pmap.a) > 0).sum()
-    print 'clicked hierarchical links:', click_hier_links * 100, '%'
+    if False:
+        print 'analyze link categories'
+        assert net.get_vertex_filter()[0] is None
+        url_pmap = net.vp['url']
+        edge_cat = net.new_edge_property('bool')
+        clicked_edge_cat = net.new_edge_property('int')
+        e_idx = net.edge_index
+        valid_e_idx = [e_idx[e] for e in net.edges()]
+        edge_cat.a[valid_e_idx] = [is_hierarchical_link(url_pmap[e.source()], url_pmap[e.target()]) for e in net.edges()]
+        net_hier_links = edge_cat.a.sum() / net.num_edges()
+        print 'network hierarchical links:', net_hier_links * 100, '%'
+        clicked_edge_cat.a = np.array(edge_cat.a) * np.array(click_pmap.a)
+        click_hier_links = clicked_edge_cat.a.sum() / (np.array(click_pmap.a) > 0).sum()
+        print 'clicked hierarchical links:', click_hier_links * 100, '%'
 
 if __name__ == '__main__':
     start = datetime.datetime.now()

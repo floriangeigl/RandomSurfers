@@ -80,6 +80,8 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
         filter_both = np.logical_and(y_data > 0, x_data > 0)
         y_data = y_data[filter_both]
         x_data = x_data[filter_both]
+        x_data /= x_data.sum()
+        y_data /= y_data.sum()
     alpha = 1 / np.log10(len(y_data))
     f, ax = plt.subplots()
     plt.axhline(1., color='red', alpha=.5, lw=4, ls='--')
@@ -151,6 +153,7 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     if filter_zeros:
         data = df[df[x] > 0]
         data = data[data[y] > 0]
+        data[[x, y]] /= data[[x, y]].sum()
         x_data = data[x]
         y_data = data[y]
     else:
@@ -159,14 +162,12 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     corr_df = pd.DataFrame()
     corr_df[x] = x_data
     corr_df[y] = y_data
-    corr_df.sort(x, ascending=False, inplace=True)
-    corr_df[x] = range(len(corr_df))
-    corr_df.sort(y, ascending=False, inplace=True)
-    corr_df[y] = range(len(corr_df))
-    corr_df.sort(inplace=True)
+    print '\tpearson:',  float(corr_df.corr(method='pearson').at[x, y])
+    print '\tlogpearson:', float(corr_df.apply(np.log10).corr(method='pearson').at[x, y])
     print '\tspearman:', float(corr_df.corr(method='spearman').at[x, y])
+    # print '\tkendall:', float(corr_df.corr(method='kendall').at[x, y])
 
-    alpha = 1 / np.log10(len(x_data))
+    alpha = 1 / np.log2(len(x_data))
     f, ax = plt.subplots()
     c = 'black'
     marker = 'x'
@@ -181,9 +182,27 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     ax.set_yscale('log')
     plt.grid()
     plt.tight_layout()
+    orig_xticks, orig_xtick_labels = plt.xticks()
     plt.savefig(fname, dpi=150)
     plt.show()
     plt.close('all')
+    heatmap, xedges, yedges = np.histogram2d(np.log10(x_data), np.log10(y_data), bins=100)
+    heatmap = np.log10(heatmap)
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+    plt.imshow(heatmap, extent=extent, origin='lower', cmap='jet', interpolation='none')
+    # plt.xticks(np.log10(orig_xticks), map(str, orig_xtick_labels))
+    plt.xlabel(x)
+    plt.ylabel(y)
+    plt.colorbar()
+    #ticks,labels = plt.cticks()
+    #plt.cticks(ticks, map(str, np.power(10, ticks)))
+    #plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    #plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    fname = fname.replace('.png', '') + '_heatmap.png'
+    plt.savefig(fname, dpi=150)
+    plt.show()
+    plt.close('all')
+
 
 
 def plot_gini(data, fname):
