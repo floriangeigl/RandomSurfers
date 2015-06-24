@@ -191,7 +191,7 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     heatmap = np.log10(heatmap + 1)
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
 
-    ax = plt.imshow(heatmap.T, extent=extent, origin='lower', aspect='auto', interpolation='none', cmap='summer')
+    ax = plt.imshow(heatmap.T, extent=extent, origin='lower', aspect='auto', interpolation='none', cmap='jet')
 
     ticks, lticks = plt.xticks()
     ticks = range(int(ticks[0]), int(ticks[-1]) + 1)
@@ -207,11 +207,8 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     vmin = int(cb.vmin)
     vmax = int(cb.vmax)
     ticks = range(vmin, vmax + 1)
-    print ticks
     lin_ticks = np.linspace(0, 1., num=len(ticks), endpoint=True)
-    print 'linspace:', lin_ticks
     cb.set_ticks(ticks)
-    print 'ticks:', cb.ax.get_yticks()
     cb.ax.set_yticklabels(map(lambda x: '$10^{' + x + '}$', map(str, map(int, ticks))))
 
     # plt.xticks(np.log10(orig_xticks), map(str, orig_xtick_labels))

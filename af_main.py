@@ -52,9 +52,11 @@ def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', 
     if stat_dist is None:
         entropy_r, stat_dist = calc_entropy_and_stat_dist(a)
     else:
-        if not stat_dist.sum() == 1.:
-            stat_dist /= stat_dist.sum()
-        entropy_r = entropy_rate(w_mat, stat_dist=stat_dist)
+        assert isinstance(stat_dist, PropertyMap)
+        if not stat_dist.a.sum() == 1:
+            stat_dist = stat_dist.copy()
+            stat_dist.a /= stat_dist.a.sum()
+        entropy_r = entropy_rate(a, stat_dist=np.array([stat_dist[v] for v in net.vertices()]))
     stat_dist = defaultdict(int, {mapping[i]: j for i, j in enumerate(stat_dist)})
     net.clear_filters()
     return entropy_r, np.array([stat_dist[v] for v in net.vertices()])
@@ -63,7 +65,7 @@ def main():
     base_outdir = 'output/iknow/'
     basics.create_folder_structure(base_outdir)
     stat_dist = pd.DataFrame()
-    entropy_rate = pd.DataFrame()
+    entropy_rate_df = pd.DataFrame()
     post_fix = ''
     print 'load network'
     net = load_graph('/home/fgeigl/navigability_of_networks/preprocessing/data/af.gt')
@@ -78,8 +80,9 @@ def main():
     assert net.get_vertex_filter()[0] is None
     a = adjacency(net)
     print 'calc stat dist adj matrix'
-    entropy_rate.at[1, 'adj'], stat_dist['adj'] = calc_entropy_and_stat_dist(a)
+    entropy_rate_df.at[1, 'adj'], stat_dist['adj'] = calc_entropy_and_stat_dist(a)
     print 'calc stat dist weighted click subgraph'
+    # remove_parallel_edges(net)
     click_pmap = net.new_edge_property('float')
     clicked_nodes = net.new_vertex_property('bool')
     tele_map = net.ep['click_teleportations']
@@ -92,9 +95,13 @@ def main():
             clicked_nodes[s] = True
             clicked_nodes[t] = True
             click_pmap[e] = e_trans
-    click_pmap.a = np.log10(np.array(click_pmap.a)+1)
-    click_pmap.a -= click_pmap.a.min()
-    click_pmap.a /= (click_pmap.a.max() / 9.)
+
+    # sublinear tf scaling
+    tmp_clicks = np.array(click_pmap.a)
+    mask = tmp_clicks > 0
+    tmp_clicks[mask] = 1 + np.log(tmp_clicks[mask])
+
+    click_pmap.a = tmp_clicks
     click_map_ser = pd.Series(click_pmap.a)
     click_map_ser.plot(kind='hist', bins=10,logy=True)
     plt.ylabel('number of edges')
@@ -108,13 +115,16 @@ def main():
     plt.close('all')
     print 'max click:', click_pmap.a.max()
     print 'min click:', click_pmap.a.min()
-    entropy_rate.at[1, 'click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap,
+    entropy_rate_df.at[1, 'click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap,
                                                                               vfilt=clicked_nodes)
     page_c_pmap = net.vp['view_counts']
     page_c_stat_dist = page_c_pmap.a / page_c_pmap.a.sum()
     stat_dist['page_counts'] = page_c_stat_dist
+    lateral_nodes = net.new_vertex_property('bool')
+    lateral_nodes.a = np.array(page_c_pmap.a) > 0
 
-    entropy_rate.at[1, 'page_counts'] = entropy_rate(weighted_trans, stat_dist=stat_dist)
+    entropy_rate_df.at[1, 'page_counts'] = filter_and_calc(net, eweights=click_pmap, vfilt=lateral_nodes,
+                                                           stat_dist=page_c_pmap)
 
     urls_pmap = net.vp['url']
     stat_dist['url'] = [urls_pmap[v] for v in net.vertices()]
@@ -139,8 +149,8 @@ def main():
     print clicked_stat_dist[['adj', 'click_sub', 'page_counts']].sum()
     stat_dist.to_pickle(base_outdir + 'stationary_dist.df')
     print 'entropy rates'.center(80, '-')
-    print entropy_rate
-    entropy_rate.to_pickle(base_outdir + 'entropy_rate.df')
+    print entropy_rate_df
+    entropy_rate_df.to_pickle(base_outdir + 'entropy_rate.df')
     gini_df = pd.DataFrame()
     for i in clicked_stat_dist.columns:
         if i is not 'url':
