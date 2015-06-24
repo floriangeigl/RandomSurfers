@@ -12,7 +12,7 @@ entropy_rate_df = pd.read_pickle(entropy_rate_fn)
 print stat_dist_df.columns
 adj_name = 'Uniform Random Surfer'
 clickstream_name = 'Pragmatic Random Surfer'
-page_views_name = 'Page Counts'
+page_views_name = 'Lateral Random Surfer'
 url_name = 'URL'
 stat_dist_df.columns = [adj_name, clickstream_name, page_views_name, url_name]
 print stat_dist_df.columns

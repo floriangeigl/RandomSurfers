@@ -53,8 +53,8 @@ def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', 
         entropy_r, stat_dist = calc_entropy_and_stat_dist(a)
     else:
         assert isinstance(stat_dist, PropertyMap)
-        if not stat_dist.a.sum() == 1:
-            stat_dist = np.array([stat_dist[v] for v in net.vertices()])
+        stat_dist = np.array([stat_dist[v] for v in net.vertices()])
+        if not stat_dist.sum() == 1:
             stat_dist /= stat_dist.sum()
         entropy_r = entropy_rate(a, stat_dist=stat_dist)
     stat_dist = defaultdict(int, {mapping[i]: j for i, j in enumerate(stat_dist)})
