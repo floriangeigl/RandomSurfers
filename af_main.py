@@ -11,7 +11,7 @@ from data_io import *
 import utils
 from graph_tool.all import *
 import pandas as pd
-from network_matrix_tools import stationary_dist, calc_entropy_and_stat_dist
+from network_matrix_tools import stationary_dist, calc_entropy_and_stat_dist, entropy_rate
 from scipy.sparse import csr_matrix, dia_matrix
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 300)
@@ -33,7 +33,8 @@ def generate_weighted_matrix(net, eweights):
     shape = (shape, shape)
     return csr_matrix((data, (row_idx, col_idx)), shape=shape)
 
-def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+'):
+
+def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', stat_dist=None):
     orig_nodes = net.num_vertices()
     if vfilt is not None:
         net.set_vertex_filter(vfilt)
@@ -48,10 +49,15 @@ def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+'):
             a += w_mat
         elif merge_type == '*':
             a = a.multiply(w_mat)
-    entropy_rate, stat_dist = calc_entropy_and_stat_dist(a)
+    if stat_dist is None:
+        entropy_r, stat_dist = calc_entropy_and_stat_dist(a)
+    else:
+        if not stat_dist.sum() == 1.:
+            stat_dist /= stat_dist.sum()
+        entropy_r = entropy_rate(w_mat, stat_dist=stat_dist)
     stat_dist = defaultdict(int, {mapping[i]: j for i, j in enumerate(stat_dist)})
     net.clear_filters()
-    return entropy_rate, np.array([stat_dist[v] for v in net.vertices()])
+    return entropy_r, np.array([stat_dist[v] for v in net.vertices()])
 
 def main():
     base_outdir = 'output/iknow/'
@@ -86,24 +92,34 @@ def main():
             clicked_nodes[s] = True
             clicked_nodes[t] = True
             click_pmap[e] = e_trans
-    click_pmap.a = np.sqrt(np.array(click_pmap.a))
-    click_pmap.a /= (click_pmap.a.max() / 100)
+    click_pmap.a = np.log10(np.array(click_pmap.a)+1)
+    click_pmap.a -= click_pmap.a.min()
+    click_pmap.a /= (click_pmap.a.max() / 9.)
     click_map_ser = pd.Series(click_pmap.a)
-    click_map_ser.plot(kind='hist')
+    click_map_ser.plot(kind='hist', bins=10,logy=True)
+    plt.ylabel('number of edges')
+    plt.xlabel('clicks')
     plt.savefig('link_clicks_histo.png')
     plt.close('all')
-    click_map_ser[click_map_ser > 0].plot(kind='hist')
+    click_map_ser[click_map_ser > 0].plot(kind='hist', bins=10,logy=True)
+    plt.ylabel('number of edges')
+    plt.xlabel('clicks')
     plt.savefig('link_clicks_histo_filtzero.png')
     plt.close('all')
     print 'max click:', click_pmap.a.max()
+    print 'min click:', click_pmap.a.min()
     entropy_rate.at[1, 'click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap,
                                                                               vfilt=clicked_nodes)
     page_c_pmap = net.vp['view_counts']
-    entropy_rate.at[1, 'page_counts'], stat_dist['page_counts'] = np.nan, page_c_pmap.a / page_c_pmap.a.sum()
+    page_c_stat_dist = page_c_pmap.a / page_c_pmap.a.sum()
+    stat_dist['page_counts'] = page_c_stat_dist
+
+    entropy_rate.at[1, 'page_counts'] = entropy_rate(weighted_trans, stat_dist=stat_dist)
 
     urls_pmap = net.vp['url']
     stat_dist['url'] = [urls_pmap[v] for v in net.vertices()]
-    print stat_dist
+    print stat_dist.head()
+    print stat_dist.tail()
     print stat_dist[['adj', 'click_sub', 'page_counts']].sum()
     print 'adj top'
     print stat_dist.sort('adj', ascending=False).head()
