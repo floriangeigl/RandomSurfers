@@ -18,8 +18,16 @@ stat_dist_df.columns = [adj_name, clickstream_name, page_views_name, url_name]
 print stat_dist_df.columns
 print entropy_rate_df.columns
 
-create_bf_scatters_from_df(stat_dist_df, clickstream_name, [page_views_name], output_folder=base_dir + 'bf_scatter/')
+bias_factors_df = create_bf_scatters_from_df(stat_dist_df, clickstream_name, [page_views_name], output_folder=base_dir + 'bf_scatter/')
+min_y, max_y = bias_factors_df[bias_factors_df > 0].min().min(), bias_factors_df.max().max()
 bias_factors_df = create_bf_scatters_from_df(stat_dist_df, adj_name, [clickstream_name, page_views_name], output_folder=base_dir + 'bf_scatter/')
+min_y, max_y = min(min_y, bias_factors_df[bias_factors_df > 0].min().min()), max(max_y, bias_factors_df.max().max())
+
+create_bf_scatters_from_df(stat_dist_df, clickstream_name, [page_views_name], output_folder=base_dir + 'bf_scatter/',
+                           y_range=[min_y, max_y])
+bias_factors_df = create_bf_scatters_from_df(stat_dist_df, adj_name, [clickstream_name, page_views_name],
+                                             output_folder=base_dir + 'bf_scatter/', y_range=[min_y, max_y])
+
 create_scatters_from_df(stat_dist_df, [adj_name, clickstream_name, page_views_name], output_folder=base_dir + 'scatter/')
 create_ginis_from_df(stat_dist_df, [adj_name, clickstream_name, page_views_name], output_folder=base_dir + 'gini/', lw=3, ms=15,
                      font_size=15)

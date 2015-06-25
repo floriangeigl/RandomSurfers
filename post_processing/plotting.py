@@ -35,7 +35,7 @@ def shift_data_pos(data, shift_min=True):
 
 
 def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter_zeros=True, legend=True,
-                            file_ending='.png', common_range=True, **kwargs):
+                               file_ending='.png', common_range=True, y_range=None, **kwargs):
     if isinstance(columns, str):
         columns = [columns]
     if not output_folder.endswith('/'):
@@ -79,6 +79,8 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
             bias_factors_df[col] = y_bf
         else:
             bias_factors_df[col] = y
+        if y_range is not None:
+            min_y, max_y = y_range
         create_bf_scatter((baseline, x), (col, y), fname, legend=legend and idx == 0, filter_zeros=True,
                           min_y=min_y, max_y=max_y, min_x=min_x, max_x=max_x, )
     return bias_factors_df
