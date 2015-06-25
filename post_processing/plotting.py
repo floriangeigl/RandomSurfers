@@ -43,26 +43,43 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
     if not os.path.isdir(output_folder):
         os.makedirs(output_folder)
     bias_factors_df = pd.DataFrame()
-    x = df[baseline]
     min_x, min_y, max_x, max_y = None, None, None, None
     if common_range:
         for col in columns:
-            x_data = np.array(x)
-            y_data = np.array(df[col] / x_data)
+            x_data = np.array(df[baseline]).astype('float')
+            y_data = np.array(df[col]).astype('float')
             if filter_zeros:
                 filter_both = np.logical_and(y_data > 0, x_data > 0)
                 y_data = y_data[filter_both]
                 x_data = x_data[filter_both]
+                x_data /= x_data.sum()
+                y_data /= y_data.sum()
+            y_data /= x_data
             min_x = x_data.min() if min_x is None else min(x_data.min(), min_x)
             min_y = y_data.min() if min_y is None else min(y_data.min(), min_y)
             max_x = x_data.max() if max_x is None else min(x_data.max(), max_x)
             max_y = y_data.max() if max_y is None else min(y_data.max(), max_y)
 
-    for idx,col in enumerate(columns):
+    for idx, col in enumerate(columns):
+        x = np.array(df[baseline]).astype('float')
         fname = output_folder + 'bf_' + baseline.replace(' ', '_') + '_' + col.replace(' ', '_') + file_ending
-        y = df[col] / x
-        bias_factors_df[col] = y
-        create_bf_scatter((baseline, x), (col, y), fname, legend=legend and idx == 0, filter_zeros=filter_zeros,
+        y = np.array(df[col]).astype('float')
+        if filter_zeros:
+            filter_both = np.logical_and(x > 0, y > 0)
+            x = x[filter_both]
+            y = y[filter_both]
+            x /= x.sum()
+            y /= y.sum()
+        y /= x
+        if filter_zeros:
+            y_bf = np.zeros(len(filter_both))
+            y_bf_idx = np.array(range(len(filter_both)))
+            y_bf_idx = y_bf_idx[filter_both]
+            y_bf[y_bf_idx] = y
+            bias_factors_df[col] = y_bf
+        else:
+            bias_factors_df[col] = y
+        create_bf_scatter((baseline, x), (col, y), fname, legend=legend and idx == 0, filter_zeros=True,
                           min_y=min_y, max_y=max_y, min_x=min_x, max_x=max_x, )
     return bias_factors_df
 
@@ -72,16 +89,15 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     assert isinstance(y, tuple)
     x_label, x_data = x
     y_label, y_data = y
-    x_data = np.array(x_data)
-    y_data = np.array(y_data)
+    x_data = np.array(x_data).astype('float')
+    y_data = np.array(y_data).astype('float')
     y_data_mod = False
     x_data_mod = False
     if filter_zeros:
         filter_both = np.logical_and(y_data > 0, x_data > 0)
         y_data = y_data[filter_both]
         x_data = x_data[filter_both]
-        x_data /= x_data.sum()
-        y_data /= y_data.sum()
+    print 'biasfactor dataset len:', len(y_data)
     alpha = 1 / np.log10(len(y_data))
     f, ax = plt.subplots()
     plt.axhline(1., color='red', alpha=.5, lw=4, ls='--')
@@ -102,6 +118,7 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
             c = 'blue'
             marker = 'v'
         x_filt, y_filt = x_data[filtered_y], y_data[filtered_y]
+        print '\tfiltered len', i, len(x_filt)
         ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=90, color=c, lw=1, label=label,
                    marker=marker, facecolors='none', **kwargs)
 
@@ -150,15 +167,15 @@ def create_scatters_from_df(df, columns, output_folder='./', filter_zeros=True, 
 
 def create_scatter(df, x, y, fname, filter_zeros=True):
     matplotlib.rcParams.update({'font.size': 14})
+    x_data = np.array(df[x]).astype('float')
+    y_data = np.array(df[y]).astype('float')
     if filter_zeros:
-        data = df[df[x] > 0]
-        data = data[data[y] > 0]
-        data[[x, y]] /= data[[x, y]].sum()
-        x_data = data[x]
-        y_data = data[y]
-    else:
-        x_data = df[x]
-        y_data = df[y]
+        filter_both = np.logical_and(y_data > 0, x_data > 0)
+        y_data = y_data[filter_both]
+        x_data = x_data[filter_both]
+        x_data /= x_data.sum()
+        y_data /= y_data.sum()
+
     corr_df = pd.DataFrame()
     corr_df[x] = x_data
     corr_df[y] = y_data
@@ -193,15 +210,6 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     plt.savefig(fname, dpi=150)
     plt.show()
     plt.close('all')
-
-
-
-def plot_gini(data, fname):
-
-    data = np.array(data)
-    data.sort()
-    df = pd.DataFrame(columns=['idx', 'cum. sum of stat. prob.'], data=zip(data, range(len(data))))
-
 
 def create_ginis_from_df(df, columns, output_folder='./', zoom=None, filter_zeros=True, legend=True, font_size=12,
                          ms=5, file_ending='.png',
@@ -284,100 +292,3 @@ def create_ginis_from_df(df, columns, output_folder='./', zoom=None, filter_zero
         plt.show()
         plt.close('all')
         os.system('pdfcrop ' + legend_fname + ' ' + legend_fname)
-
-'''
-data_dir = '/home/fgeigl/navigability_of_networks/output/iknow/'
-base_dir = data_dir.rsplit('/',2)[0] + '/'
-files = [data_dir + i for i in os.listdir(data_dir) if i.endswith('stationary_dist.df')]
-print files
-metrics = dict()
-#metrics.add('betweenness')
-#metrics.add('cosine')
-metrics['eigenvector'] = 'Eigenvec. C.'
-#metrics.add('inv_log_eigenvector')
-#metrics.add('inv_sqrt_eigenvector')
-#metrics.add('eigenvector_inverse')
-metrics['deg'] = 'Degree'
-#metrics.add('inv_log_deg')
-metrics['inv_sqrt_deg'] = 'Inv. Degree'
-metrics['sigma'] = 'Sigma'
-metrics['sigma_sqrt_deg_corrected'] = 'Deg. Cor. Sigma'
-metrics['adj'] = 'Unbiased'
-#metrics['graph_with_props_text_sim.bias'] = 'TfIdf'
-metrics['click_sub'] = 'ClickBias'
-metrics['page_counts'] = 'PageViews'
-#[u'inv_log_eigenvector', u'inv_sqrt_eigenvector', 
-#u'inv_log_deg', u'adjacency', u'inv_sqrt_deg', u'eigenvector', u'sigma', u'betweenness', u'sigma_deg_corrected']
-#'adjacency', u'betweenness', u'eigenvector', u'inv_log_deg', u'inv_log_eigenvector', 
-#u'inv_sqrt_deg', u'inv_sqrt_eigenvector', u'sigma', u'sigma_deg_corrected', u'sigma_log_deg_corrected'
-karate_metrics = set()
-karate_metrics.add('adjacency')
-karate_metrics.add('eigenvector')
-
-for idx, file_name in enumerate(sorted(files)):
-    print file_name
-    
-    data_set_name = file_name.split('/')[-1]
-    data_set_name = data_set_name.replace('_stat_dists.df','')
-    df = pd.read_pickle(file_name)
-    df = df[df['adj']>0]
-    df = df[df['click_sub']>0]
-    df = df[df['page_counts']>0]
-    print df[['adj', 'click_sub', 'page_counts']].sum()
-    for i in ['adj', 'click_sub', 'page_counts']:
-        df[i] /= df[i].sum()
-    #filtered_nodes = np.load('/home/fgeigl/navigability_of_networks/preprocessing/data/af_clicked_nodes')
-    print df.columns
-    #drop_idx = set(df.index) - set(filtered_nodes)
-    #df = df.drop(drop_idx)
-    #assert set(df.index) == set(filtered_nodes)
-    #df /= df.sum()
-    print len(df), 'nodes'
-    baseline_name = 'click_sub'
-    baseline_name = 'adj'
-    baseline = df[baseline_name]
-    min_pfac = 1.
-    max_pfac = 1.
-    sorted_baseline = sorted(baseline)
-    min_x = baseline[baseline > 0].min()
-    x_perc = len(baseline[baseline > 0]) / len(baseline)
-    max_x = baseline.max()
-    #if abs(round(np.log10(min_x)) - round(np.log10(max_x))) < 1:
-    min_x = 10 ** (np.log10(min_x)-.2)
-    max_x = 10 ** (np.log10(max_x)+.2)
-    while np.isclose(np.ceil(np.log10(min_x)), np.floor(np.log10(max_x))):
-        min_x = 10 ** (np.log10(min_x)-.1)
-        max_x = 10 ** (np.log10(max_x)+.1)
-        
-    prob_fac_df = pd.DataFrame()
-    
-    for col in sorted(filter(lambda x: (x in metrics) if 'karate' not in file_name else (x in karate_metrics),df.columns)):
-        print col,
-        prob_fac = df[col] / baseline
-        pos_prob_fac = (prob_fac > 0) & (np.isfinite(prob_fac))
-        #print prob_fac[pos_prob_fac].min()
-        #print prob_fac[pos_prob_fac].max()
-        #print np.nanmin(prob_fac[pos_prob_fac])
-        #print np.nanmax(prob_fac[pos_prob_fac])
-        min_pfac = min([prob_fac[pos_prob_fac].min(),min_pfac])
-        max_pfac = max([prob_fac[pos_prob_fac].max(),max_pfac])            
-        prob_fac_df[col] = prob_fac
-    print ''
-    print prob_fac_df.min(axis=0)
-    print prob_fac_df.max(axis=0)
-    for jdx,col in enumerate(prob_fac_df.columns):
-        col_data = prob_fac_df[col]
-        col_perc = len(col_data[col_data>0]) / len(col_data)
-        col_neg = len(col_data[col_data<0]) / len(col_data)
-        x = (baseline_name ,baseline)
-        # x = ('baseline' +'('+'%.2f' % x_perc + ')' ,baseline)
-        y_label_name = metrics[col] if col in metrics else (' '.join([i[:3] + '.' for i in col.split('_')]))
-        # y = (y_label_name + ' fac.' +'('+'%.2f' % col_perc + '|n:' + '%.2f' % col_neg, col_data)
-        y = (y_label_name + ' Bias Factor', col_data)
-        if data_set_name.endswith('.df'):
-            data_set_name = data_set_name[:-3]
-        out_name = './scatters/' + data_set_name + '_scatter_' + col
-        if not os.path.isdir('./scatters/'):
-            os.mkdir('./scatters/')
-        create_scatter(x, y, out_name, min_pfac, max_pfac, min_x=min_x, max_x = max_x, legend=jdx==idx==0)
-'''

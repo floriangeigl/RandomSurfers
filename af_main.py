@@ -56,7 +56,6 @@ def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', 
         stat_dist = np.array([stat_dist[v] for v in net.vertices()]).astype('float')
         if not np.isclose(stat_dist.sum(), 1.):
             stat_dist /= stat_dist.sum()
-            print 'normalized stat dist sum:', stat_dist.sum()
         entropy_r = entropy_rate(a, stat_dist=stat_dist)
     stat_dist = defaultdict(int, {mapping[i]: j for i, j in enumerate(stat_dist)})
     net.clear_filters()
@@ -70,7 +69,15 @@ def main():
     post_fix = ''
     print 'load network'
     net = load_graph('/home/fgeigl/navigability_of_networks/preprocessing/data/af.gt')
+    tele_map = net.ep['click_teleportations']
+    loops_map = net.ep['click_loops']
+    trans_map = net.ep['click_transitions']
+    print 'remove self loops'
     remove_self_loops(net)
+    print 'remove parallel edges'
+    print '\tclicks before:', sum([trans_map[e] for e in net.edges()])
+    remove_parallel_edges(net)
+    print '\tclicks after:', sum([trans_map[e] for e in net.edges()])
     if False:
         net.set_vertex_filter(net.vp['strong_lcc'])
         net.purge_vertices()
@@ -86,9 +93,7 @@ def main():
     # remove_parallel_edges(net)
     click_pmap = net.new_edge_property('float')
     clicked_nodes = net.new_vertex_property('bool')
-    tele_map = net.ep['click_teleportations']
-    loops_map = net.ep['click_loops']
-    trans_map = net.ep['click_transitions']
+
     for e in net.edges():
         e_trans = trans_map[e]
         if e_trans and not loops_map[e] and not tele_map[e]:
