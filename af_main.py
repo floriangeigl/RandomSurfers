@@ -53,9 +53,10 @@ def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', 
         entropy_r, stat_dist = calc_entropy_and_stat_dist(a)
     else:
         assert isinstance(stat_dist, PropertyMap)
-        stat_dist = np.array([stat_dist[v] for v in net.vertices()])
+        stat_dist = np.array([stat_dist[v] for v in net.vertices()]).astype('float')
         if not np.isclose(stat_dist.sum(), 1.):
             stat_dist /= stat_dist.sum()
+            print 'normalized stat dist sum:', stat_dist.sum()
         entropy_r = entropy_rate(a, stat_dist=stat_dist)
     stat_dist = defaultdict(int, {mapping[i]: j for i, j in enumerate(stat_dist)})
     net.clear_filters()
@@ -123,8 +124,8 @@ def main():
     lateral_nodes = net.new_vertex_property('bool')
     lateral_nodes.a = np.array(page_c_pmap.a) > 0
 
-    entropy_rate_df.at[1, 'page_counts'] = filter_and_calc(net, eweights=click_pmap, vfilt=lateral_nodes,
-                                                           stat_dist=page_c_pmap)
+    entropy_rate_df.at[1, 'page_counts'], _ = filter_and_calc(net, eweights=click_pmap, vfilt=lateral_nodes,
+                                                              stat_dist=page_c_pmap)
 
     urls_pmap = net.vp['url']
     stat_dist['url'] = [urls_pmap[v] for v in net.vertices()]

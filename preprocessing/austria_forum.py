@@ -173,9 +173,9 @@ def main():
     user_to_net = create_mapping(user_map, net_map)
     user_mat = read_and_map_hdf5(user_tmat, user_to_net, shape=(net.num_vertices(), net.num_vertices()))
     net.vp['strong_lcc'] = label_largest_component(net, directed=True)
-    click_teleportations = net.new_edge_property('int')
-    click_loops = net.new_edge_property('int')
-    click_transitions = net.new_edge_property('int')
+    click_teleportations = net.new_edge_property('float')
+    click_loops = net.new_edge_property('float')
+    click_transitions = net.new_edge_property('float')
     clicked_nodes = net.new_vertex_property('bool')
     src_idx, target_idx = user_mat.nonzero()
     for s, t, d in zip(src_idx, target_idx, map(int, user_mat.data)):
@@ -196,7 +196,7 @@ def main():
     net.ep['click_transitions'] = click_transitions
     net.vp['clicked_nodes'] = clicked_nodes
 
-    view_counts = net.new_vertex_property('int')
+    view_counts = net.new_vertex_property('float')
     # view_counts_df = pd.read_pickle(view_counts_f)
     # view_counts_df.drop('ID', inplace=True, axis=1)
     # view_counts_df['Page'] = view_counts_df['Page'].apply(convert_url)
