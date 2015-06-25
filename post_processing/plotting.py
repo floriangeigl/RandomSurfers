@@ -15,7 +15,7 @@ import scipy.stats as stats
 from utils import gini_coeff
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
-
+from tools.mpl_tools import plot_scatter_heatmap
 
 
 def shift_data_pos(data, shift_min=True):
@@ -182,48 +182,13 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     ax.set_yscale('log')
     plt.grid()
     plt.tight_layout()
-    orig_xticks, orig_xtick_labels = plt.xticks()
     plt.savefig(fname, dpi=150)
     plt.show()
     plt.close('all')
-    bins = 100
-    heatmap, xedges, yedges = np.histogram2d(np.log10(x_data), np.log10(y_data), bins=bins)
-    heatmap = np.log10(heatmap + 1)
-    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
 
-    ax = plt.imshow(heatmap.T, extent=extent, origin='lower', aspect='auto', interpolation='none', cmap='jet')
-
-    ticks, lticks = plt.xticks()
-    ticks = range(int(ticks[0]), int(ticks[-1]) + 1)
-    plt.xticks(ticks, map(lambda x: '$10^{' + x + '}$', map(str, map(int, ticks))))
-    ticks, lticks = plt.yticks()
-    ticks = range(int(ticks[0]), int(ticks[-1]) + 1)
-    plt.yticks(ticks, map(lambda x: '$10^{' + x + '}$', map(str, map(int, ticks))))
-    plt.xlim([xedges[0], xedges[-1]])
-    plt.ylim([yedges[0], yedges[-1]])
+    plot_scatter_heatmap(x_data, y_data, logx=True, logy=True, logbins=True, bins=100)
     plt.xlabel(x)
     plt.ylabel(y)
-    cb = plt.colorbar(ax)
-    vmin = int(cb.vmin)
-    vmax = int(cb.vmax)
-    ticks = range(vmin, vmax + 1)
-    lin_ticks = np.linspace(0, 1., num=len(ticks), endpoint=True)
-    cb.set_ticks(ticks)
-    cb.ax.set_yticklabels(map(lambda x: '$10^{' + x + '}$', map(str, map(int, ticks))))
-
-    # plt.xticks(np.log10(orig_xticks), map(str, orig_xtick_labels))
-    if False:
-        ticks, ticklabels = plt.xticks()
-        ticklabels = ['1e' + i for i in map(str, map(int, ticks))]
-        plt.xticks(ticks, ticklabels)
-        ticks, ticklabels = plt.yticks()
-        ticklabels = ['1e' + i for i in map(str, map(int, ticks))]
-        plt.yticks(ticks, ticklabels)
-
-        ticks = range(int(cb.vmin), int(cb.vmax) + 2)
-        cb.set_ticks(ticks)
-        cb.set_ticklabels(['1e' + i for i in map(str, map(int, ticks))])
-
     fname = fname.replace('.png', '') + '_heatmap.png'
     plt.savefig(fname, dpi=150)
     plt.show()
