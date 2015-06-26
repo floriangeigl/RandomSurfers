@@ -149,6 +149,7 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
         os.system('pdfcrop ' + legend_fname + ' ' + legend_fname)
         plt.show()
         plt.close('all')
+        matplotlib.rcParams.update({'font.size': 14})
     plot_scatter_heatmap(x_data, y_data, logy=True, logx=True, logbins=True, bins=100,
                          axis_range=[[min_x, max_x], [min_y, max_y]])
     plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))

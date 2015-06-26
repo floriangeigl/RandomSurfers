@@ -61,19 +61,30 @@ def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', 
     net.clear_filters()
     return entropy_r, np.array([stat_dist[v] for v in net.vertices()])
 
+
+def calc_correlation(df, x, y):
+    assert isinstance(df, pd.DataFrame)
+    corr_df = df[df[x] > 0]
+    corr_df = corr_df[corr_df[y] > 0]
+    return corr_df.corr()[x][y]
+
+
 def main():
+    correlation_df = pd.DataFrame()
+    damping = 0.85
     base_outdir = 'output/iknow/'
     basics.create_folder_structure(base_outdir)
     stat_dist = pd.DataFrame()
     entropy_rate_df = pd.DataFrame()
     post_fix = ''
-    print 'load network'
-    net = load_graph('/home/fgeigl/navigability_of_networks/preprocessing/data/af.gt')
+    net_fname = '/home/fgeigl/navigability_of_networks/preprocessing/data/af_noloops_noparallel.gt'
+    print 'load network', net_fname.rsplit('/', 1)[-1]
+    net = load_graph(net_fname)
     tele_map = net.ep['click_teleportations']
     loops_map = net.ep['click_loops']
     trans_map = net.ep['click_transitions']
-    print 'remove self loops'
-    remove_self_loops(net)
+    #print 'remove self loops'
+    #remove_self_loops(net)
     if False:
         net.set_vertex_filter(net.vp['strong_lcc'])
         net.purge_vertices()
@@ -164,6 +175,13 @@ def main():
     print 'gini'.center(80,'-')
     print gini_df
     gini_df.to_pickle(base_outdir + 'gini.df')
+    print 'correlations:'
+    correlation_df.at[0, 'damping factor'] = damping
+    correlation_df.at[0, 'uniform-pragmatic'] = calc_correlation(stat_dist, 'adj', 'click_sub')
+    correlation_df.at[0, 'uniform-lateral'] = calc_correlation(stat_dist, 'adj', 'page_counts')
+    correlation_df.at[0, 'pragmatic-lateral'] = calc_correlation(stat_dist, 'click_sub', 'page_counts')
+    print correlation_df
+
     if False:
         print 'analyze link categories'
         assert net.get_vertex_filter()[0] is None

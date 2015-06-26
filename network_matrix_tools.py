@@ -64,10 +64,12 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             print 'could not calc katz'.center(120, '!')
             raise Exception(e)
 
+
 def pagerank_from_transmat(transition_matrix, print_prefix=''):
     net = gt_tools.net_from_adj(transition_matrix, parallel_edges=False)
-    pi = np.array(pagerank(net, weight=net.ep['weights'], damping=0.2).a)
+    pi = np.array(pagerank(net, weight=net.ep['weights'], damping=0.85).a)
     return pi / pi.sum()
+
 
 def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e5):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
