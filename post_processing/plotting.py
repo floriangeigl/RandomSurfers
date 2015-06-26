@@ -149,6 +149,17 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
         os.system('pdfcrop ' + legend_fname + ' ' + legend_fname)
         plt.show()
         plt.close('all')
+    plot_scatter_heatmap(x_data, y_data, logy=True, logx=True, logbins=True, bins=100,
+                         axis_range=[[min_x, max_x], [min_y, max_y]])
+    plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
+    plt.ylabel(y_label + (' (shifted)' if y_data_mod else ''))
+    #ax.set_xlim([min_x, max_x])
+    #ax.set_ylim([min_y, max_y])
+    #plt.tight_layout()
+    plt.axhline(np.log10(1.), color='white', alpha=.5, lw=2, ls='--')
+    plt.savefig(fname.rsplit('.')[0] + '_heatmap.png', dpi=150)
+    plt.show()
+    plt.close('all')
 
 
 def create_scatters_from_df(df, columns, output_folder='./', filter_zeros=True, file_ending='.png', **kwargs):
