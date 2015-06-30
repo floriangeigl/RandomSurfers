@@ -34,7 +34,7 @@ def generate_weighted_matrix(net, eweights):
     return csr_matrix((data, (row_idx, col_idx)), shape=shape)
 
 
-def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', stat_dist=None):
+def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', stat_dist=None, **kwargs):
     orig_nodes = net.num_vertices()
     if vfilt is not None:
         net.set_vertex_filter(vfilt)
@@ -50,7 +50,7 @@ def filter_and_calc(net, eweights=None, vfilt=None, efilt=None, merge_type='+', 
         elif merge_type == '*':
             a = a.multiply(w_mat)
     if stat_dist is None:
-        entropy_r, stat_dist = calc_entropy_and_stat_dist(a)
+        entropy_r, stat_dist = calc_entropy_and_stat_dist(a, **kwargs)
     else:
         assert isinstance(stat_dist, PropertyMap)
         stat_dist = np.array([stat_dist[v] for v in net.vertices()]).astype('float')
@@ -72,6 +72,7 @@ def calc_correlation(df, x, y):
 def main():
     correlation_df = pd.DataFrame()
     damping = 0.85
+    method='PR'
     base_outdir = 'output/iknow/'
     basics.create_folder_structure(base_outdir)
     stat_dist = pd.DataFrame()
@@ -95,7 +96,7 @@ def main():
     assert net.get_vertex_filter()[0] is None
     a = adjacency(net)
     print 'calc stat dist adj matrix'
-    entropy_rate_df.at[1, 'adj'], stat_dist['adj'] = calc_entropy_and_stat_dist(a)
+    entropy_rate_df.at[1, 'adj'], stat_dist['adj'] = calc_entropy_and_stat_dist(a, method=method, damping=damping)
     print 'remove parallel edges'
     #print '\tclicks before:', sum([trans_map[e] for e in net.edges()])
     # remove_parallel_edges(net)
@@ -133,7 +134,8 @@ def main():
     print 'max click:', click_pmap.a.max()
     print 'min click:', click_pmap.a.min()
     entropy_rate_df.at[1, 'click_sub'], stat_dist['click_sub'] = filter_and_calc(net, eweights=click_pmap,
-                                                                              vfilt=clicked_nodes)
+                                                                                 vfilt=clicked_nodes, method=method,
+                                                                                 damping=damping)
     page_c_pmap = net.vp['view_counts']
     page_c_stat_dist = page_c_pmap.a / page_c_pmap.a.sum()
     stat_dist['page_counts'] = page_c_stat_dist
@@ -141,7 +143,7 @@ def main():
     lateral_nodes.a = np.array(page_c_pmap.a) > 0
 
     entropy_rate_df.at[1, 'page_counts'], _ = filter_and_calc(net, eweights=click_pmap, vfilt=lateral_nodes,
-                                                              stat_dist=page_c_pmap)
+                                                              stat_dist=page_c_pmap, method=method, damping=damping)
 
     urls_pmap = net.vp['url']
     stat_dist['url'] = [urls_pmap[v] for v in net.vertices()]
