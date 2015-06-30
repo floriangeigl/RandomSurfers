@@ -104,10 +104,6 @@ def main():
         print 'calc stat dist adj matrix'
         entropy_rate_df.at[1, 'adj'], stat_dist['adj'] = calc_entropy_and_stat_dist(a, method=method,
                                                                                     damping=damping_fac)
-        print 'remove parallel edges'
-        # print '\tclicks before:', sum([trans_map[e] for e in net.edges()])
-        # remove_parallel_edges(net)
-        # print '\tclicks after:', sum([trans_map[e] for e in net.edges()])
         print 'calc stat dist weighted click subgraph'
         # remove_parallel_edges(net)
         click_pmap = net.new_edge_property('float')
