@@ -73,7 +73,7 @@ def calc_correlation(df, x, y):
 
 def main():
     correlation_df = pd.DataFrame()
-    damping_factors = [0, 01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.99]
+    damping_factors = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.99]
     method = 'PR'
     extract_lcc = False
     analyze_link_categories = False
