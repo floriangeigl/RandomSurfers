@@ -1,12 +1,10 @@
 from __future__ import division
 from graph_tool.all import *
-from tools.gt_tools import SBMGenerator, load_edge_list, load_property
+from tools.gt_tools import SBMGenerator, load_edge_list
 import tools.basics as basics
 import multiprocessing
 import datetime
-import traceback
 from self_sim_entropy import self_sim_entropy
-import os
 from data_io import *
 import utils
 
