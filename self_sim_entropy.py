@@ -197,7 +197,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
             exit()
 
 
-def self_sim_entropy(network, name, out_dir, biases, error_q):
+def self_sim_entropy(network, name, out_dir, biases, error_q, method):
     try:
         if True:
             # network.set_directed(False)
@@ -209,8 +209,8 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
         if not os.path.isdir(out_data_dir):
             os.mkdir(out_data_dir)
         print_prefix = utils.color_string('[' + name + ']')
-        mem_cons = list()
-        mem_cons.append(('start', utils.get_memory_consumption_in_mb()))
+        # mem_cons = list()
+        # mem_cons.append(('start', utils.get_memory_consumption_in_mb()))
         try:
             com_prop = network.vp['com']
             mod = modularity(network, com_prop)
@@ -262,14 +262,14 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
                         bias.data[np.isnan(bias.data) | np.isinf(bias.data)] = 0
 
             assert scipy.sparse.issparse(adjacency_matrix)
-            ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias,
+            ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias, method=method,
                                                                              print_prefix=print_prefix + ' [' + bias_name + '] ')
             stat_distributions[bias_name] = stat_dist
             #print print_prefix, '[' + biasname + '] entropy rate:', ent
             entropy_df.at[0, bias_name] = ent
             sort_df.append((bias_name, ent))
             corr_df[bias_name] = stat_dist
-            mem_cons.append(('after ' + bias_name, utils.get_memory_consumption_in_mb()))
+            # mem_cons.append(('after ' + bias_name, utils.get_memory_consumption_in_mb()))
         if base_line_type == 'adjacency':
             base_line_abs_vals = stat_distributions['adjacency']
         elif base_line_type == 'uniform':
@@ -281,21 +281,21 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
 
         #save to df
         pd.DataFrame.from_dict(stat_distributions).to_pickle(out_data_dir + name + '_stat_dists.df')
+        trapped_df = pd.DataFrame(index=range(network.num_vertices()))
+        gini_coef_df = pd.DataFrame()
 
-        #base_line = base_line_abs_vals / 100  # /100 for percent
+        # base_line = base_line_abs_vals / 100  # /100 for percent
         base_line = base_line_abs_vals
         vertex_size = network.new_vertex_property('float')
         vertex_size.a = base_line
-        min_stat_dist = min([min(i) for i in stat_distributions.values()])
-        max_stat_dist = max([max(i) for i in stat_distributions.values()])
+        # min_stat_dist = min([min(i) for i in stat_distributions.values()])
+        # max_stat_dist = max([max(i) for i in stat_distributions.values()])
         min_val = min([min(i/base_line) for i in stat_distributions.values()])
-        max_val = max([max(i/base_line) for i in stat_distributions.values()])
-        trapped_df = pd.DataFrame(index=range(network.num_vertices()))
+        # max_val = max([max(i/base_line) for i in stat_distributions.values()])
 
         # calc max vals for graph-coloring
         all_vals = [j for i in stat_distributions.values() for j in i / base_line]
         max_val = np.mean(all_vals) + (2 * np.std(all_vals))
-        gini_coef_df = pd.DataFrame()
 
         pos = None
         # plot all biased graphs and add biases to trapped plot
@@ -316,12 +316,6 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
             else:
                 print print_prefix, 'skip draw graph', '#v:', network.num_vertices()
 
-            # create scatter plot
-            if False:
-                x = ('stationary value of adjacency', base_line_abs_vals)
-                y = (bias_name + ' prob. ratio', stat_dist_diff)
-                plotting.create_scatter(x=x, y=y, fname=out_dir + name + '_scatter_' + bias_name)
-
             # plot stationary distribution
             stat_dist_ser = pd.Series(data=stat_dist)
 
@@ -334,87 +328,19 @@ def self_sim_entropy(network, name, out_dir, biases, error_q):
             bias_name += ' $' + ('%.4f' % gcoef) + '$'
             trapped_df[bias_name] = stat_dist_ser.cumsum()
             trapped_df[bias_name] /= trapped_df[bias_name].max()
-            mem_cons.append(('after ' + bias_name + ' scatter', utils.get_memory_consumption_in_mb()))
+            # mem_cons.append(('after ' + bias_name + ' scatter', utils.get_memory_consumption_in_mb()))
 
-        # add uniform to trapped plot
-        if False:
-            bias_name = 'unif.'
-            uniform = np.array([1]*len(trapped_df))
-            gcoef = utils.gini_coeff(uniform)
-            gini_coef_df.at[bias_name, name] = gcoef
-            # key = name_to_legend[key]
-            bias_name += ' $' + ('%.2f' % gcoef) + '$'
-            trapped_df[bias_name] = uniform.cumsum()
-            trapped_df[bias_name] /= trapped_df[bias_name].max()
         gini_coef_df.to_pickle(out_data_dir + name + '_gini.df')
-        trapped_df.index += 1
-        trapped_df['idx'] = np.round(np.array(trapped_df.index).astype('float') / len(trapped_df) * 100)
-
-        if False and len(trapped_df) > 50:
-            trapped_df['idx'] = trapped_df['idx'].astype('int')
-            if len(trapped_df) > 1000:
-                trapped_df['idx'] = trapped_df['idx'].apply(lambda x: x * 5 if x >= 90 else x)
-            trapped_df['idx'] = trapped_df['idx'].apply(lambda x: int(x / 5) * 5)
-            if len(trapped_df) > 1000:
-                trapped_df['idx'] = trapped_df['idx'].apply(lambda x: x / 5 if x >= 90 else x)
-            #trapped_df.at[trapped_df.index[-1], 'idx'] = 101
-            trapped_df.drop_duplicates(subset=['idx'], inplace=True)
-            #trapped_df.at[trapped_df.index[-1], 'idx'] = 100
-            trapped_df.drop_duplicates(subset=['idx'], inplace=True,take_last=True)
-        matplotlib.rcParams.update({'font.size': 15})
-        trapped_df.plot(x='idx', lw=2, alpha=0.9, style=['-o', '-v', '-^', '-s', '-+', '-D', '-<', '->', '-p', '-*', '-x'])
         trapped_df.to_pickle(out_data_dir + name + '_trapped.df')
-        plt.yticks([.25, .5, .75, 1], ['25%', '50%', '75%', '100%'])
-        xticks = range(0, 101, 20)
-        plt.plot([0, 100], [0, 1], ls='--', lw=1, label='unif.', alpha=1.)
-        plt.xticks(xticks, map(lambda x: str(x) + '%', xticks))
-        plt.xlabel('nodes sorted by stat. dist. value')
-        plt.ylim([0, 1])
-        plt.ylabel('cum. sum of stat. dist. values in pct. of max.')
-        plt.tight_layout()
-        plt.savefig(out_dir + name + '_trapped.png')
-        plt.close('all')
 
         sorted_keys, sorted_values = zip(*sorted(sort_df, key=lambda x: x[1], reverse=True))
         if len(set(sorted_values)) == 1:
             sorted_keys = sorted(sorted_keys)
         entropy_df = entropy_df[list(sorted_keys)]
-        bar_colors = defaultdict(lambda:'pink')
-        bar_colors['adjacency'] = 'lightgray'
-        bar_colors['betweenness'] = 'magenta'
-        bar_colors['sigma'] = 'darkblue'
-        bar_colors['sigma_deg_corrected'] = 'blue'
-        bar_colors['cosine'] = 'green'
-        bar_colors['eigenvector'] = 'darkred'
-        bar_colors['eigenvector_inverse'] = 'red'
-        bar_colors['inv_deg'] = 'yellow'
-        bar_colors = {idx: bar_colors[key] for idx, key in enumerate(sorted_keys)}
-        # print 'bar colors:', bar_colors
 
         print print_prefix, ' entropy rates:\n', entropy_df
-        matplotlib.rcParams.update({'font.size': 15})
-        #entropy_df.columns = [i.replace('_', ' ') for i in entropy_df.columns]
-        ax = entropy_df.plot(kind='bar', color=bar_colors, alpha=0.9)
         entropy_df.to_pickle(out_data_dir + name + '_entropy.df')
-        min_e, max_e = entropy_df.loc[0].min(), entropy_df.loc[0].max()
-        ax.set_ylim([min_e * 0.95, max_e * 1.01])
-        #ax.spines['top'].set_visible(False)
-        #ax.spines['bottom'].set_visible(False)
-        #ax.spines['left'].set_visible(True)
-        #ax.spines['right'].set_visible(True)
-        plt.ylabel('entropy rate')
-        plt.legend(loc='upper left')
-        plt.xlim([-1.1, 0.3])
-        plt.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off')
-        plt.tight_layout()
-        plt.savefig(out_dir + name + '_entropy_rates.png')
-        plt.close('all')
-        mem_df = pd.DataFrame(columns=['state', 'memory in MB'], data=mem_cons)
-        mem_df.plot(x='state', y='memory in MB', rot=45, label='MB')
-        plt.title('memory consumption')
-        plt.tight_layout()
-        plt.savefig(out_dir + name + '_mem_status.png')
-        plt.close('all')
+
         print print_prefix, utils.color_string('>>all done<< duration: ' + str(datetime.datetime.now() - start_time),
                                                type=utils.bcolors.GREEN)
         results = dict()

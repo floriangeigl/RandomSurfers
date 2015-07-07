@@ -204,6 +204,8 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
                 raise e
     elif method is 'PR':
         stat_dist = pagerank_from_transmat(weighted_trans, print_prefix=print_prefix, damping=damping)
+    else:
+        print print_prefix, 'unknown method:', method
     assert stat_dist is not None
     return entropy_rate(weighted_trans, stat_dist=stat_dist, print_prefix=print_prefix), stat_dist
 

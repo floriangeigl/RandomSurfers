@@ -57,6 +57,7 @@ def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     base_outdir = 'output/'
     empiric_data_dir = '/opt/datasets/'
+    method = 'EV' # EV: Eigenvector, PR: PageRank
     biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
     datasets = list()
     datasets.append({'name': 'toy_example'})
@@ -95,10 +96,11 @@ def main():
         net = get_network(network_name, **ds)
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,),
-                                    kwds={'name': network_name, 'out_dir': out_dir, 'biases': biases, 'error_q': error_q},
-                                    callback=async_callback)
+                                    kwds={'name': network_name, 'out_dir': out_dir, 'biases': biases,
+                                          'error_q': error_q, 'method': method}, callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q))
+            results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
+                                            method=method))
         write_network_properties(net, network_name, network_prop_file)
 
     if multip:
