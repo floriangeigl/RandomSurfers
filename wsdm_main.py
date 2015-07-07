@@ -59,7 +59,7 @@ def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     base_outdir = 'output/'
     empiric_data_dir = '/opt/datasets/'
-
+    biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
     datasets = list()
     datasets.append({'name': 'toy_example'})
     datasets.append({'name': 'karate'})
@@ -77,7 +77,7 @@ def main():
     else:
         worker_pool = None
     results = list()
-    biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
+
     if multip:
         manager = multiprocessing.Manager()
         error_q = manager.Queue()
