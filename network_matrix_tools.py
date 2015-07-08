@@ -162,7 +162,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
     # weighted_trans.eliminate_zeros()
     # weighted_trans = normalize_mat(weighted_trans)
     stat_dist = None
-    if method is 'EV':
+    if method == 'EV':
         try:
             stat_dist = stationary_dist(weighted_trans, print_prefix=print_prefix)
             if orig_ma_mi_r is not None:
@@ -202,7 +202,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
                                                   smooth_bias=True, method='EV')
             else:
                 raise e
-    elif method is 'PR':
+    elif method == 'PR':
         stat_dist = pagerank_from_transmat(weighted_trans, print_prefix=print_prefix, damping=damping)
     else:
         print print_prefix, 'unknown method:', method
