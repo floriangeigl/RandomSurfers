@@ -58,6 +58,7 @@ def get_network(name, directed=True):
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     fast_test = True
+    rewires = 2
     base_outdir = 'output/'
     empiric_data_dir = '/opt/datasets/'
     method = 'EV' # EV: Eigenvector, PR: PageRank
@@ -105,6 +106,19 @@ def main():
             results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
                                             method=method))
         write_network_properties(net, network_name, network_prop_file)
+        for r in xrange(rewires):
+            random_rewire(net, model='correlated')
+            tmp_network_name = network_name + '_rewired_' + str(r).rjust(len(str(rewires - 1)), '0')
+            net.gp['type'] = net.new_graph_property('string', 'synthetic')
+            if multip:
+                worker_pool.apply_async(self_sim_entropy, args=(net,),
+                                        kwds={'name': tmp_network_name, 'out_dir': out_dir, 'biases': biases,
+                                              'error_q': error_q, 'method': method}, callback=async_callback)
+            else:
+                results.append(
+                    self_sim_entropy(net, name=tmp_network_name, out_dir=out_dir, biases=biases, error_q=error_q,
+                                     method=method))
+            write_network_properties(net, tmp_network_name, network_prop_file)
 
     if multip:
         worker_pool.close()
