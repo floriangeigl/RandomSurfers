@@ -95,12 +95,13 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     y_data = np.array(y_data).astype('float')
     y_data_mod = False
     x_data_mod = False
+    orig_len = len(y_data)
     if filter_zeros:
         filter_both = np.logical_and(y_data > 0, x_data > 0)
         y_data = y_data[filter_both]
         x_data = x_data[filter_both]
-    print 'biasfactor dataset len:', len(y_data)
-    alpha = 1 / np.log10(len(y_data))
+    print 'biasfactor dataset len:', len(y_data), '(', len(y_data) / orig_len * 100, '%)'
+    alpha = min(1., 1 / np.log10(len(y_data)))
     f, ax = plt.subplots()
     plt.axhline(1., color='red', alpha=.5, lw=4, ls='--')
     for i in reversed(range(3)):
@@ -120,7 +121,8 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
             c = 'blue'
             marker = 'v'
         x_filt, y_filt = x_data[filtered_y], y_data[filtered_y]
-        print '\tfiltered len', i, len(x_filt)
+        # print '\tfiltered len', i, len(x_filt)
+        print alpha
         ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=90, color=c, lw=1, label=label,
                    marker=marker, facecolors='none', **kwargs)
 
@@ -146,7 +148,7 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
         f2.legend(*ax.get_legend_handles_labels(), loc='center', ncol=4)
         legend_fname = fname.rsplit('/', 1)[0] + '/bf_scatter_legend.pdf'
         plt.savefig(legend_fname, bbox_tight=True)
-        os.system('pdfcrop ' + legend_fname + ' ' + legend_fname)
+        os.system('pdfcrop ' + legend_fname + ' ' + legend_fname + ' &> /dev/null')
         plt.show()
         plt.close('all')
         matplotlib.rcParams.update({'font.size': 14})
@@ -194,8 +196,8 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     corr_df[x] = x_data
     corr_df[y] = y_data
     print '\tpearson:',  float(corr_df.corr(method='pearson').at[x, y])
-    print '\tlogpearson:', float(corr_df.apply(np.log10).corr(method='pearson').at[x, y])
-    print '\tspearman:', float(corr_df.corr(method='spearman').at[x, y])
+    #print '\tlogpearson:', float(corr_df.apply(np.log10).corr(method='pearson').at[x, y])
+    #print '\tspearman:', float(corr_df.corr(method='spearman').at[x, y])
     # print '\tkendall:', float(corr_df.corr(method='kendall').at[x, y])
 
     alpha = 1 / np.log2(len(x_data))
@@ -306,3 +308,56 @@ def create_ginis_from_df(df, columns, output_folder='./', zoom=None, filter_zero
         plt.show()
         plt.close('all')
         os.system('pdfcrop ' + legend_fname + ' ' + legend_fname)
+
+def plot_entropy_rates(entropy_rates, filename):
+    entropy_rates = entropy_rates.T
+    f, ax = plt.subplots(figsize=(20, 8))
+    #matplotlib.rcParams.update({'font.size': 22})
+    hatch = ['x', '\\', '*', 'o', 'O', '.']
+    symbols = ['$\\clubsuit$', '$\\bigstar$', '$\\diamondsuit$']
+    colors = ['blue', 'green', 'red']
+    num_ds = len(entropy_rates.columns)
+    num_ticks = len(entropy_rates)
+    width = 0.8
+    step = width / num_ds
+    space = 0.005
+    width -= (space * num_ds)
+    rects = list()
+    for idx, (i, h, c, s) in enumerate(zip(entropy_rates.columns, hatch, colors, symbols)):
+        pos = 0 - (width / 2) + idx * step
+        pos = np.array([pos + idx for idx in range(num_ticks)])
+        # print idx, step, width
+        #print pos
+        #print width
+        #print i
+        rects.append(
+            ax.bar(pos, entropy_rates[i], width / num_ds, color='white', label=s + ' ' + i.decode('utf8'), lw=2,
+                   alpha=1., hatch=h, edgecolor=c))
+        autolabel(s, pos + step / 2, entropy_rates[i], ax)
+        # ax = entropy_rates[i].plot(position=pos,width=0.8, kind='bar',rot=20,ax=ax, alpha=1,lw=0.4,hatch=h,color=c)
+
+    ax.set_position([0.1, 0.2, .8, 0.6])
+    plt.xticks(range(len(entropy_rates)), entropy_rates.index)
+    ax.set_axisbelow(True)
+    ax.xaxis.grid(False)
+    ax.yaxis.grid(True)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    plt.tick_params(labelright=True)
+    plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.17))
+    plt.ylim([min(list(entropy_rates.min())) * .95, max(list(entropy_rates.max())) * 1.05])
+    plt.ylabel('entropy rate')
+    # plt.subplots_adjust(top=0.7)
+    # plt.tight_layout()
+    plt.savefig(filename, bbox_tight=True)
+    os.system('pdfcrop ' + filename + ' ' + filename + ' &>/dev/null')
+    plt.show()
+    plt.close('all')
+
+
+def autolabel(symbol, x_pos, heights, ax):
+    # attach some text labels
+    for x, h in zip(x_pos, heights):
+        ax.text(x, 1.01 * h, symbol, ha='center', va='bottom')

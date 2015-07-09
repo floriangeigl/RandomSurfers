@@ -16,10 +16,9 @@ import operator
 import multiprocessing
 
 def calc_common_neigh(adjacency_matrix):
-    com_neigh = adjacency_matrix.dot(adjacency_matrix).todense()
-    np.fill_diagonal(com_neigh, 0)
+    com_neigh = lil_matrix(adjacency_matrix.dot(adjacency_matrix))
+    com_neigh.setdiag(0)
     return com_neigh
-
 
 def calc_cosine(adjacency_matrix, weight_direct_link=False):
     if weight_direct_link:
@@ -32,13 +31,12 @@ def calc_cosine(adjacency_matrix, weight_direct_link=False):
     deg = csr_matrix(deg)
     cos = cos.tocsr()
     deg_norm = np.sqrt(deg.T.dot(deg))
-    cos = cos.multiply(lil_matrix(1. / deg_norm))
+    cos = cos.multiply(csr_matrix(1. / deg_norm))
     cos.data[np.invert(np.isfinite(cos.data))] = 0
     cos.eliminate_zeros()
     # cos.setdiag(1.)
     assert np.all(np.isfinite(cos.data))
     return cos
-
 
 def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None):
     alpha_max = 1. / largest_eigenvalue
@@ -154,7 +152,9 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
                 bias_max_min_r = (bias.max()) / (bias.min())
             except:
                 bias_max_min_r = (bias.max()) / (bias.min())
-            weighted_trans = adjacency_matrix.multiply(lil_matrix(bias))
+            if bias.shape != adjacency_matrix.shape:
+                print print_prefix + 'inconsistent shape:', bias.shape, adjacency_matrix.shape
+            weighted_trans = adjacency_matrix.multiply(csr_matrix(bias))
         else:
             print print_prefix + '\tunknown bias shape'
     else:

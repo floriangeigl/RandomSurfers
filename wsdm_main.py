@@ -1,6 +1,6 @@
 from __future__ import division
-from graph_tool.all import *
 from tools.gt_tools import SBMGenerator, load_edge_list
+from graph_tool.all import *
 import tools.basics as basics
 import multiprocessing
 import datetime
@@ -57,20 +57,20 @@ def get_network(name, directed=True):
 
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    fast_test = True
-    rewires = 2
-    base_outdir = 'output/'
+    fast_test = False
+    rewires = 0
+    base_outdir = 'output/wsdm/'
     empiric_data_dir = '/opt/datasets/'
     method = 'EV' # EV: Eigenvector, PR: PageRank
     biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
     datasets = list()
-    datasets.append({'name': 'toy_example', 'directed': False})
+    #datasets.append({'name': 'toy_example', 'directed': False})
     datasets.append({'name': 'karate'})
     if not fast_test:
-        datasets.append({'name': empiric_data_dir + 'milan_spiele', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'getdigital', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'thinkgeek', 'directed': True})
-        datasets.append({'name': '/opt/datasets/wikiforschools/graph', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
+        datasets.append({'name': '/opt/datasets/wikiforschools/wiki4schools', 'directed': True})
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
 
     basics.create_folder_structure(base_outdir)
@@ -92,11 +92,13 @@ def main():
 
     for ds in datasets:
         network_name = ds['name']
-        print network_name.center(80, '=')
+        ds.pop("name", None)
+        file_name = network_name.rsplit('/', 1)[-1]
+        print file_name.center(80, '=')
+        net = get_network(network_name, **ds)
+        network_name = file_name
         out_dir = base_outdir + network_name + '/'
         basics.create_folder_structure(out_dir)
-        ds.pop("name", None)
-        net = get_network(network_name, **ds)
         print net
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,),
@@ -110,6 +112,7 @@ def main():
             random_rewire(net, model='correlated')
             tmp_network_name = network_name + '_rewired_' + str(r).rjust(len(str(rewires - 1)), '0')
             net.gp['type'] = net.new_graph_property('string', 'synthetic')
+            net.gp['filename'] = net.new_graph_property('string', tmp_network_name)
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,),
                                         kwds={'name': tmp_network_name, 'out_dir': out_dir, 'biases': biases,

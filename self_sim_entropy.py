@@ -208,6 +208,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
         out_data_dir = out_dir.rsplit('/', 2)[0] + '/data/'
         if not os.path.isdir(out_data_dir):
             os.mkdir(out_data_dir)
+        name = name.rsplit('/', 1)[-1]
         print_prefix = utils.color_string('[' + name + ']')
         # mem_cons = list()
         # mem_cons.append(('start', utils.get_memory_consumption_in_mb()))
@@ -302,7 +303,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
         for bias_name, stat_dist in sorted(stat_distributions.iteritems(), key=operator.itemgetter(0)):
             stat_dist_diff = stat_dist / base_line
             stat_dist_diff[np.isclose(stat_dist_diff, 1.)] = 1.
-            if True and network.num_vertices() < 5000:
+            if True and network.num_vertices() < 100:
                 if pos is None:
                     print print_prefix, '[' + str(datetime.datetime.now().replace(microsecond=0)) + ']', 'calc graph-layout'
                     try:
