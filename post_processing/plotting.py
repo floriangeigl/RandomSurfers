@@ -16,7 +16,10 @@ from utils import gini_coeff
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 from tools.mpl_tools import plot_scatter_heatmap
-
+from graph_tool.all import *
+from collections import defaultdict, Counter
+import powerlaw
+from tools.basics import *
 
 def shift_data_pos(data, shift_min=True):
     changed_data = False
@@ -62,7 +65,9 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
 
     for idx, col in enumerate(columns):
         x = np.array(df[baseline]).astype('float')
-        fname = output_folder + 'bf_' + baseline.replace(' ', '_') + '_' + col.replace(' ', '_') + file_ending
+        fname = output_folder + 'bf_' + baseline.replace(' ', '_').replace('.', '') + '_' + col.replace(' ',
+                                                                                                        '_').replace(
+            '.', '') + file_ending
         y = np.array(df[col]).astype('float')
         if filter_zeros:
             filter_both = np.logical_and(x > 0, y > 0)
@@ -156,11 +161,11 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
                          axis_range=[[min_x, max_x], [min_y, max_y]])
     plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
     plt.ylabel(y_label + (' (shifted)' if y_data_mod else ''))
-    #ax.set_xlim([min_x, max_x])
-    #ax.set_ylim([min_y, max_y])
-    #plt.tight_layout()
     plt.axhline(np.log10(1.), color='white', alpha=.5, lw=2, ls='--')
-    plt.savefig(fname.rsplit('.')[0] + '_heatmap.png', dpi=150)
+    plt.tight_layout()
+    fname = fname.rsplit('.')[0] + '_heatmap.pdf'
+    plt.savefig(fname)
+    os.system('pdfcrop ' + fname + ' ' + fname + ' &> /dev/null')
     plt.show()
     plt.close('all')
 
@@ -361,3 +366,33 @@ def autolabel(symbol, x_pos, heights, ax):
     # attach some text labels
     for x, h in zip(x_pos, heights):
         ax.text(x, 1.01 * h, symbol, ha='center', va='bottom')
+
+
+def plot_degree_distributions(filnames, output_dir):
+    create_folder_structure(output_dir)
+    matplotlib.rcParams.update({'font.size': 18})
+    for idx, i in enumerate(filnames):
+        net = load_graph(i)
+        net_fn_name = i.rsplit('/', 1)[-1].replace('.gt', '')
+        # net_name = i.rsplit('/', 1)[-1].replace('.gt', '').replace('_', ' ')
+        deg_seq = net.degree_property_map('total').a
+        deg_dict = defaultdict(int, Counter(deg_seq))
+        x_axis = range(0, max(deg_dict.keys()) + 1)
+        plt.plot(x_axis, [deg_dict[i] for i in x_axis], lw=1, alpha=0.9)
+        # pl = powerlaw.Fit(np.array(deg_seq))
+        #print '-' * 10
+        #print i.rsplit('/', 1)[-1]
+        #print 'powerlaw'
+        #print '\txmin', pl.xmin
+        #print '\talpha', pl.alpha
+        #print '-' * 10
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.grid('on')
+        plt.xlabel('degree')
+        plt.ylabel('number of vertices')
+        plt.tight_layout()
+        plt.savefig(output_dir + net_fn_name + '.pdf')
+        plt.show()
+        plt.close('all')
+
