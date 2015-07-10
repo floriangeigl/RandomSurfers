@@ -165,7 +165,7 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     plt.tight_layout()
     fname = fname.rsplit('.')[0] + '_heatmap.pdf'
     plt.savefig(fname)
-    os.system('pdfcrop ' + fname + ' ' + fname + ' &> /dev/null')
+    os.system('pdfcrop ' + fname + ' ' + fname)
     plt.show()
     plt.close('all')
 
@@ -319,30 +319,30 @@ def plot_entropy_rates(entropy_rates, filename):
     f, ax = plt.subplots(figsize=(20, 8))
     #matplotlib.rcParams.update({'font.size': 22})
     hatch = ['x', '\\', '*', 'o', 'O', '.']
-    symbols = ['$\\clubsuit$', '$\\bigstar$', '$\\diamondsuit$']
-    colors = ['blue', 'green', 'red']
+    #symbols = ['$\\clubsuit$', '$\\bigstar$', '$\\diamondsuit$', '$\\heartsuit', '$\\spadesuit$', '$\\blacksquare$']
+    symbols = ['A', 'B', 'C', 'D', 'E', 'F']
+    colors = ['blue', 'green', 'red', 'black', 'magenta']
     num_ds = len(entropy_rates.columns)
     num_ticks = len(entropy_rates)
-    width = 0.8
-    step = width / num_ds
-    space = 0.005
-    width -= (space * num_ds)
+    width = 0.7
+    dataset_offset = width / num_ds
+    space = 0.02
     rects = list()
     for idx, (i, h, c, s) in enumerate(zip(entropy_rates.columns, hatch, colors, symbols)):
-        pos = 0 - (width / 2) + idx * step
-        pos = np.array([pos + idx for idx in range(num_ticks)])
+        pos = 0. - (width / 2) + idx * dataset_offset + idx * (space/2)
+        pos = np.array([pos + idx for idx in xrange(num_ticks)])
         # print idx, step, width
         #print pos
         #print width
         #print i
         rects.append(
-            ax.bar(pos, entropy_rates[i], width / num_ds, color='white', label=s + ' ' + i.decode('utf8'), lw=2,
-                   alpha=1., hatch=h, edgecolor=c))
-        autolabel(s, pos + step / 2, entropy_rates[i], ax)
+            ax.bar(pos, entropy_rates[i], (width / num_ds - space), color='white', label=s + ' ' + i.decode('utf8'),
+                   lw=2, alpha=1., hatch=h, edgecolor=c))
+        autolabel(s, pos + (width / num_ds - space) / 2, entropy_rates[i], ax)
         # ax = entropy_rates[i].plot(position=pos,width=0.8, kind='bar',rot=20,ax=ax, alpha=1,lw=0.4,hatch=h,color=c)
 
     ax.set_position([0.1, 0.2, .8, 0.6])
-    plt.xticks(range(len(entropy_rates)), entropy_rates.index)
+    plt.xticks(range(len(entropy_rates)), entropy_rates.index, rotation=-20)
     ax.set_axisbelow(True)
     ax.xaxis.grid(False)
     ax.yaxis.grid(True)
@@ -351,13 +351,13 @@ def plot_entropy_rates(entropy_rates, filename):
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
     plt.tick_params(labelright=True)
-    plt.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, 1.17))
+    plt.legend(ncol=5, loc='upper center', bbox_to_anchor=(0.5, 1.17))
     plt.ylim([min(list(entropy_rates.min())) * .95, max(list(entropy_rates.max())) * 1.05])
     plt.ylabel('entropy rate')
     # plt.subplots_adjust(top=0.7)
     # plt.tight_layout()
     plt.savefig(filename, bbox_tight=True)
-    os.system('pdfcrop ' + filename + ' ' + filename + ' &>/dev/null')
+    os.system('pdfcrop ' + filename + ' ' + filename)
     plt.show()
     plt.close('all')
 

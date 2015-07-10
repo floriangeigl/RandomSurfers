@@ -28,16 +28,21 @@ out_dir = base_dir + 'plots/'
 create_folder_structure(out_dir)
 
 
-bias_name_mapping = dict()
-bias_name_mapping['adjacency'] = 'Unbiased'
-bias_name_mapping['deg'] = 'Degree Bias Bias Factor'
-bias_name_mapping['eigenvector'] = 'Eigenvector C. Bias Factor'
-bias_name_mapping['inv_sqrt_deg'] = 'Inv. Degree Bias Factor'
-bias_name_mapping['sigma'] = 'Similarity Bias Factor'
-bias_name_mapping['sigma_sqrt_deg_corrected'] = 'Deg. Cor. Similarity Bias Factor'
+name_mapping = dict()
+name_mapping['adjacency'] = 'Unbiased'
+name_mapping['deg'] = 'Degree Bias Bias Factor'
+name_mapping['eigenvector'] = 'Eigenvector C. Bias Factor'
+name_mapping['inv_sqrt_deg'] = 'Inv. Degree Bias Factor'
+name_mapping['sigma'] = 'Similarity Bias Factor'
+name_mapping['sigma_sqrt_deg_corrected'] = 'Deg. Cor. Similarity Bias Factor'
+name_mapping['getdigital'] = 'GetDigital'
+name_mapping['karate'] = 'Toy Example'
+name_mapping['milan_spiele'] = 'Milan-Spiele'
+name_mapping['thinkgeek'] = 'ThinkGeek'
+name_mapping['wiki4schools'] = 'Wiki. f. Schools'
 
 
-base_line = bias_name_mapping[base_line] if base_line in bias_name_mapping else base_line
+base_line = name_mapping[base_line] if base_line in name_mapping else base_line
 
 stat_dist_files = find_files(base_dir, 'stat_dists.df')
 entropy_files = find_files(base_dir, 'entropy.df')
@@ -51,12 +56,17 @@ for idx, fn in enumerate(entropy_files):
     if entropy_rates is None:
         entropy_rates = pd.DataFrame(columns=list(entropy_rate_df.columns))
     entropy_rates.loc[fn.rsplit('/', 1)[-1].replace('_entropy.df', '')] = entropy_rate_df.loc[0]
+print entropy_rates.columns
+entropy_rates = entropy_rates[['adjacency', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected', 'eigenvector']]
+entropy_rates.columns = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.columns]
+entropy_rates.index = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.index]
 plot_entropy_rates(entropy_rates, out_dir + 'entropy.pdf')
+exit()
 
 for fn in stat_dist_files:
     ds_name = fn.rsplit('/', 1)[-1].replace('stat_dists.df', '').strip('_')
     stat_dist_df = pd.read_pickle(fn)
-    stat_dist_df.columns = [bias_name_mapping[i] if i in bias_name_mapping else i for i in stat_dist_df.columns]
+    stat_dist_df.columns = [name_mapping[i] if i in name_mapping else i for i in stat_dist_df.columns]
     not_baseline_cols = list(filter(lambda x: x != base_line, stat_dist_df.columns))
     print stat_dist_df.head()
     bias_factors_df = create_bf_scatters_from_df(stat_dist_df, base_line, not_baseline_cols,
