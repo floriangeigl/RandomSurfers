@@ -111,7 +111,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                 A_eigvalue = data_dict['eigval']
             sigma = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue)
         if dump and not loaded:
-            try_dump(sigma, dump_filename)
+            try_dump(sigma, dump_filename, mask=data_dict['adj'])
         return sigma
     elif biasname == 'sigma_deg_corrected':
         try:
@@ -127,7 +127,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                                                                   norm=np.array(
                                                                       data_dict['net'].degree_property_map('total').a))
         if dump and not loaded:
-            try_dump(sigma_deg_cor, dump_filename)
+            try_dump(sigma_deg_cor, dump_filename, mask=data_dict['adj'])
         return sigma_deg_cor
     elif biasname == 'sigma_log_deg_corrected':
         try:
@@ -144,7 +144,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                                                                           data_dict['net'].degree_property_map(
                                                                               'total').a, dtype=np.float) + 2))
         if dump and not loaded:
-            try_dump(sigma_log_deg_cor, dump_filename)
+            try_dump(sigma_log_deg_cor, dump_filename, mask=data_dict['adj'])
         return sigma_log_deg_cor
     elif biasname == 'sigma_sqrt_deg_corrected':
         try:
@@ -161,7 +161,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                                                                           data_dict['net'].degree_property_map(
                                                                               'total').a, dtype=np.float)))
         if dump and not loaded:
-            try_dump(sigma_sqrt_deg_cor, dump_filename)
+            try_dump(sigma_sqrt_deg_cor, dump_filename, mask=data_dict['adj'])
         return sigma_sqrt_deg_cor
     elif biasname == 'cosine':
         try:
@@ -170,7 +170,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         except IOError:
             cos = network_matrix_tools.calc_cosine(data_dict['adj'], weight_direct_link=True)
         if dump and not loaded:
-            try_dump(cos, dump_filename)
+            try_dump(cos, dump_filename, mask=data_dict['adj'])
         return cos
     elif biasname == 'betweenness':
         try:
@@ -179,7 +179,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         except IOError:
             bet = np.array(betweenness(data_dict['net'])[0].a)
         if dump and not loaded:
-            try_dump(bet, dump_filename)
+            try_dump(bet, dump_filename, mask=data_dict['adj'])
         return bet
     elif biasname == 'deg':
         return np.array(data_dict['net'].degree_property_map('total').a, dtype=np.float)

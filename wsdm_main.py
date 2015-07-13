@@ -70,7 +70,10 @@ def main():
         datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        datasets.append({'name': '/opt/datasets/wikiforschools/wiki4schools', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
+
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
 
     basics.create_folder_structure(base_outdir)

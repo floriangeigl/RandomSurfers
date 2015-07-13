@@ -7,6 +7,10 @@ import random
 import powerlaw as fit_powerlaw
 import os
 from collections import defaultdict
+import h5py
+import scipy
+import sys
+from scipy.sparse import csr_matrix
 
 def read_edge_list(filename, encoder=None):
     store_fname = filename + '.gt'
@@ -98,7 +102,14 @@ def write_network_properties(network, net_name, out_filename):
         f.write('\n')
 
 
-def try_dump(data, filename):
+def try_dump(data, filename, mask=None):
+    if mask is not None and (isinstance(data, np.matrix) or (
+                        isinstance(data, np.ndarray) and len(data.shape) == 2 and data.shape[0] > 1 and data.shape[
+                1] > 1)) and not scipy.sparse.issparse(data):
+        print 'dump data. mask data...'
+        mask = mask.astype('bool').astype('float')
+        data = mask.multiply(csr_matrix(data))
+        data.eliminate_zeros()
     try:
         data.dump(filename)
         return True
@@ -107,20 +118,44 @@ def try_dump(data, filename):
             with open(filename, 'wb') as f:
                 cPickle.dump(data, f)
         except:
-            pass
+            print traceback.format_exc()
+            print 'try hdf5'
+            try:
+                h5f = h5py.File(filename, 'w')
+                h5f.create_dataset('bias', data=data)
+                h5f.close()
+            except:
+                print 'dump', filename, 'failed'
+                print traceback.format_exc()
         return False
 
 
 def try_load(filename):
+    if not os.path.isfile(filename):
+        print 'need to calc bias.'
+        sys.stdout.flush()
+        raise IOError
     try:
         data = np.load(filename)
     except IOError:
         try:
+            print 'nbload failed, cpickle'
+            sys.stdout.flush()
             with open(filename, 'rb') as f:
                 data = cPickle.load(f)
         except IOError:
-            raise IOError
+            try:
+                print 'cpickle failed. h5py'
+                sys.stdout.flush()
+                h5f = h5py.File(filename, 'r')
+                data = h5f['bias'][:]
+                h5f.close()
+            except IOError:
+                print 'load', filename, 'FAILED'
+                sys.stdout.flush()
+                raise IOError
         except:
             print traceback.format_exc()
+            print 'load', filename, 'FAILED'
             raise IOError
     return data
