@@ -26,7 +26,7 @@ def get_network(name, directed=True):
 
     elif name == 'karate':
         directed = False
-        net = load_edge_list('/opt/datasets/karate/karate.edgelist', directed=directed)
+        net = load_edge_list('/opt/datasets/karate/karate.edgelist', directed=directed, sep=None, vertex_id_dtype='int')
         net.gp['type'] = net.new_graph_property('string', 'empiric')
 
     elif name == 'sbm_strong' or name == 'sbm_weak':
@@ -44,13 +44,14 @@ def get_network(name, directed=True):
         net.gp['type'] = net.new_graph_property('string', 'synthetic')
 
     else:
-        net = load_edge_list(name, directed=directed, vertex_id_dtype=None)
+        net = load_edge_list(name, directed=directed, vertex_id_dtype='string')
         net.gp['filename'] = net.new_graph_property('string', name)
         net.gp['type'] = net.new_graph_property('string', 'empiric')
 
     l = label_largest_component(net, directed=directed)
     net.set_vertex_filter(l)
     net.purge_vertices()
+    remove_self_loops(net)
     net.clear_filters()
     return net
 
@@ -73,7 +74,7 @@ def main():
         datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
-
+        datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
 
     basics.create_folder_structure(base_outdir)

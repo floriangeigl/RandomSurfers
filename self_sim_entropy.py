@@ -55,7 +55,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                 A_eigvector = np.array(A_eigvector.a)
                 data_dict['eigval'] = A_eigvalue
                 data_dict['eigvec'] = A_eigvector
-        dump_data = np.concatenate((np.array([A_eigvalue]), A_eigvector), axis=1)
+        dump_data = np.concatenate((np.array([A_eigvalue]), A_eigvector))
         if dump and not loaded:
             try_dump(dump_data, dump_filename)
         return A_eigvector

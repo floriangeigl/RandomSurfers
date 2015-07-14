@@ -45,10 +45,10 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
         katz = la.katz_matrix(adjacency_matrix, alpha, norm=norm)
         if scipy.sparse.issparse(katz):
             katz = katz.todense()
-        sigma = lalg.inv(katz)
+        sigma = csr_matrix(lalg.inv(katz))
         if norm is not None:
             if len(norm.shape) == 1:
-                sigma *= lil_matrix(np.diag(norm))
+                sigma *= csr_matrix(np.diag(norm))
             else:
                 sigma *= norm
         return sigma

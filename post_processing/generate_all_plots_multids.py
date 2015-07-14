@@ -61,7 +61,6 @@ entropy_rates = entropy_rates[['adjacency', 'deg', 'inv_sqrt_deg', 'sigma', 'sig
 entropy_rates.columns = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.columns]
 entropy_rates.index = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.index]
 plot_entropy_rates(entropy_rates, out_dir + 'entropy.pdf')
-exit()
 
 for fn in stat_dist_files:
     ds_name = fn.rsplit('/', 1)[-1].replace('stat_dists.df', '').strip('_')

@@ -318,10 +318,10 @@ def plot_entropy_rates(entropy_rates, filename):
     entropy_rates = entropy_rates.T
     f, ax = plt.subplots(figsize=(20, 8))
     #matplotlib.rcParams.update({'font.size': 22})
-    hatch = ['x', '\\', '*', 'o', 'O', '.']
+    hatch = ['-', 'x', '\\', '*', 'o', 'O', '.', '/'] * 2
     #symbols = ['$\\clubsuit$', '$\\bigstar$', '$\\diamondsuit$', '$\\heartsuit', '$\\spadesuit$', '$\\blacksquare$']
-    symbols = ['A', 'B', 'C', 'D', 'E', 'F']
-    colors = ['blue', 'green', 'red', 'black', 'magenta']
+    symbols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']
+    colors = ['blue', 'green', 'red', 'black', 'magenta', 'orange', 'gray'] * 2
     num_ds = len(entropy_rates.columns)
     num_ticks = len(entropy_rates)
     width = 0.7
@@ -351,7 +351,7 @@ def plot_entropy_rates(entropy_rates, filename):
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
     plt.tick_params(labelright=True)
-    plt.legend(ncol=5, loc='upper center', bbox_to_anchor=(0.5, 1.17))
+    plt.legend(ncol=5, loc='upper center', bbox_to_anchor=(0.5, 1.2))
     plt.ylim([min(list(entropy_rates.min())) * .95, max(list(entropy_rates.max())) * 1.05])
     plt.ylabel('entropy rate')
     # plt.subplots_adjust(top=0.7)
