@@ -51,6 +51,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
                 sigma *= csr_matrix(np.diag(norm))
             else:
                 sigma *= norm
+        sigma.eliminate_zeros()
         return sigma
     except Exception as e:
         print traceback.format_exc()

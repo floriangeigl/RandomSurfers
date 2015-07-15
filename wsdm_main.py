@@ -8,6 +8,7 @@ from self_sim_entropy import self_sim_entropy
 from data_io import *
 import utils
 import Queue
+import os
 
 
 def get_network(name, directed=True):
@@ -59,14 +60,15 @@ def get_network(name, directed=True):
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     fast_test = False
-    rewires = 0
+    rewires = 1
     base_outdir = 'output/wsdm/'
     empiric_data_dir = '/opt/datasets/'
     method = 'EV' # EV: Eigenvector, PR: PageRank
     biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
     datasets = list()
     #datasets.append({'name': 'toy_example', 'directed': False})
-    datasets.append({'name': 'karate'})
+    #datasets.append({'name': 'karate'})
+    datasets.append({'name': empiric_data_dir + 'karate/karate.edgelist', 'directed': False})
     if not fast_test:
         datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
@@ -75,8 +77,8 @@ def main():
         datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
+        #pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
-
     basics.create_folder_structure(base_outdir)
     if multip:
         worker_pool = multiprocessing.Pool(processes=14)
@@ -100,7 +102,7 @@ def main():
         file_name = network_name.rsplit('/', 1)[-1]
         print file_name.center(80, '=')
         net = get_network(network_name, **ds)
-        network_name = file_name
+        network_name, file_name = file_name, network_name
         out_dir = base_outdir + network_name + '/'
         basics.create_folder_structure(out_dir)
         print net
@@ -113,19 +115,25 @@ def main():
                                             method=method))
         write_network_properties(net, network_name, network_prop_file)
         for r in xrange(rewires):
-            random_rewire(net, model='correlated')
-            tmp_network_name = network_name + '_rewired_' + str(r).rjust(len(str(rewires - 1)), '0')
-            net.gp['type'] = net.new_graph_property('string', 'synthetic')
-            net.gp['filename'] = net.new_graph_property('string', tmp_network_name)
+            store_fn = file_name + '_rewired_' + str(r).rjust(3, '0') + '.gt'
+            if os.path.isfile(store_fn):
+                net = load_graph(store_fn)
+            else:
+                net = net.copy()
+                random_rewire(net, model='correlated')
+                net.gp['type'] = 'empiric'
+                net.gp['filename'] = store_fn
+                net.save(store_fn)
+            network_name = store_fn.rsplit('/', 1)[-1].replace('.gt', '')
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,),
-                                        kwds={'name': tmp_network_name, 'out_dir': out_dir, 'biases': biases,
+                                        kwds={'name': network_name, 'out_dir': out_dir, 'biases': biases,
                                               'error_q': error_q, 'method': method}, callback=async_callback)
             else:
                 results.append(
-                    self_sim_entropy(net, name=tmp_network_name, out_dir=out_dir, biases=biases, error_q=error_q,
+                    self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
                                      method=method))
-            write_network_properties(net, tmp_network_name, network_prop_file)
+            write_network_properties(net, network_name, network_prop_file)
 
     if multip:
         worker_pool.close()

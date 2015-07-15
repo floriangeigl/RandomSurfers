@@ -56,6 +56,10 @@ for idx, fn in enumerate(entropy_files):
     if entropy_rates is None:
         entropy_rates = pd.DataFrame(columns=list(entropy_rate_df.columns))
     entropy_rates.loc[fn.rsplit('/', 1)[-1].replace('_entropy.df', '')] = entropy_rate_df.loc[0]
+try:
+    entropy_rates.drop('karate', inplace=True)
+except ValueError:
+    pass
 print entropy_rates.columns
 entropy_rates = entropy_rates[['adjacency', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected', 'eigenvector']]
 entropy_rates.columns = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.columns]
