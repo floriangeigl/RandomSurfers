@@ -38,20 +38,23 @@ def calc_cosine(adjacency_matrix, weight_direct_link=False):
     assert np.all(np.isfinite(cos.data))
     return cos
 
-def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None):
+
+def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None, mask_adj=True):
     alpha_max = 1. / largest_eigenvalue
     alpha = gamma * alpha_max
     try:
-        katz = la.katz_matrix(adjacency_matrix, alpha, norm=norm)
-        if scipy.sparse.issparse(katz):
-            katz = katz.todense()
-        sigma = csr_matrix(lalg.inv(katz))
+        sigma = la.katz_matrix(adjacency_matrix, alpha, norm=norm)
+        if scipy.sparse.issparse(sigma):
+            sigma = sigma.todense()
+        sigma = csr_matrix(lalg.inv(sigma, overwrite_a=True))
         if norm is not None:
             if len(norm.shape) == 1:
                 sigma *= csr_matrix(np.diag(norm))
             else:
                 sigma *= norm
-        sigma.eliminate_zeros()
+        if mask_adj:
+            sigma = sigma.multiply(adjacency_matrix)
+            sigma.eliminate_zeros()
         return sigma
     except Exception as e:
         print traceback.format_exc()
@@ -156,7 +159,9 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             if bias.shape != adjacency_matrix.shape:
                 print print_prefix + 'inconsistent shape:', bias.shape, adjacency_matrix.shape
             # mask bias (filter out relevant values)
-            bias = adjacency_matrix.astype('bool').astype('float').multiply(csr_matrix(bias))
+            bias = csr_matrix(bias)
+            bias.eliminate_zeros()
+            bias = bias.multiply(adjacency_matrix.astype('bool'))
             # created weighted trans mat
             weighted_trans = adjacency_matrix.multiply(bias)
         else:

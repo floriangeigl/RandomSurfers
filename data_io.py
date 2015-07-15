@@ -107,8 +107,10 @@ def try_dump(data, filename, mask=None):
                         isinstance(data, np.ndarray) and len(data.shape) == 2 and data.shape[0] > 1 and data.shape[
                 1] > 1)) or scipy.sparse.issparse(data):
         print 'dump data. mask data...'
-        mask = mask.astype('bool').astype('float')
-        data = mask.multiply(csr_matrix(data))
+        mask = mask.astype('bool')
+        data = csr_matrix(data)
+        data.eliminate_zeros()
+        data = data.multiply(mask)
         data.eliminate_zeros()
     try:
         data.dump(filename)

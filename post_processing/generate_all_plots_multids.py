@@ -35,6 +35,21 @@ name_mapping['wiki4schools'] = 'Wiki. f. Schools'
 name_mapping['bar_wiki'] = 'Bavarian Wiki.'
 name_mapping['tvthek_orf'] = 'ORF TVThek'
 
+sorting = dict()
+sorting['adjacency'] = 0
+sorting['deg'] = 1
+sorting['eigenvector'] = 5
+sorting['inv_sqrt_deg'] = 2
+sorting['sigma'] = 3
+sorting['sigma_sqrt_deg_corrected'] = 4
+sorting['getdigital'] = 2
+sorting['karate.edgelist'] = 0
+sorting['milan_spiele'] = 3
+sorting['thinkgeek'] = 1
+sorting['wiki4schools'] = 4
+sorting['bar_wiki'] = 5
+sorting['tvthek_orf'] = 6
+sorting = {name_mapping[key]:val for key,val in sorting.iteritems()}
 
 base_line = name_mapping[base_line] if base_line in name_mapping else base_line
 
@@ -55,10 +70,15 @@ try:
 except ValueError:
     pass
 print entropy_rates.columns
-entropy_rates = entropy_rates[['adjacency', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected', 'eigenvector']]
+entropy_rates = entropy_rates[['adjacency', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected', 'eigenvector']].copy()
 entropy_rates.columns = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.columns]
+entropy_rates.columns = [i.split('Bias')[0].strip() for i in entropy_rates.columns]
 entropy_rates.index = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.index]
+rewired_idx = filter(lambda x: 'rewired' in x, entropy_rates.index)
+entropy_rates.drop(rewired_idx, inplace=True)
+entropy_rates = entropy_rates.loc[sorted(entropy_rates.index, key=lambda x: sorting[x])].copy()
 plot_entropy_rates(entropy_rates, out_dir + 'entropy.pdf')
+exit()
 
 for fn in stat_dist_files:
     ds_name = fn.rsplit('/', 1)[-1].replace('stat_dists.df', '').strip('_')

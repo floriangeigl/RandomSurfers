@@ -34,8 +34,10 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         print utils.color_string('[' + name + ']'), '[' + biasname + ']', '[' + str(
             datetime.datetime.now().replace(microsecond=0)) + ']', 'calc bias'
     loaded = False
+    #################################
     if biasname == 'adjacency':
         return None
+    #################################
     elif biasname == 'eigenvector':
         try:
             loaded_data = try_load(dump_filename)
@@ -43,12 +45,12 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
             A_eigvector = loaded_data[1:]
             data_dict['eigval'] = A_eigvalue
             data_dict['eigvec'] = A_eigvector
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
                 A_eigvalue = data_dict['eigval']
-                loaded = False  # TODO: replace with true after rerun
+                loaded = True
             except KeyError:
                 A_eigvalue, A_eigvector = eigenvector(data_dict['net'])
                 A_eigvalue = np.float64(A_eigvalue)
@@ -59,10 +61,11 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         if dump and not loaded:
             try_dump(dump_data, dump_filename)
         return A_eigvector
+    #################################
     elif biasname == 'eigenvector_inverse':
         try:
             A_eigvector_inf = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
@@ -72,10 +75,11 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         if dump and not loaded:
             try_dump(A_eigvector_inf, dump_filename)
         return A_eigvector_inf
+    #################################
     elif biasname == 'inv_log_eigenvector':
         try:
             A_inf_log_eigvector = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
@@ -85,10 +89,11 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         if dump and not loaded:
             try_dump(A_inf_log_eigvector, dump_filename)
         return A_inf_log_eigvector
+    #################################
     elif biasname == 'inv_sqrt_eigenvector':
         try:
             A_sqrt_log_eigvector = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
@@ -99,10 +104,11 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         if dump and not loaded:
             try_dump(A_sqrt_log_eigvector, dump_filename)
         return A_sqrt_log_eigvector
+    #################################
     elif biasname == 'sigma':
         try:
             sigma = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             try:
                 A_eigvalue = data_dict['eigval']
@@ -111,12 +117,13 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                 A_eigvalue = data_dict['eigval']
             sigma = network_matrix_tools.katz_sim_network(data_dict['adj'], largest_eigenvalue=A_eigvalue)
         if dump and not loaded:
-            try_dump(sigma, dump_filename, mask=data_dict['adj'])
+            try_dump(sigma, dump_filename)
         return sigma
+    #################################
     elif biasname == 'sigma_deg_corrected':
         try:
             sigma_deg_cor = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             try:
                 A_eigvalue = data_dict['eigval']
@@ -127,12 +134,13 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                                                                   norm=np.array(
                                                                       data_dict['net'].degree_property_map('total').a))
         if dump and not loaded:
-            try_dump(sigma_deg_cor, dump_filename, mask=data_dict['adj'])
+            try_dump(sigma_deg_cor, dump_filename)
         return sigma_deg_cor
+    #################################
     elif biasname == 'sigma_log_deg_corrected':
         try:
             sigma_log_deg_cor = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             try:
                 A_eigvalue = data_dict['eigval']
@@ -144,12 +152,13 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                                                                           data_dict['net'].degree_property_map(
                                                                               'total').a, dtype=np.float) + 2))
         if dump and not loaded:
-            try_dump(sigma_log_deg_cor, dump_filename, mask=data_dict['adj'])
+            try_dump(sigma_log_deg_cor, dump_filename)
         return sigma_log_deg_cor
+    #################################
     elif biasname == 'sigma_sqrt_deg_corrected':
         try:
             sigma_sqrt_deg_cor = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             try:
                 A_eigvalue = data_dict['eigval']
@@ -161,34 +170,41 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
                                                                           data_dict['net'].degree_property_map(
                                                                               'total').a, dtype=np.float)))
         if dump and not loaded:
-            try_dump(sigma_sqrt_deg_cor, dump_filename, mask=data_dict['adj'])
+            try_dump(sigma_sqrt_deg_cor, dump_filename)
         return sigma_sqrt_deg_cor
+    #################################
     elif biasname == 'cosine':
         try:
             cos = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             cos = network_matrix_tools.calc_cosine(data_dict['adj'], weight_direct_link=True)
         if dump and not loaded:
-            try_dump(cos, dump_filename, mask=data_dict['adj'])
+            try_dump(cos, dump_filename)
         return cos
+    #################################
     elif biasname == 'betweenness':
         try:
             bet = try_load(dump_filename)
-            loaded = False  # TODO: replace with true after rerun
+            loaded = True
         except IOError:
             bet = np.array(betweenness(data_dict['net'])[0].a)
         if dump and not loaded:
-            try_dump(bet, dump_filename, mask=data_dict['adj'])
+            try_dump(bet, dump_filename)
         return bet
+    #################################
     elif biasname == 'deg':
         return np.array(data_dict['net'].degree_property_map('total').a, dtype=np.float)
+    #################################
     elif biasname == 'inv_deg':
         return 1. / (calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 1)
+    #################################
     elif biasname == 'inv_log_deg':
         return 1. / np.log(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 2)
+    #################################
     elif biasname == 'inv_sqrt_deg':
         return 1. / np.sqrt(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1))
+    #################################
     else:
         try:
             return try_load(biasname)
@@ -265,6 +281,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
             assert scipy.sparse.issparse(adjacency_matrix)
             ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias, method=method,
                                                                              print_prefix=print_prefix + ' [' + bias_name + '] ')
+            del bias
             stat_distributions[bias_name] = stat_dist
             #print print_prefix, '[' + biasname + '] entropy rate:', ent
             entropy_df.at[0, bias_name] = ent

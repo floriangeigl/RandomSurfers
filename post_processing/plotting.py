@@ -350,7 +350,7 @@ def plot_entropy_rates(entropy_rates, filename):
         # ax = entropy_rates[i].plot(position=pos,width=0.8, kind='bar',rot=20,ax=ax, alpha=1,lw=0.4,hatch=h,color=c)
 
     ax.set_position([0.1, 0.2, .8, 0.6])
-    plt.xticks(range(len(entropy_rates)), entropy_rates.index, rotation=-20)
+    plt.xticks(np.array(range(len(entropy_rates))), entropy_rates.index, rotation=-35)
     ax.set_axisbelow(True)
     ax.xaxis.grid(False)
     ax.yaxis.grid(True)
@@ -359,7 +359,7 @@ def plot_entropy_rates(entropy_rates, filename):
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
     plt.tick_params(labelright=True)
-    plt.legend(ncol=5, loc='upper center', bbox_to_anchor=(0.5, 1.2))
+    plt.legend(ncol=4, loc='upper center', bbox_to_anchor=(0.5, 1.25))
     plt.ylim([min(list(entropy_rates.min())) * .95, max(list(entropy_rates.max())) * 1.05])
     plt.ylabel('entropy rate')
     # plt.subplots_adjust(top=0.7)
