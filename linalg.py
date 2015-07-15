@@ -118,15 +118,16 @@ def katz_alpha(A):
 def katz_matrix(A, alpha, norm=None):
     m, n = A.shape
     if norm is None:
-        katz = scipy.sparse.eye(n) - alpha * A
+        norm = scipy.sparse.eye(n)
     elif len(norm.shape) == 1:
-        katz = scipy.sparse.spdiags(norm, 0, A.shape[0], A.shape[0]) - alpha * A
+        norm = scipy.sparse.spdiags(norm, 0, A.shape[0], A.shape[0])
     elif len(norm.shape) == 2:
-        katz = norm - alpha * A
+        # norm = norm
+        pass
     else:
         print 'katz norm unknown shape'.center(120, '!')
         exit()
-    return katz
+    return norm - (alpha * A)
 
 
 def largest_eigenvalue_index(l):
