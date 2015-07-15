@@ -43,12 +43,12 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
             A_eigvector = loaded_data[1:]
             data_dict['eigval'] = A_eigvalue
             data_dict['eigvec'] = A_eigvector
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
                 A_eigvalue = data_dict['eigval']
-                loaded = True
+                loaded = False  # TODO: replace with true after rerun
             except KeyError:
                 A_eigvalue, A_eigvector = eigenvector(data_dict['net'])
                 A_eigvalue = np.float64(A_eigvalue)
@@ -62,7 +62,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'eigenvector_inverse':
         try:
             A_eigvector_inf = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
@@ -75,7 +75,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'inv_log_eigenvector':
         try:
             A_inf_log_eigvector = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
@@ -88,7 +88,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'inv_sqrt_eigenvector':
         try:
             A_sqrt_log_eigvector = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             try:
                 A_eigvector = data_dict['eigvec']
@@ -102,7 +102,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'sigma':
         try:
             sigma = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             try:
                 A_eigvalue = data_dict['eigval']
@@ -116,7 +116,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'sigma_deg_corrected':
         try:
             sigma_deg_cor = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             try:
                 A_eigvalue = data_dict['eigval']
@@ -132,7 +132,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'sigma_log_deg_corrected':
         try:
             sigma_log_deg_cor = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             try:
                 A_eigvalue = data_dict['eigval']
@@ -149,7 +149,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'sigma_sqrt_deg_corrected':
         try:
             sigma_sqrt_deg_cor = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             try:
                 A_eigvalue = data_dict['eigval']
@@ -166,7 +166,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'cosine':
         try:
             cos = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             cos = network_matrix_tools.calc_cosine(data_dict['adj'], weight_direct_link=True)
         if dump and not loaded:
@@ -175,7 +175,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
     elif biasname == 'betweenness':
         try:
             bet = try_load(dump_filename)
-            loaded = True
+            loaded = False  # TODO: replace with true after rerun
         except IOError:
             bet = np.array(betweenness(data_dict['net'])[0].a)
         if dump and not loaded:

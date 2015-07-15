@@ -8,18 +8,10 @@ import matplotlib.pylab as plt
 import pandas as pd
 from plotting import *
 import os
-from tools.basics import create_folder_structure
+from tools.basics import create_folder_structure, find_files
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
-
-def find_files(base_dir,file_ending):
-    res = list()
-    for root, dirs, files in os.walk(base_dir):
-        if not root.endswith('/'):
-            root += '/'
-        res.extend([root + i for i in filter(lambda x: x.endswith(file_ending), files)])
-    return sorted(res)
 
 
 base_dir = '/home/fgeigl/navigability_of_networks/output/wsdm/'
@@ -36,10 +28,12 @@ name_mapping['inv_sqrt_deg'] = 'Inv. Degree Bias Factor'
 name_mapping['sigma'] = 'Similarity Bias Factor'
 name_mapping['sigma_sqrt_deg_corrected'] = 'Deg. Cor. Similarity Bias Factor'
 name_mapping['getdigital'] = 'GetDigital'
-name_mapping['karate'] = 'Toy Example'
+name_mapping['karate.edgelist'] = 'Toy Example'
 name_mapping['milan_spiele'] = 'Milan-Spiele'
 name_mapping['thinkgeek'] = 'ThinkGeek'
 name_mapping['wiki4schools'] = 'Wiki. f. Schools'
+name_mapping['bar_wiki'] = 'Bavarian Wiki.'
+name_mapping['tvthek_orf'] = 'ORF TVThek'
 
 
 base_line = name_mapping[base_line] if base_line in name_mapping else base_line
@@ -72,6 +66,10 @@ for fn in stat_dist_files:
     stat_dist_df.columns = [name_mapping[i] if i in name_mapping else i for i in stat_dist_df.columns]
     not_baseline_cols = list(filter(lambda x: x != base_line, stat_dist_df.columns))
     print stat_dist_df.head()
+    gini_df = stat_dist_df.copy()
+    gini_df.columns = [i.split('Bias')[0].strip() for i in gini_df.columns]
+    create_ginis_from_df(gini_df, output_folder=out_dir + 'gini/', out_fn=ds_name + '.pdf', lw=3, ms=15, font_size=15,
+                         zoom=80)
     bias_factors_df = create_bf_scatters_from_df(stat_dist_df, base_line, not_baseline_cols,
                                                  output_folder=out_dir + 'bf_scatter/' + ds_name + '/')
     min_y, max_y = bias_factors_df[bias_factors_df > 0].min().min(), bias_factors_df.max().max()
@@ -81,6 +79,5 @@ for fn in stat_dist_files:
                                                  y_range=[min_y, max_y])
 
     create_scatters_from_df(stat_dist_df, stat_dist_df.columns, output_folder=out_dir + 'scatter/' + ds_name + '/')
-    create_ginis_from_df(stat_dist_df, stat_dist_df.columns, output_folder=out_dir + 'gini/' + ds_name + '/', lw=3,
-                         ms=15, font_size=15)
+
 

@@ -232,9 +232,10 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     plt.show()
     plt.close('all')
 
-def create_ginis_from_df(df, columns, output_folder='./', zoom=None, filter_zeros=True, legend=True, font_size=12,
-                         ms=5, file_ending='.png',
-                         **kwargs):
+def create_ginis_from_df(df, columns=None, output_folder='./', zoom=None, filter_zeros=True, legend=True, font_size=12,
+                         ms=5, out_fn=None, **kwargs):
+    if columns is None:
+        columns = list(df.columns)
     if isinstance(columns, str):
         columns = [columns]
     if not output_folder.endswith('/'):
@@ -258,20 +259,23 @@ def create_ginis_from_df(df, columns, output_folder='./', zoom=None, filter_zero
     marker = ['o', 'v', '^', 's', '+', 'D', '<', '>', 'p', '*', 'x']
     ax = df.plot(x='idx', alpha=0.9, legend=False, color=colors, **kwargs)
     if df_len > 100:
-        if zoom is not None:
-            df['idx'] = df['idx'].apply(lambda x: x * 10 if x >= zoom else x)
-        else:
-            df.at[df.index[-1], 'idx'] = 200
-        df['idx'] = df['idx'].astype('int')
-        df['idx'] = df['idx'].apply(lambda x: int(x / 5) * 5)
-        df.drop_duplicates(subset=['idx'], inplace=True)
-        if zoom is not None:
-            df['idx'] = df['idx'].apply(lambda x: x / 10 if x >= zoom else x)
-        else:
-            df.at[df.index[-1], 'idx'] = 100
+        #if zoom is not None:
+        #    df['idx'] = df['idx'].apply(lambda x: x * 10 if x >= zoom else x)
+        #else:
+        scatter_df = df.copy()
+        scatter_df.at[scatter_df.index[-1], 'idx'] = 200
+        scatter_df['idx'] = scatter_df['idx'].astype('int')
+        scatter_df['idx'] = scatter_df['idx'].apply(lambda x: int(x / 5) * 5)
+        scatter_df.drop_duplicates(subset=['idx'], inplace=True)
+        #if zoom is not None:
+        #    df['idx'] = df['idx'].apply(lambda x: x / 10 if x >= zoom else x)
+        #else:
+        scatter_df.at[scatter_df.index[-1], 'idx'] = 100
+    else:
+        scatter_df = df
     for i, m, c in zip(df.columns, marker, colors):
         if i != 'idx':
-            ax = df.plot(x='idx', y=i, alpha=.9, ms=ms, legend=False, style=m, markerfacecolor=c,
+            ax = scatter_df.plot(x='idx', y=i, alpha=.9, ms=ms, legend=False, style=m, markerfacecolor=c,
                          ax=ax, **kwargs)
             # ax = df.plot(x='idx', alpha=0.9, marker=,
             # legend=False, ax=ax, **kwargs)
@@ -283,9 +287,12 @@ def create_ginis_from_df(df, columns, output_folder='./', zoom=None, filter_zero
     plt.plot([0, 100], [0, 1], ls='--', lw=1, label='Unif.', alpha=1.)
     if zoom is not None:
         axins = zoomed_inset_axes(ax, 3, loc=2) # zoom = 6
-        print axins
-        df.plot(x='idx', alpha=0.9, style=['-o', '-v', '-^', '-s', '-+', '-D', '-<', '->', '-p', '-*', '-x'],
-                legend=False, ax=axins, **kwargs)
+        axins = df.plot(x='idx', alpha=0.9, legend=False, color=colors, ax=axins, **kwargs)
+        for i, m, c in zip(df.columns, marker, colors):
+            if i != 'idx':
+                axins = scatter_df.plot(x='idx', y=i, alpha=.9, ms=ms, legend=False, style=m, markerfacecolor=c,
+                             ax=axins, **kwargs)
+        axins.plot([0, 100], [0, 1], ls='--', lw=1, alpha=1.)
         axins.set_xlim(zoom, 100)
         axins.set_ylim(0, .25)
         axins.set_axis_bgcolor('lightgray')
@@ -295,17 +302,18 @@ def create_ginis_from_df(df, columns, output_folder='./', zoom=None, filter_zero
         axins.set_xlabel('')
         mark_inset(ax, axins, loc1=1, loc2=3, fc="lightgray", ec=".75")
     plt.tight_layout()
-    plt.savefig(output_folder + 'gini.pdf')
+    out_fn = out_fn if out_fn is not None else 'gini.pdf'
+    plt.savefig(output_folder + out_fn)
     if legend:
         print 'plot legend'
         legend_ax = None
         for i, m, c in zip(df.columns, marker, colors):
             if i != 'idx':
-                legend_ax = df.plot(x='idx', y=i, alpha=.9, marker=m, ms=ms, legend=False, color=c, ax=legend_ax, **kwargs)
-        plt.plot([0, 100], [0, 1], ls='--', lw=1, label='Unif.', alpha=1.)
+                legend_ax = df.plot(x='idx', y=i, alpha=.9, marker=m, ms=ms, color=c, ax=legend_ax, **kwargs)
+        legend_ax.plot([0, 100], [0, 1], ls='--', lw=1, alpha=1.)
         matplotlib.rcParams.update({'font.size': 20})
         f2 = plt.figure(figsize=(30,3))
-        f2.legend(*legend_ax.get_legend_handles_labels(), loc='center', ncol=min(len(df.columns),8))
+        f2.legend(legend_ax.get_legend_handles_labels()[0], list(df.columns) + ['Unif.'], loc='center', ncol=min(len(df.columns),8))
         # plt.tight_layout()
         # plt.subplots_adjust(left=0.85)
         legend_fname = output_folder + 'gini_legend.pdf'
