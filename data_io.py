@@ -105,7 +105,7 @@ def write_network_properties(network, net_name, out_filename):
 def try_dump(data, filename, mask=None):
     if mask is not None and (isinstance(data, np.matrix) or (
                         isinstance(data, np.ndarray) and len(data.shape) == 2 and data.shape[0] > 1 and data.shape[
-                1] > 1)) and not scipy.sparse.issparse(data):
+                1] > 1)) or scipy.sparse.issparse(data):
         print 'dump data. mask data...'
         mask = mask.astype('bool').astype('float')
         data = mask.multiply(csr_matrix(data))
