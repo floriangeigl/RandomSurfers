@@ -17,11 +17,11 @@ pd.set_option('display.max_colwidth', 600)
 
 name_mapping = dict()
 name_mapping['adjacency'] = 'Unbiased'
-name_mapping['deg'] = 'Degree Bias Bias Factor'
-name_mapping['eigenvector'] = 'Eigenvector C. Bias Factor'
-name_mapping['inv_sqrt_deg'] = 'Inv. Degree Bias Factor'
-name_mapping['sigma'] = 'Similarity Bias Factor'
-name_mapping['sigma_sqrt_deg_corrected'] = 'Deg. Cor. Similarity Bias Factor'
+name_mapping['deg'] = 'Degree'
+name_mapping['eigenvector'] = 'Eigenvector C.'
+name_mapping['inv_sqrt_deg'] = 'Inv. Degree'
+name_mapping['sigma'] = 'Similarity'
+name_mapping['sigma_sqrt_deg_corrected'] = 'Deg. Cor. Similarity'
 name_mapping['getdigital'] = 'GetDigital'
 name_mapping['karate.edgelist'] = 'Toy Example'
 name_mapping['milan_spiele'] = 'Milan-Spiele'

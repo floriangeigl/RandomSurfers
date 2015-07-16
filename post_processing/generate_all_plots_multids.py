@@ -22,7 +22,7 @@ create_folder_structure(out_dir)
 
 name_mapping = dict()
 name_mapping['adjacency'] = 'Unbiased'
-name_mapping['deg'] = 'Degree Bias Bias Factor'
+name_mapping['deg'] = 'Degree Bias Factor'
 name_mapping['eigenvector'] = 'Eigenvector C. Bias Factor'
 name_mapping['inv_sqrt_deg'] = 'Inv. Degree Bias Factor'
 name_mapping['sigma'] = 'Similarity Bias Factor'
@@ -66,7 +66,7 @@ for idx, fn in enumerate(entropy_files):
         entropy_rates = pd.DataFrame(columns=list(entropy_rate_df.columns))
     entropy_rates.loc[fn.rsplit('/', 1)[-1].replace('_entropy.df', '')] = entropy_rate_df.loc[0]
 try:
-    entropy_rates.drop('karate', inplace=True)
+    entropy_rates.drop('karate.edgelist', inplace=True)
 except ValueError:
     pass
 print entropy_rates.columns
@@ -78,7 +78,6 @@ rewired_idx = filter(lambda x: 'rewired' in x, entropy_rates.index)
 entropy_rates.drop(rewired_idx, inplace=True)
 entropy_rates = entropy_rates.loc[sorted(entropy_rates.index, key=lambda x: sorting[x])].copy()
 plot_entropy_rates(entropy_rates, out_dir + 'entropy.pdf')
-exit()
 
 for fn in stat_dist_files:
     ds_name = fn.rsplit('/', 1)[-1].replace('stat_dists.df', '').strip('_')

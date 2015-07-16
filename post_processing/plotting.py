@@ -350,7 +350,7 @@ def plot_entropy_rates(entropy_rates, filename):
         # ax = entropy_rates[i].plot(position=pos,width=0.8, kind='bar',rot=20,ax=ax, alpha=1,lw=0.4,hatch=h,color=c)
 
     ax.set_position([0.1, 0.2, .8, 0.6])
-    plt.xticks(np.array(range(len(entropy_rates))), entropy_rates.index, rotation=-35)
+    plt.xticks(np.array(range(len(entropy_rates))), entropy_rates.index, rotation=-15)
     ax.set_axisbelow(True)
     ax.xaxis.grid(False)
     ax.yaxis.grid(True)
