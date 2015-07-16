@@ -81,7 +81,7 @@ def main():
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
     basics.create_folder_structure(base_outdir)
     if multip:
-        worker_pool = multiprocessing.Pool(processes=14)
+        worker_pool = multiprocessing.Pool(processes=1)
     else:
         worker_pool = None
     results = list()
