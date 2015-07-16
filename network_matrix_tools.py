@@ -56,7 +56,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
                 sigma *= norm
         print 'mask'
         if mask_adj:
-            sigma = adjacency_matrix.multiply(sigma)
+            sigma = adjacency_matrix.astype('bool').multiply(sigma)
             sigma = csr_matrix(sigma)
             sigma.eliminate_zeros()
         print 'return'
