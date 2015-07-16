@@ -56,9 +56,13 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
                 sigma *= norm
         print 'mask'
         if mask_adj:
-            sigma = adjacency_matrix.astype('bool').multiply(sigma)
-            sigma = csr_matrix(sigma)
-            sigma.eliminate_zeros()
+            # memory efficient way
+            sigma = sigma[adjacency_matrix.nonzero()]  # get relevant data and delete dense matrix
+            sigma = np.array(sigma)  # convert to np.array and
+            sigma = sigma.flatten()  # flatten it
+            sigma = csr_matrix((sigma, adjacency_matrix.nonzero()),
+                               shape=adjacency_matrix.shape)  # create csr matrix using indices and shape of sparse matrix
+            sigma.eliminate_zeros()  # delete remaining zeros
         print 'return'
         return sigma
     except Exception as e:
