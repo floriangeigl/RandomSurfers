@@ -46,9 +46,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
         sigma = la.katz_matrix(adjacency_matrix, alpha, norm=norm)
         if scipy.sparse.issparse(sigma):
             sigma = sigma.todense()
-        print 'inverse'
         sigma = lalg.inv(sigma, overwrite_a=True)
-        print 'norm'
         if norm is not None:
             if len(norm.shape) == 1:
                 sigma *= scipy.sparse.spdiags(norm, 0, sigma.shape[0], sigma.shape[0])
@@ -63,7 +61,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             sigma = csr_matrix((sigma, adjacency_matrix.nonzero()),
                                shape=adjacency_matrix.shape)  # create csr matrix using indices and shape of sparse matrix
             sigma.eliminate_zeros()  # delete remaining zeros
-        print 'return'
+        print 'done'
         return sigma
     except Exception as e:
         print traceback.format_exc()
