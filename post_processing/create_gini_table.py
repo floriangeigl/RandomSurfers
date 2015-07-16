@@ -29,6 +29,7 @@ name_mapping['thinkgeek'] = 'ThinkGeek'
 name_mapping['wiki4schools'] = 'Wiki. f. Schools'
 name_mapping['bar_wiki'] = 'Bavarian Wiki.'
 name_mapping['tvthek_orf'] = 'ORF TVThek'
+name_mapping['daserste'] = 'Das Erste'
 
 
 base_dir = '/home/fgeigl/navigability_of_networks/output/wsdm/'
@@ -45,5 +46,5 @@ all_ginis.drop('eigenvector', inplace=True)
 all_ginis.loc['eigenvector'] = eigvec
 print all_ginis
 all_ginis.index = [name_mapping[i] if i in name_mapping else i for i in all_ginis.index]
-all_ginis = all_ginis[['ThinkGeek', 'GetDigital', 'Milan-Spiele', 'Wiki. f. Schools', 'Bavarian Wiki.', 'ORF TVThek']]
+all_ginis = all_ginis[['ThinkGeek', 'GetDigital', 'Milan-Spiele', 'Wiki. f. Schools', 'Bavarian Wiki.', 'ORF TVThek', 'Das Erste']]
 print print_tex_table(all_ginis)

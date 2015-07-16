@@ -34,6 +34,7 @@ name_mapping['thinkgeek'] = 'ThinkGeek'
 name_mapping['wiki4schools'] = 'Wiki. f. Schools'
 name_mapping['bar_wiki'] = 'Bavarian Wiki.'
 name_mapping['tvthek_orf'] = 'ORF TVThek'
+name_mapping['daserste'] = 'Das Erste'
 
 sorting = dict()
 sorting['adjacency'] = 0
@@ -49,6 +50,7 @@ sorting['thinkgeek'] = 1
 sorting['wiki4schools'] = 4
 sorting['bar_wiki'] = 5
 sorting['tvthek_orf'] = 6
+sorting['daserste'] = 7
 sorting = {name_mapping[key]:val for key,val in sorting.iteritems()}
 
 base_line = name_mapping[base_line] if base_line in name_mapping else base_line
