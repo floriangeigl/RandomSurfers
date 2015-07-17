@@ -91,7 +91,8 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
     return bias_factors_df
 
 def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=None, filter_zeros=True, legend=True, **kwargs):
-    matplotlib.rcParams.update({'font.size': 14})
+    font_size = 22
+    matplotlib.rcParams.update({'font.size': font_size})
     assert isinstance(x, tuple)
     assert isinstance(y, tuple)
     x_label, x_data = x
@@ -156,12 +157,12 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
         os.system('pdfcrop ' + legend_fname + ' ' + legend_fname + ' &> /dev/null')
         plt.show()
         plt.close('all')
-        matplotlib.rcParams.update({'font.size': 14})
+        matplotlib.rcParams.update({'font.size': font_size})
     plot_scatter_heatmap(x_data, y_data, logy=True, logx=True, logbins=True, bins=100,
                          axis_range=[[min_x, max_x], [min_y, max_y]])
     plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
     plt.ylabel(y_label + (' (shifted)' if y_data_mod else ''))
-    plt.axhline(np.log10(1.), color='white', alpha=.5, lw=2, ls='--')
+    plt.axhline(np.log10(1.), color='white', alpha=1., lw=3, ls='--')
     plt.tight_layout()
     fname = fname.rsplit('.')[0] + '_heatmap.pdf'
     plt.savefig(fname)
@@ -232,7 +233,7 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     plt.show()
     plt.close('all')
 
-def create_ginis_from_df(df, columns=None, output_folder='./', zoom=None, filter_zeros=True, legend=True, font_size=12,
+def create_ginis_from_df(df, columns=None, output_folder='./', zoom=None, filter_zeros=True, legend=True, font_size=16,
                          ms=5, out_fn=None, **kwargs):
     if columns is None:
         columns = list(df.columns)
@@ -313,7 +314,7 @@ def create_ginis_from_df(df, columns=None, output_folder='./', zoom=None, filter
         legend_ax.plot([0, 100], [0, 1], ls='--', lw=1, alpha=1.)
         matplotlib.rcParams.update({'font.size': 20})
         f2 = plt.figure(figsize=(30,3))
-        f2.legend(legend_ax.get_legend_handles_labels()[0], list(df.columns) + ['Unif.'], loc='center', ncol=min(len(df.columns),8))
+        f2.legend(legend_ax.get_legend_handles_labels()[0], list(df.columns) + ['Uniform'], loc='center', ncol=3)
         # plt.tight_layout()
         # plt.subplots_adjust(left=0.85)
         legend_fname = output_folder + 'gini_legend.pdf'
@@ -344,7 +345,7 @@ def plot_entropy_rates(entropy_rates, filename):
         #print width
         #print i
         rects.append(
-            ax.bar(pos, entropy_rates[i], (width / num_ds - space), color='white', label=s + ' ' + i.decode('utf8'),
+            ax.bar(pos, entropy_rates[i], (width / num_ds - space), color='white', label=s + ': ' + i.decode('utf8'),
                    lw=2, alpha=1., hatch=h, edgecolor=c))
         autolabel(s, pos + (width / num_ds - space) / 2, entropy_rates[i], ax)
         # ax = entropy_rates[i].plot(position=pos,width=0.8, kind='bar',rot=20,ax=ax, alpha=1,lw=0.4,hatch=h,color=c)
@@ -378,7 +379,7 @@ def autolabel(symbol, x_pos, heights, ax):
 
 def plot_degree_distributions(filnames, output_dir):
     create_folder_structure(output_dir)
-    matplotlib.rcParams.update({'font.size': 18})
+    matplotlib.rcParams.update({'font.size': 30})
     for idx, i in enumerate(filnames):
         net = load_graph(i)
         net_fn_name = i.rsplit('/', 1)[-1].replace('.gt', '')
