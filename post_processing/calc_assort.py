@@ -15,16 +15,19 @@ pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
 
 base_dir = '/home/fgeigl/navigability_of_networks/output/wsdm/'
-network_files = filter(lambda x: 'rewired' not in x, find_files(base_dir, '.gt'))
+network_files = find_files(base_dir, '.gt')
 print 'name || assort-coef || variance'
 results = list()
-for fn in network_files:
+for fn in sorted(network_files):
     g = load_graph(fn)
     name = fn.rsplit('/', 1)[-1].replace('.gt', '')
-    res = list(scalar_assortativity(g, 'total'))
+    res = list(list(scalar_assortativity(g, 'total'))[0])
+    res.append(list(scalar_assortativity(g, 'in'))[0])
+    res.append(list(scalar_assortativity(g, 'out'))[0])
     print name, 'scalar assort:', res
-    res = [name] + res
+    res = tuple([name, res])
     results.append(res)
 print 'sorted---------'
-for name, assort, var, in sorted(results, key=lambda x: x[1]):
-    print name[:20].center(20), str(assort)[:6], str(var)[:5]
+print results
+for name, assort in sorted(results, key=lambda x: x[1][0]):
+    print name[:20].center(20), ', '.join([str(i)[:7] for i in assort])
