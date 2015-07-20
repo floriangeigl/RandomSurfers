@@ -3,6 +3,7 @@ from graph_tool.all import *
 import random
 from collections import defaultdict
 import operator
+from tools.gt_tools import load_edge_list
 
 def get_cat_dist(g, cat_pmap, url_map):
     dist = defaultdict(list)
@@ -13,9 +14,10 @@ def get_cat_dist(g, cat_pmap, url_map):
 
 def print_norm_dict(mydict):
     dict_sum = sum(map(len, mydict.values()))
-    for key, val in sorted(mydict.iteritems(), key=lambda x: len(x[1]), reverse=True):
+    for key, val in sorted(mydict.iteritems(), key=lambda x: len(x[1]), reverse=True)[:100]:
         num_pages = len(val)
-        print key[:20].rjust(20), '->', '%.3f' % (num_pages / dict_sum * 100), '(', num_pages, ')', random.sample(val,
+        print key[:20].rjust(20), '->', '%.3f' % (num_pages / dict_sum * 100), '%', '(', num_pages, ')', random.sample(
+            val,
                                                                                                                   1)
 
 
@@ -33,7 +35,7 @@ def basic_cat(g, url_pmap, special_case=None):
     sample_nodes = random.sample(list(g.vertices()), 20)
     for v in sample_nodes:
         print url_pmap[v], '->', cat_pmap[v]
-    if special_case is None:
+    if special_case is None or special_case == '':
         pass
 
     elif special_case == 'getdigital':
@@ -43,11 +45,13 @@ def basic_cat(g, url_pmap, special_case=None):
 
 
 
-net_name = '/opt/datasets/getdigital/getdigital.gt'
-g = load_graph(net_name)
+net_name = '/opt/datasets/daserste/daserste'
+g = load_edge_list(net_name, vertex_id_dtype='string', directed=True)
+if 'NodeId' in g.vp.keys():
+    g.vp['url'] = g.vp['NodeId'].copy()
+print g.vp.keys()
 url_map = g.vp['url']
-cat_pmap = basic_cat(g, url_map, 'getdigital')
+cat_pmap = basic_cat(g, url_map, '')
 cat_dist = get_cat_dist(g, cat_pmap, url_map)
-if len(cat_dist) < 100:
-    print_norm_dict(cat_dist)
+print_norm_dict(cat_dist)
 print len(cat_dist), 'categories'
