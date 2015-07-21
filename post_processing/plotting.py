@@ -38,8 +38,10 @@ def shift_data_pos(data, shift_min=True):
 
 
 def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter_zeros=True, legend=True,
-                               file_ending='.png', common_range=True, y_range=None, **kwargs):
-    if isinstance(columns, str):
+                               file_ending='.png', common_range=True, y_range=None, categories=True, **kwargs):
+    if isinstance(columns, list):
+        columns = list(filter(lambda x: (x != 'category') if categories else True, columns))
+    elif isinstance(columns, str):
         columns = [columns]
     if not output_folder.endswith('/'):
         output_folder += '/'
@@ -62,19 +64,40 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
             min_y = y_data.min() if min_y is None else min(y_data.min(), min_y)
             max_x = x_data.max() if max_x is None else min(x_data.max(), max_x)
             max_y = y_data.max() if max_y is None else min(y_data.max(), max_y)
-
+    if categories and 'category' in df.columns:
+        categories = np.array(df['category'])
+    else:
+        categories = None
     for idx, col in enumerate(columns):
         x = np.array(df[baseline]).astype('float')
         fname = output_folder + 'bf_' + baseline.replace(' ', '_').replace('.', '') + '_' + col.replace(' ',
                                                                                                         '_').replace(
             '.', '') + file_ending
         y = np.array(df[col]).astype('float')
+        cat = None
         if filter_zeros:
             filter_both = np.logical_and(x > 0, y > 0)
             x = x[filter_both]
             y = y[filter_both]
+            if categories is not None:
+                cat = categories[filter_both]
             x /= x.sum()
             y /= y.sum()
+        else:
+            cat = categories.copy()
+        if categories is not None:
+            cat_before_after = dict()
+            for i in set(categories):
+                cat_filt = categories == i
+                cat_before_after[i] = x[cat_filt].sum(), y[cat_filt].sum()
+            cat_changes = pd.DataFrame(columns=['before', 'after'])
+            for key, val in cat_before_after.iteritems():
+                cat_changes.loc[key, 'before'] = val[0]
+                cat_changes.loc[key, 'after'] = val[1]
+            cat_changes.plot(kind='bar')
+            plt.xticks(rotation=0)
+            plt.savefig(fname.rsplit('.', 1)[0] + '_cat_changes.pdf')
+            plt.close('all')
         y /= x
         if filter_zeros:
             y_bf = np.zeros(len(filter_both))
@@ -87,10 +110,10 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
         if y_range is not None:
             min_y, max_y = y_range
         create_bf_scatter((baseline, x), (col, y), fname, legend=legend and idx == 0, filter_zeros=True,
-                          min_y=min_y, max_y=max_y, min_x=min_x, max_x=max_x, )
+                          min_y=min_y, max_y=max_y, min_x=min_x, max_x=max_x, categories=cat, **kwargs)
     return bias_factors_df
 
-def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=None, filter_zeros=True, legend=True, **kwargs):
+def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=None, filter_zeros=True, legend=True, categories=None, **kwargs):
     font_size = 22
     matplotlib.rcParams.update({'font.size': font_size})
     assert isinstance(x, tuple)
@@ -106,31 +129,47 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
         filter_both = np.logical_and(y_data > 0, x_data > 0)
         y_data = y_data[filter_both]
         x_data = x_data[filter_both]
+        if categories is not None:
+            categories = categories[filter_both]
     print 'biasfactor dataset len:', len(y_data), '(', len(y_data) / orig_len * 100, '%)'
     alpha = min(1., 1 / np.log10(len(y_data)))
     f, ax = plt.subplots()
-    plt.axhline(1., color='red', alpha=.5, lw=4, ls='--')
-    for i in reversed(range(3)):
-        if i == 0:
-            filtered_y = y_data > 1
-            label = 'Increase'
-            marker = '^'
-            c = 'red'
-        elif i == 1:
-            filtered_y = np.isclose(y_data, 1.)
-            label = 'Neutral'
-            c = 'gray'
-            marker = 'o'
-        else:
-            filtered_y = y_data < 1
-            label = 'Decrease'
-            c = 'blue'
-            marker = 'v'
-        x_filt, y_filt = x_data[filtered_y], y_data[filtered_y]
-        # print '\tfiltered len', i, len(x_filt)
-        print alpha
-        ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=90, color=c, lw=1, label=label,
-                   marker=marker, facecolors='none', **kwargs)
+    plt.axhline(1., color='red', alpha=1., lw=3, ls='--')
+    if categories is None:
+        for i in reversed(range(3)):
+            if i == 0:
+                filtered_y = y_data > 1
+                label = 'Increase'
+                marker = '^'
+                c = 'red'
+            elif i == 1:
+                filtered_y = np.isclose(y_data, 1.)
+                label = 'Neutral'
+                c = 'gray'
+                marker = 'o'
+            else:
+                filtered_y = y_data < 1
+                label = 'Decrease'
+                c = 'blue'
+                marker = 'v'
+            x_filt, y_filt = x_data[filtered_y], y_data[filtered_y]
+            # print '\tfiltered len', i, len(x_filt)
+            ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=90, color=c, lw=1, label=label,
+                       marker=marker, facecolors='none', **kwargs)
+    else:
+        category_dist = Counter(categories)
+        colors = ['blue', 'red']
+        markers = ['o', '^']
+        assert isinstance(categories, np.ndarray)
+        for i, c, m in zip(zip(*sorted(category_dist.iteritems(), key=lambda x: x[1], reverse=True))[0], colors,
+                           markers):
+            belong_to_cat = categories == i
+            x_filt = x_data[belong_to_cat]
+            y_filt = y_data[belong_to_cat]
+            print 'category:', i, 'pages:', len(x_filt)
+            ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=90, color=c, lw=1, label=i,
+                       marker=m, facecolors='none', **kwargs)
+        plt.legend(loc='best')
 
     if min_y is None or max_y is None:
         min_y, max_y = y_data.min(), y_data.max()
@@ -158,6 +197,7 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
         plt.show()
         plt.close('all')
         matplotlib.rcParams.update({'font.size': font_size})
+
     plot_scatter_heatmap(x_data, y_data, logy=True, logx=True, logbins=True, bins=100,
                          axis_range=[[min_x, max_x], [min_y, max_y]])
     plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
@@ -174,6 +214,8 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
 def create_scatters_from_df(df, columns, output_folder='./', filter_zeros=True, file_ending='.png', **kwargs):
     if isinstance(columns, str):
         columns = [columns]
+    else:
+        columns = list(filter(lambda x: x != 'category', columns))
     if not output_folder.endswith('/'):
         output_folder += '/'
     if not os.path.isdir(output_folder):
@@ -236,7 +278,7 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
 def create_ginis_from_df(df, columns=None, output_folder='./', zoom=None, filter_zeros=True, legend=True, font_size=16,
                          ms=5, out_fn=None, **kwargs):
     if columns is None:
-        columns = list(df.columns)
+        columns = list(df.select_dtypes(include=[np.float, np.int]).columns)
     if isinstance(columns, str):
         columns = [columns]
     if not output_folder.endswith('/'):

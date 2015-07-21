@@ -209,8 +209,11 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         try:
             return try_load(biasname)
         except:
-            print 'unknown bias:', biasname
-            exit()
+            try:
+                return try_load(dump_filename)
+            except:
+                print 'unknown bias:', biasname
+                exit()
 
 
 def self_sim_entropy(network, name, out_dir, biases, error_q, method):
@@ -296,9 +299,14 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
             print print_prefix, '[' + bias_name + ']', utils.color_string(('unkown baseline type: ' + base_line_type).upper(),
                 utils.bcolors.RED)
             exit()
-
+        if 'category' in network.vp.keys():
+            print 'add categories to stationary distribution'
+            cat_pmap = network.vp['category']
+            stat_distributions['category'] = [cat_pmap[v] for v in network.vertices()]
         #save to df
         pd.DataFrame.from_dict(stat_distributions).to_pickle(out_data_dir + name + '_stat_dists.df')
+        if 'category' in stat_distributions:
+            del stat_distributions['category']
         trapped_df = pd.DataFrame(index=range(network.num_vertices()))
         gini_coef_df = pd.DataFrame()
 

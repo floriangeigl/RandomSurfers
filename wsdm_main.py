@@ -60,23 +60,24 @@ def get_network(name, directed=True):
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     fast_test = False
-    rewires = 1
+    rewires = 0
     base_outdir = 'output/wsdm/'
     empiric_data_dir = '/opt/datasets/'
     method = 'EV' # EV: Eigenvector, PR: PageRank
     biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
+    biases = ['adjacency', 'topic_one', 'topic_two', 'topic_three']
     datasets = list()
     #datasets.append({'name': 'toy_example', 'directed': False})
     #datasets.append({'name': 'karate'})
-    datasets.append({'name': empiric_data_dir + 'karate/karate.edgelist', 'directed': False})
+    #datasets.append({'name': empiric_data_dir + 'karate/karate.edgelist', 'directed': False})
     if not fast_test:
-        datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
         #pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
     basics.create_folder_structure(base_outdir)

@@ -3,7 +3,7 @@ import scipy
 import linalg as la
 import scipy.linalg as lalg
 import scipy.stats as stats
-from scipy.sparse import lil_matrix, csr_matrix, csc_matrix
+from scipy.sparse import lil_matrix, csr_matrix, csc_matrix, diags
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sparse_linalg
 from sklearn.preprocessing import normalize
@@ -154,8 +154,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             bias = lil_matrix(np.ones(bias.shape))
             bias_max_min_r = 1.
         if len(bias.shape) == 1:
-            bias_m = lil_matrix(adjacency_matrix.shape)
-            bias_m.setdiag(bias)
+            bias_m = diags(bias, 0)
             bias_max_min_r = bias.max() / bias.min()
             weighted_trans = bias_m.dot(adjacency_matrix)
         elif len(bias.shape) == 2 and bias.shape[0] > 0 and bias.shape[1] > 0:
