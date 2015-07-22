@@ -65,7 +65,7 @@ def main():
     empiric_data_dir = '/opt/datasets/'
     method = 'EV' # EV: Eigenvector, PR: PageRank
     biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
-    biases = ['adjacency', 'topic_one', 'topic_two', 'topic_three']
+    biases = ['adjacency', 'topic_1', 'topic_2', 'topic_3']
     datasets = list()
     #datasets.append({'name': 'toy_example', 'directed': False})
     #datasets.append({'name': 'karate'})

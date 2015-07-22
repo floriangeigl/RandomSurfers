@@ -92,8 +92,8 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
                 cat_before_after[i] = x[cat_filt].sum(), y[cat_filt].sum()
             cat_changes = pd.DataFrame(columns=['before', 'after'])
             for key, val in cat_before_after.iteritems():
-                cat_changes.loc[key, 'before'] = val[0]
-                cat_changes.loc[key, 'after'] = val[1]
+                cat_changes.loc[key, 'unbiased'] = val[0]
+                cat_changes.loc[key, 'biased'] = val[1]
             cat_changes.plot(kind='bar')
             plt.xticks(rotation=0)
             plt.savefig(fname.rsplit('.', 1)[0] + '_cat_changes.pdf')
@@ -170,6 +170,7 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
             ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=90, color=c, lw=1, label=i,
                        marker=m, facecolors='none', **kwargs)
         plt.legend(loc='best')
+        y_label = 'Bias Factor'
 
     if min_y is None or max_y is None:
         min_y, max_y = y_data.min(), y_data.max()
