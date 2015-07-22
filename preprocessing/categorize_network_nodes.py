@@ -64,6 +64,7 @@ def basic_cat(g, url_pmap, special_case=None):
 
 net_name = '/opt/datasets/orf_tvthek/tvthek_orf'
 g = load_edge_list(net_name, vertex_id_dtype='string', directed=True)
+print g
 if 'NodeId' in g.vp.keys():
     g.vp['url'] = g.vp['NodeId'].copy()
 print g.vp.keys()

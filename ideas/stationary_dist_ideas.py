@@ -26,9 +26,9 @@ basics.create_folder_structure(output_folder)
 # we want to highlight 20 % of the products
 twenty_perc = np.round(elements * 0.2) - 0.5
 df = pd.DataFrame()
-df['orig'] = np.exp(np.random.random(elements))
-df['orig'] /= df['orig'].sum()
-df['orig'] = sorted(df['orig'], reverse=True)
+df['unbiased'] = np.exp(np.random.random(elements))
+df['unbiased'] /= df['unbiased'].sum()
+df['unbiased'] = sorted(df['unbiased'], reverse=True)
 df.plot(kind='bar')
 plt.axvline(twenty_perc, lw=2, c='black', linestyle='--')
 plt.annotate('20%', xy=(twenty_perc + 0.1, max(df.max())))
@@ -40,12 +40,12 @@ plt.tight_layout()
 plt.savefig(output_folder + 'eighty_twenty_orig' + ext)
 plt.close('all')
 
-df['mod'] = df['orig'].copy()
-fac = 0.8 / df['mod'].loc[:int(twenty_perc)].sum()
-df['mod'].loc[:int(twenty_perc)] = df['mod'].loc[:int(twenty_perc)] * fac
-fac = 0.2 / df['mod'].loc[int(twenty_perc) + 1:].sum()
-df['mod'].loc[int(twenty_perc) + 1:] = df['mod'].loc[int(twenty_perc) + 1:] * fac
-df['mod'] /= df['mod'].sum()
+df['biased'] = df['unbiased'].copy()
+fac = 0.8 / df['biased'].loc[:int(twenty_perc)].sum()
+df['biased'].loc[:int(twenty_perc)] = df['biased'].loc[:int(twenty_perc)] * fac
+fac = 0.2 / df['biased'].loc[int(twenty_perc) + 1:].sum()
+df['biased'].loc[int(twenty_perc) + 1:] = df['biased'].loc[int(twenty_perc) + 1:] * fac
+df['biased'] /= df['biased'].sum()
 # print df
 df.plot(kind='bar')
 plt.axvline(twenty_perc, lw=2, c='black', linestyle='--')

@@ -90,7 +90,7 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
             for i in set(categories):
                 cat_filt = categories == i
                 cat_before_after[i] = x[cat_filt].sum(), y[cat_filt].sum()
-            cat_changes = pd.DataFrame(columns=['before', 'after'])
+            cat_changes = pd.DataFrame(columns=['unbiased', 'biased'])
             for key, val in cat_before_after.iteritems():
                 cat_changes.loc[key, 'unbiased'] = val[0]
                 cat_changes.loc[key, 'biased'] = val[1]
@@ -169,13 +169,15 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
             print 'category:', i, 'pages:', len(x_filt)
             ax.scatter(x=x_filt, y=y_filt, alpha=alpha, s=90, color=c, lw=1, label=i,
                        marker=m, facecolors='none', **kwargs)
-        plt.legend(loc='best')
+        plt.legend(loc='lower center')
         y_label = 'Bias Factor'
 
     if min_y is None or max_y is None:
         min_y, max_y = y_data.min(), y_data.max()
     if min_x is None or max_x is None:
         min_x, max_x = x_data.min(), x_data.max()
+    min_y = min(min_y, 0.1)
+    max_y = max(max_y, 10)
     ax.set_xlim([min_x, max_x])
     ax.set_ylim([min_y, max_y])
     plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
