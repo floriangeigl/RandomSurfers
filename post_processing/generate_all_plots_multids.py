@@ -151,7 +151,7 @@ plot_entropy_rates(entropy_rates, out_dir + 'entropy.pdf')
 
 worker_pool = multiprocessing.Pool(processes=15)
 
-for fn in stat_dist_files:
+for fn in stat_dist_files[:1]:
     ds_name = fn.rsplit('/', 1)[-1].replace('_stat_dists.df', '')
     print ds_name.center(120, '#')
     worker_pool.apply_async(create_plots, args=(fn, special_cats[ds_name] if ds_name in special_cats else None,))
