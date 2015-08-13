@@ -11,6 +11,16 @@ def rand_surf(g, weights, hobs):
             weights = g.ep[weights]
         except KeyError:
             weights = None
+        vertices = list(g.vertices())
+        degrees = np.array(g.degree_property_map('in').a)
+        rand_num = random.random() * degrees.sum()
+        weights_sum = 0.
+        for v, w in zip(vertices, degrees):
+            weights_sum += w
+            if weights_sum >= rand_num:
+                current_v = v
+                break
+
         current_v = random.sample(list(g.vertices()), k=1)[0]
         for i in xrange(hobs):
             visits[current_v] += 1
@@ -47,9 +57,9 @@ class RandomSurfer():
             self.weights = weights
         assert np.all(gt.label_largest_component(self.g).a)
 
-    def surf(self, num_hops=None, processes=10):
+    def surf(self, num_hops=None, processes=1):
         if num_hops is None:
-            num_hops = self.g.num_edges() * 100
+            num_hops = self.g.num_edges() * 10000
         # print 'iter:', num_hops
         results = list()
         result_append = results.append

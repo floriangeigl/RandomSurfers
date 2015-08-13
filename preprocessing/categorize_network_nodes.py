@@ -4,6 +4,7 @@ from collections import defaultdict
 import operator
 from tools.gt_tools import load_edge_list
 from graph_tool.all import *
+import urllib
 
 def get_cat_dist(g, cat_pmap, url_map):
     dist = defaultdict(list)
@@ -23,6 +24,8 @@ def print_norm_dict(mydict):
 def basic_cat(g, url_pmap, special_case=None):
     assert isinstance(g, Graph)
     cat_pmap = g.new_vertex_property('object')
+    for v in g.vertices():
+        url_pmap[v] = urllib.unquote(url_pmap[v].decode('utf8').encode('latin1'))
     if special_case == 'orf':
         def mapper_function(v):
             v_url = url_pmap[v].split('/', 3)[-1]
@@ -38,7 +41,7 @@ def basic_cat(g, url_pmap, special_case=None):
                 v_url = v_url.split('/', 2)[0]
             return v_url
     else:
-        mapper_function = lambda v: url_pmap[v].split('/', 3)[-1].split('/', 1)[0]
+        mapper_function = lambda v: url_pmap[v].split('/', 3)[-1].split('/', 1)[0].split('?', 1)[0]
 
     for v in g.vertices():
         v_cat = mapper_function(v)
@@ -61,19 +64,29 @@ def basic_cat(g, url_pmap, special_case=None):
     return cat_pmap
 
 
+def main():
+    net_name = '/opt/datasets/daserste/daserste'
+    special_case = 'daserste'
 
-net_name = '/opt/datasets/orf_tvthek/tvthek_orf'
-g = load_edge_list(net_name, vertex_id_dtype='string', directed=True)
-print g
-if 'NodeId' in g.vp.keys():
-    g.vp['url'] = g.vp['NodeId'].copy()
-print g.vp.keys()
-url_map = g.vp['url']
-cat_pmap = basic_cat(g, url_map, 'orf')
-cat_dist = get_cat_dist(g, cat_pmap, url_map)
-print_norm_dict(cat_dist)
-print len(cat_dist), 'categories'
-if not net_name.endswith('.gt'):
-    net_name += '.gt'
-g.vp['category'] = cat_pmap
-g.save(net_name)
+    #net_name = '/opt/datasets/orf_tvthek/tvthek_orf'
+    #special_case = 'orf'
+
+
+    g = load_edge_list(net_name, vertex_id_dtype='string', directed=True)
+    print g
+    if 'NodeId' in g.vp.keys():
+        g.vp['url'] = g.vp['NodeId'].copy()
+    print g.vp.keys()
+    url_map = g.vp['url']
+    cat_pmap = basic_cat(g, url_map, special_case)
+    cat_dist = get_cat_dist(g, cat_pmap, url_map)
+    print_norm_dict(cat_dist)
+    print len(cat_dist), 'categories'
+    if not net_name.endswith('.gt'):
+        net_name += '.gt'
+    g.vp['category'] = cat_pmap
+    g.save(net_name)
+
+if __name__ == '__main__':
+    main()
+

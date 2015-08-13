@@ -9,16 +9,25 @@ from data_io import *
 import utils
 import Queue
 import os
-
+import operator
+from preprocessing.categorize_network_nodes import get_cat_dist
+import copy
 
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     fast_test = False
     rewires = 0
-    base_outdir = 'output/wsdm/'
+    base_outdir = 'output/ecir/'
     empiric_data_dir = '/opt/datasets/'
     method = 'EV' # EV: Eigenvector, PR: PageRank
-    biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
+    biases = ['adjacency']
+    # bias_strength = list(np.arange(1.1, 2, 0.1))
+    bias_strength = range(1, 6)
+    bias_strength.extend(range(0, 100, 5)[1:])
+    bias_strength.extend(range(100, 1001, 100)[1:])
+    bias_strength = sorted(map(float, bias_strength))
+
+    print bias_strength
     # biases = ['adjacency', 'topic_1', 'topic_2', 'topic_3']
     datasets = list()
     #datasets.append({'name': 'toy_example', 'directed': False})
@@ -31,7 +40,7 @@ def main():
         #datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
         #pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
     basics.create_folder_structure(base_outdir)
@@ -61,12 +70,36 @@ def main():
         out_dir = base_outdir + network_name + '/'
         basics.create_folder_structure(out_dir)
         print net
+        cat_pmap = net.vp['category']
+        categories_dist = get_cat_dist(net, cat_pmap, net.vp['url'])
+        categories_dist = {i: len(j) for i, j in categories_dist.iteritems()}
+        topics = list()
+
+        #find max category
+        topics.append(max(categories_dist.iteritems(), key=operator.itemgetter(1)))
+
+        #find mean category
+        mean_val = np.array(categories_dist.values()).mean()
+        topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
+
+        #find median category
+        mean_val = np.median(np.array(categories_dist.values()))
+        topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
+        print topics
+        current_biases = copy.copy(biases)
+        for t_name, t_size in topics:
+            for s in bias_strength:
+                t_bias = np.array([s if cat_pmap[v] == t_name else 1. for v in net.vertices()])
+                t_name_s = t_name + '_cs' + str(int(t_size)) + '_bs' + str("%.2f" % s)
+                current_biases.append((t_name_s, t_bias))
+        print current_biases
+
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,),
-                                    kwds={'name': network_name, 'out_dir': out_dir, 'biases': biases,
+                                    kwds={'name': network_name, 'out_dir': out_dir, 'biases': current_biases,
                                           'error_q': error_q, 'method': method}, callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
+            results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
                                             method=method))
         write_network_properties(net, network_name, network_prop_file)
         for r in xrange(rewires):
@@ -82,11 +115,11 @@ def main():
             network_name = store_fn.rsplit('/', 1)[-1].replace('.gt', '')
             if multip:
                 worker_pool.apply_async(self_sim_entropy, args=(net,),
-                                        kwds={'name': network_name, 'out_dir': out_dir, 'biases': biases,
+                                        kwds={'name': network_name, 'out_dir': out_dir, 'biases': current_biases,
                                               'error_q': error_q, 'method': method}, callback=async_callback)
             else:
                 results.append(
-                    self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
+                    self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
                                      method=method))
             write_network_properties(net, network_name, network_prop_file)
 

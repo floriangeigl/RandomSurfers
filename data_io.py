@@ -11,6 +11,52 @@ import h5py
 import scipy
 import sys
 from scipy.sparse import csr_matrix
+from tools.gt_tools import load_edge_list
+
+def get_network(name, directed=True):
+    # synthetic params
+    num_links = 1200
+    num_nodes = 300
+    num_blocks = 5
+    price_net_m = 4
+    price_net_g = 1
+    strong_others_con = 0.1
+    weak_others_con = 0.7
+    print 'get network:', name.rsplit('/', 1)[-1]
+    if name == 'toy_example':
+        net = price_network(5, m=2, directed=directed)
+        net.gp['type'] = net.new_graph_property('string', 'synthetic')
+
+    elif name == 'karate':
+        directed = False
+        net = load_edge_list('/opt/datasets/karate/karate.edgelist', directed=directed, sep=None, vertex_id_dtype='int')
+        net.gp['type'] = net.new_graph_property('string', 'empiric')
+
+    elif name == 'sbm_strong' or name == 'sbm_weak':
+        if name == 'sbm_weak':
+            other_con = weak_others_con
+        else:
+            other_con = strong_others_con
+        generator = SBMGenerator()
+        net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links,
+                                             other_con=other_con, directed=directed)
+        net.gp['type'] = net.new_graph_property('string', 'synthetic')
+
+    elif name == 'price_network':
+        net = price_network(num_nodes, m=price_net_m, gamma=price_net_g, directed=directed)
+        net.gp['type'] = net.new_graph_property('string', 'synthetic')
+
+    else:
+        net = load_edge_list(name, directed=directed, vertex_id_dtype='string')
+        net.gp['filename'] = net.new_graph_property('string', name)
+        net.gp['type'] = net.new_graph_property('string', 'empiric')
+
+    l = label_largest_component(net, directed=directed)
+    net.set_vertex_filter(l)
+    net.purge_vertices()
+    remove_self_loops(net)
+    net.clear_filters()
+    return net
 
 def read_edge_list(filename, encoder=None):
     store_fname = filename + '.gt'

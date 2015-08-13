@@ -254,10 +254,14 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
         data_dict = dict()
         data_dict['net'] = network
         data_dict['adj'] = adjacency(network)
-        for bias_name in sorted(biases):
-            # calc bias
-            bias = calc_bias(dump_base_fn, bias_name, data_dict, dump=network.gp['type'] == 'empiric')
-            bias_name = bias_name.rsplit('/', 1)[-1]
+        for bias in biases:
+            if isinstance(bias, str):
+                # calc bias
+                bias_name = bias.rsplit('/', 1)[-1]
+                bias = calc_bias(dump_base_fn, bias, data_dict, dump=network.gp['type'] == 'empiric')
+            else:
+                bias_name, bias = bias
+
             print print_prefix, '[' + bias_name + ']', '['+str(datetime.datetime.now().replace(
                 microsecond=0))+']', 'calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
 
@@ -282,14 +286,18 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
                         bias.data[np.isnan(bias.data) | np.isinf(bias.data)] = 0
 
             assert scipy.sparse.issparse(adjacency_matrix)
-            ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias, method=method,
+            try:
+                ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias, method=method,
                                                                              print_prefix=print_prefix + ' [' + bias_name + '] ')
+                stat_distributions[bias_name] = stat_dist
+                #print print_prefix, '[' + biasname + '] entropy rate:', ent
+                entropy_df.at[0, bias_name] = ent
+                sort_df.append((bias_name, ent))
+                corr_df[bias_name] = stat_dist
+            except:
+                print traceback.format_exc()
             del bias
-            stat_distributions[bias_name] = stat_dist
-            #print print_prefix, '[' + biasname + '] entropy rate:', ent
-            entropy_df.at[0, bias_name] = ent
-            sort_df.append((bias_name, ent))
-            corr_df[bias_name] = stat_dist
+
             # mem_cons.append(('after ' + bias_name, utils.get_memory_consumption_in_mb()))
         if base_line_type == 'adjacency':
             base_line_abs_vals = stat_distributions['adjacency']

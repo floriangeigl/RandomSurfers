@@ -124,3 +124,20 @@ def softmax(w, t=1.0):
     dist = np.exp(dist / t)
     dist /= dist.sum()
     return dist
+
+def check_aperiodic(g):
+    if isinstance(g, str):
+        a = adjacency(load_graph(g))
+        name = g.rsplit('/')[-1].replace('.gt', '')
+        print 'aperiodic:', name
+    else:
+        a = adjacency(g)
+    b = a * a
+    diag_two_sum = b.diagonal().sum()
+    print '\tA*A diag sum:', int(diag_two_sum)
+    b *= a
+    diag_three_sum = b.diagonal().sum()
+    print '\tA*A*A diag sum:', int(diag_three_sum)
+    aper = bool(diag_two_sum) and bool(diag_three_sum)
+    print '\taperiodic:', aper
+    return aper

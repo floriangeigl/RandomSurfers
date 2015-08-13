@@ -11,24 +11,10 @@ import os
 from tools.basics import create_folder_structure, find_files
 import multiprocessing
 import traceback
+from utils import check_aperiodic
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
-
-
-def check_aperiodic(fn):
-    a = adjacency(load_graph(fn))
-    name = fn.rsplit('/')[-1].replace('.gt', '')
-    print 'aperiodic:', name
-    b = a * a
-    diag_two_sum = b.diagonal().sum()
-    print '\tA*A diag sum:', int(diag_two_sum)
-    b *= a
-    diag_three_sum = b.diagonal().sum()
-    print '\tA*A*A diag sum:', int(diag_three_sum)
-    aper = bool(diag_two_sum) and bool(diag_three_sum)
-    print '\taperiodic:', aper
-    return aper
 
 
 def create_plots(fn, colored_categories=None):
