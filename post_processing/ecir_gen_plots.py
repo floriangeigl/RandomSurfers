@@ -20,8 +20,9 @@ pd.set_option('display.max_colwidth', 600)
 def get_stat_dist_bias_sum(df, col_name, cat_name, category_col_name):
     filt_df = df[[col_name, category_col_name]]
     assert np.isclose(df[col_name].sum(), 1)
-    bias_sum = filt_df[col_name][filt_df[category_col_name] == cat_name].sum()
-    return bias_sum
+    cat_filter = filt_df[category_col_name] == cat_name
+    bias_sum = filt_df[col_name][cat_filter].sum()
+    return bias_sum, cat_filter.sum()
 
 
 base_dir = '/home/fgeigl/navigability_of_networks/output/ecir/'
@@ -36,6 +37,7 @@ for stat_dist_fn in stat_dist_files:
     ds_name = stat_dist_fn.rsplit('/', 1)[-1].split('_stat_dist')[0]
     print ds_name
     res_df = pd.DataFrame(index=[1.])
+    cat_size = pd.DataFrame()
     df = pd.read_pickle(stat_dist_fn)
     bias_base_names = set(map(lambda x: x.split('_cs')[0], filter(lambda x: '_bs' and '_cs' in x, df.columns)))
     print bias_base_names
@@ -45,10 +47,11 @@ for stat_dist_fn in stat_dist_files:
             "%.2f" % (float(bias_columns[0].split('_cs')[-1].split('_bs')[0]) / len(df) * 100)) + '%)'
         print bias_columns
         # unbiased
-        res_df.at[1., bias_label] = get_stat_dist_bias_sum(df, 'adjacency', bias_name, 'category')
+        res_df.at[1., bias_label], cat_size.at[1, bias_label] = get_stat_dist_bias_sum(df, 'adjacency', bias_name,
+                                                                                    'category')
         for bc in bias_columns:
             bs = float(bc.split('_bs')[-1])
-            res_df.at[bs, bias_label] = get_stat_dist_bias_sum(df, bc, bias_name, 'category')
+            res_df.at[bs, bias_label], _ = get_stat_dist_bias_sum(df, bc, bias_name, 'category')
         res_df.sort(inplace=True)
     print res_df
     # res_df /= res_df.max()
@@ -59,11 +62,21 @@ for stat_dist_fn in stat_dist_files:
     plt.savefig(out_dir + ds_name + '_bias_influence.pdf')
     plt.close('all')
 
-    res_df /= res_df.min()
-    res_df.plot(lw=3, style='-*')
+    tmp_df = res_df / res_df.min()
+    tmp_df.plot(lw=3, style='-*')
     plt.xlabel('bias strength')
-    plt.ylabel('fraction of unbiased sum')
-    plt.ylim([1., res_df.max().max()])
+    plt.ylabel(r'$\frac{biased\ stat.\ values\ sum}{unbiased\ stat.\ values\ sum}$')
+    plt.ylim([1., tmp_df.max().max()])
     plt.tight_layout()
     plt.savefig(out_dir + ds_name + '_bias_influence_norm.pdf')
+    plt.close('all')
+
+    print cat_size.sum()
+    print res_df.sum()
+    tmp_df = res_df / (res_df.min() / cat_size.sum())
+    tmp_df.plot(lw=3, style='-*')
+    plt.xlabel('bias strength')
+    plt.ylabel(r'$\frac{biased\ stat.\ values\ sum}{unbiased\ stat.\ values\ sum}$')
+    plt.tight_layout()
+    plt.savefig(out_dir + ds_name + '_bias_influence_nodes_norm.pdf')
     plt.close('all')
