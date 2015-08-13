@@ -57,6 +57,7 @@ for stat_dist_fn in stat_dist_files:
     plt.ylabel('sum of stationary values')
     plt.tight_layout()
     plt.savefig(out_dir + ds_name + '_bias_influence.pdf')
+    plt.close('all')
 
     res_df /= res_df.min()
     res_df.plot(lw=3, style='-*')
@@ -65,3 +66,4 @@ for stat_dist_fn in stat_dist_files:
     plt.ylim([1., res_df.max().max()])
     plt.tight_layout()
     plt.savefig(out_dir + ds_name + '_bias_influence_norm.pdf')
+    plt.close('all')
