@@ -98,7 +98,8 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
     except scipy.sparse.linalg.ArpackNoConvergence:
         print print_prefix, 'eigenvector did not converge!'
         print print_prefix, 'try using pagerank instead!'
-        raise scipy.sparse.linalg.ArpackNoConvergence
+        raise
+        #raise scipy.sparse.linalg.ArpackNoConvergence
 
     assert np.all(np.isfinite(pi))
     normed_P = normalize(transition_matrix, norm='l1', axis=0, copy=True)

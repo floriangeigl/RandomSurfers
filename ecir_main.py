@@ -94,21 +94,25 @@ def main():
             mean_val = np.median(np.array(categories_dist.values()))
             topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
         else:
-            topics = sorted(categories_dist.iteritems(), key=operator.itemgetter(1))
+            topics = list(categories_dist.iteritems())
         print 'num topics:', len(topics)
         print 'sample topics', random.sample(topics, min(10, len(topics)))
 
         current_biases = copy.copy(biases)
-        num_filt_topcis = 0
+        num_filt_topics = 0
+        random.shuffle(topics)
         for t_name, t_size in topics:
             biased_nodes = np.array([1. if cat_pmap[v] == t_name else 0. for v in net.vertices()])
             if min_topic_size is not None and biased_nodes.sum() >= min_topic_size:
-                num_filt_topcis += 1
-                for s in bias_strength:
-                    t_bias = (biased_nodes * (s - 1)) + 1
-                    t_name_s = t_name + '_cs' + str(int(t_size)) + '_bs' + str("%.2f" % s)
-                    current_biases.append((t_name_s, t_bias))
-        print 'num filtered topics:', num_filt_topcis
+                if sample_topics is None or sample_topics > num_filt_topics:
+                    num_filt_topics += 1
+                    for s in bias_strength:
+                        t_bias = (biased_nodes * (s - 1)) + 1
+                        t_name_s = t_name + '_cs' + str(int(t_size)) + '_bs' + str("%.2f" % s)
+                        current_biases.append((t_name_s, t_bias))
+                else:
+                    break
+        print 'num filtered topics:', num_filt_topics
         print 'num biases:', len(current_biases)
         print 'sample biases', random.sample(current_biases, min(10, len(current_biases)))
 
