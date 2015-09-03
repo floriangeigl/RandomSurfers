@@ -60,7 +60,8 @@ def basic_cat(g, url_pmap, special_case=None):
     elif special_case == 'getdigital':
         for v in g.vertices():
             cat_pmap[v] = cat_pmap[v].rsplit('_', 1)[0]
-
+    for v in g.vertices():
+        cat_pmap[v] = cat_pmap[v].lower()
     return cat_pmap
 
 

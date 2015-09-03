@@ -11,7 +11,7 @@ import Queue
 import os
 import operator
 from preprocessing.categorize_network_nodes import get_cat_dist
-import copy
+import copy, time
 
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
@@ -25,7 +25,10 @@ def main():
     bias_strength = range(1, 6)
     bias_strength.extend(range(0, 100, 5)[1:])
     bias_strength.extend(range(100, 1001, 100)[1:])
+    bias_strength.extend(range(1000, 10001, 1000)[1:])
     bias_strength = sorted(map(float, bias_strength))
+    min_topic_size = 20
+    sample_topics = 20
 
     print bias_strength
     # biases = ['adjacency', 'topic_1', 'topic_2', 'topic_3']
@@ -37,7 +40,7 @@ def main():
         #datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
@@ -45,7 +48,7 @@ def main():
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
     basics.create_folder_structure(base_outdir)
     if multip:
-        worker_pool = multiprocessing.Pool(processes=2)
+        worker_pool = multiprocessing.Pool(processes=10)
     else:
         worker_pool = None
     results = list()
@@ -59,7 +62,7 @@ def main():
     network_prop_file = base_outdir + 'network_properties.txt'
     if os.path.isfile(network_prop_file):
         os.remove(network_prop_file)
-
+    num_tasks = 0
     for ds in datasets:
         network_name = ds['name']
         ds.pop("name", None)
@@ -69,35 +72,51 @@ def main():
         network_name, file_name = file_name, network_name
         out_dir = base_outdir + network_name + '/'
         basics.create_folder_structure(out_dir)
-        print net
+        print net, net.vp.keys()
         cat_pmap = net.vp['category']
-        categories_dist = get_cat_dist(net, cat_pmap, net.vp['url'])
+        if 'url' in net.vp.keys():
+            page_ref_pmap = net.vp['url']
+        else:
+            page_ref_pmap = net.vp['article-name']
+        categories_dist = get_cat_dist(net, cat_pmap, page_ref_pmap)
         categories_dist = {i: len(j) for i, j in categories_dist.iteritems()}
-        topics = list()
+        if False:
+            topics = list()
 
-        #find max category
-        topics.append(max(categories_dist.iteritems(), key=operator.itemgetter(1)))
+            #find max category
+            topics.append(max(categories_dist.iteritems(), key=operator.itemgetter(1)))
 
-        #find mean category
-        mean_val = np.array(categories_dist.values()).mean()
-        topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
+            #find mean category
+            mean_val = np.array(categories_dist.values()).mean()
+            topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
 
-        #find median category
-        mean_val = np.median(np.array(categories_dist.values()))
-        topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
-        print topics
+            #find median category
+            mean_val = np.median(np.array(categories_dist.values()))
+            topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
+        else:
+            topics = sorted(categories_dist.iteritems(), key=operator.itemgetter(1))
+        print 'num topics:', len(topics)
+        print 'sample topics', random.sample(topics, min(10, len(topics)))
+
         current_biases = copy.copy(biases)
+        num_filt_topcis = 0
         for t_name, t_size in topics:
-            for s in bias_strength:
-                t_bias = np.array([s if cat_pmap[v] == t_name else 1. for v in net.vertices()])
-                t_name_s = t_name + '_cs' + str(int(t_size)) + '_bs' + str("%.2f" % s)
-                current_biases.append((t_name_s, t_bias))
-        print current_biases
+            biased_nodes = np.array([1. if cat_pmap[v] == t_name else 0. for v in net.vertices()])
+            if min_topic_size is not None and biased_nodes.sum() >= min_topic_size:
+                num_filt_topcis += 1
+                for s in bias_strength:
+                    t_bias = (biased_nodes * (s - 1)) + 1
+                    t_name_s = t_name + '_cs' + str(int(t_size)) + '_bs' + str("%.2f" % s)
+                    current_biases.append((t_name_s, t_bias))
+        print 'num filtered topics:', num_filt_topcis
+        print 'num biases:', len(current_biases)
+        print 'sample biases', random.sample(current_biases, min(10, len(current_biases)))
 
         if multip:
             worker_pool.apply_async(self_sim_entropy, args=(net,),
                                     kwds={'name': network_name, 'out_dir': out_dir, 'biases': current_biases,
                                           'error_q': error_q, 'method': method}, callback=async_callback)
+            num_tasks += 1
         else:
             results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
                                             method=method))
@@ -117,6 +136,7 @@ def main():
                 worker_pool.apply_async(self_sim_entropy, args=(net,),
                                         kwds={'name': network_name, 'out_dir': out_dir, 'biases': current_biases,
                                               'error_q': error_q, 'method': method}, callback=async_callback)
+                num_tasks += 1
             else:
                 results.append(
                     self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
@@ -125,6 +145,12 @@ def main():
 
     if multip:
         worker_pool.close()
+        while True:
+            time.sleep(60)
+            remaining_processes = len(worker_pool._cache)
+            print 'overall process status:', (num_tasks - remaining_processes) / num_tasks * 100, '%'
+            if remaining_processes == 0:
+                break
         worker_pool.join()
     while True:
         try:

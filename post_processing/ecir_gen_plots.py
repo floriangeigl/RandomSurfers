@@ -33,7 +33,7 @@ base_line = 'adjacency'
 out_dir = base_dir + 'plots/'
 create_folder_structure(out_dir)
 bias_range = None
-bias_range = [1, 10]
+# bias_range = [1, 10]
 
 stat_dist_files = find_files(base_dir, 'stat_dists.df')
 print stat_dist_files
@@ -56,7 +56,7 @@ for stat_dist_fn in stat_dist_files:
         bias_columns = filter(lambda x: x.startswith(bias_name), df.columns)
         bias_label = bias_name + ' (' + str(
             "%.2f" % (float(bias_columns[0].split('_cs')[-1].split('_bs')[0]) / len(df) * 100)) + '%)'
-        print bias_columns
+        # print bias_columns
         # unbiased
         res_df.at[1., bias_label], cat_size.at[1, bias_label] = get_stat_dist_bias_sum(df, 'adjacency', bias_name,
                                                                                     'category')
@@ -68,7 +68,7 @@ for stat_dist_fn in stat_dist_files:
         fast_calc = False
         feas_fact = None
 
-
+        '''
         def worker_func(net, biased_nodes, bs):
             current_feas_dist = list()
             for v in net.vertices():
@@ -79,32 +79,58 @@ for stat_dist_fn in stat_dist_files:
             current_feas_fac = current_feas_dist.max()
             # print bs, 'done'
             return bs, current_feas_fac
-
+        '''
 
         results = list()
         worker_pool = mp.Pool(processes=10)
         for idx_bc, bc in enumerate(bias_columns):
             bs = float(bc.split('_bs')[-1])
             if bs > 1. and (bias_range is None or bias_range[0] <= bs <= bias_range[1]):
-                worker_pool.apply_async(worker_func, args=(net, biased_nodes, bs), callback=results.append)
+                # worker_pool.apply_async(worker_func, args=(net, biased_nodes, bs), callback=results.append)
                 res_df.at[bs, bias_label], _ = get_stat_dist_bias_sum(df, bc, bias_name, 'category')
         worker_pool.close()
         worker_pool.join()
-        for bs, feas_fac in results:
-            feas_df.at[bs, bias_label] = feas_fac
+        if results:
+            for bs, feas_fac in results:
+                feas_df.at[bs, bias_label] = feas_fac
 
     res_df.sort(inplace=True)
     feas_df.sort(inplace=True)
-    print res_df
+    # print res_df
+    res_df_i = res_df.reindex(range(int(res_df.index.min()), int(res_df.index.max()) + 1))
+    res_df_i = res_df_i.interpolate(method='linear')
+    # print res_df
+    limits = [.25, .5, .75]
+    limits_df = pd.DataFrame(index=limits, columns=res_df_i.columns)
+    for l in limits:
+        tmp = list()
+        for col in res_df_i.columns:
+            try:
+                tmp.append(res_df_i[col][res_df_i[col] < l].last_valid_index() + 1)
+            except TypeError:
+                tmp.append(np.nan)
+        limits_df.loc[l] = tmp
+    print limits_df
+    limits_df.columns = map(lambda x: x.rsplit(' (', 1)[0], limits_df.columns)
+    limits_df.to_pickle(base_dir + 'data/' + ds_name + '_limits.df')
+
     # res_df /= res_df.max()
-    ax = res_df.plot(lw=2, style=['-*', '-o', '-D'])
-    plt.xlabel('bias strength')
-    plt.ylabel('sum of stationary values')
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0 + box.height * 0.025, box.width, box.height * 0.75])
-    lgd = plt.legend(loc='upper center', bbox_to_anchor=(0.55, 1.55))
-    # plt.tight_layout()
-    plt.savefig(out_dir + ds_name + '_bias_influence.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
+    out_fn = out_dir + ds_name + '_bias_influence.pdf'
+    if len(res_df.columns) > 5:
+        ax = res_df.plot(legend=False, logx=True, logy=True)
+        plt.xlabel('bias strength')
+        plt.ylabel('sum of stationary values')
+        plt.tight_layout()
+        plt.savefig(out_fn)
+    else:
+        ax = res_df.plot(lw=2, style=['-*', '-o', '-D'])
+        plt.xlabel('bias strength')
+        plt.ylabel('sum of stationary values')
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height * 0.025, box.width, box.height * 0.75])
+        lgd = plt.legend(loc='upper center', bbox_to_anchor=(0.55, 1.55))
+        # plt.tight_layout()
+        plt.savefig(out_fn, bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.close('all')
 
     tmp_df = res_df / res_df.min()

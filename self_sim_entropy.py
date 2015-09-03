@@ -231,12 +231,33 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
         print_prefix = utils.color_string('[' + name + ']')
         # mem_cons = list()
         # mem_cons.append(('start', utils.get_memory_consumption_in_mb()))
+        com_prop = None
         try:
             com_prop = network.vp['com']
+        except KeyError:
+            try:
+                com_prop = network.vp['category']
+            except KeyError:
+                pass
+        if com_prop is not None:
+            if not isinstance(com_prop[network.vertex(0)], int):
+                # convert categories-names to int
+                tmp_prop = network.new_vertex_property('int')
+                coms = dict()
+                for v in network.vertices():
+                    v_com = com_prop[v]
+                    try:
+                        com_id = coms[v_com]
+                    except KeyError:
+                        com_id = len(coms)
+                        coms[v_com] = com_id
+                    tmp_prop[v] = com_id
+                com_prop = tmp_prop
+
             mod = modularity(network, com_prop)
             print print_prefix + ' newman modularity:', mod
-        except KeyError:
-            print print_prefix + ' newman modularity:', 'no com mapping'
+        else:
+            print print_prefix + ' newman modularity:', 'no com mapping (', sorted(network.vp.keys()), ')'
         adjacency_matrix = adjacency(network)
 
         deg_map = network.degree_property_map('total')

@@ -26,6 +26,7 @@ def create_wiki4schools():
     g = Graph(directed=True)
     vertex_mapper = defaultdict(lambda: g.add_vertex())
     pmap_article_name = g.new_vertex_property('object')
+    pmap_category_name = g.new_vertex_property('object')
     print 'read article mapping'
     with open('/opt/datasets/wikiforschools/artname_artid', 'r') as f:
         for line in f:
@@ -35,6 +36,24 @@ def create_wiki4schools():
                 v = vertex_mapper[article_id]
                 pmap_article_name[v] = article_name
 
+    print 'read category mapping'
+    catid_catname = defaultdict(str)
+    with open('/opt/datasets/wikiforschools/catname_catid', 'r') as f:
+        for line in f:
+            if not line.startswith('#'):
+                line = line.strip().split()
+                category_name = ' '.join(line[:-1])
+                category_id = int(line[-1])
+                catid_catname[category_id] = category_name
+
+    print 'assign categories to articles'
+    with open('/opt/datasets/wikiforschools/artid_catid', 'r') as f:
+        for line in f:
+            if not line.startswith('#'):
+                article_id, category_id = map(int, line.strip().split())
+                v = vertex_mapper[article_id]
+                pmap_category_name[v] = catid_catname[category_id]
+
     print 'read edge-list'
     with open('/opt/datasets/wikiforschools/graph', 'r') as f:
         for line in f:
@@ -43,6 +62,7 @@ def create_wiki4schools():
                 src, dest = map(lambda x: vertex_mapper[x], line)
                 g.add_edge(src, dest)
     g.vp['article-name'] = pmap_article_name
+    g.vp['category'] = pmap_category_name
 
     print 'map html files'
     article_name_to_html = dict()
@@ -101,7 +121,7 @@ def calc_tfidf(g, filename='/opt/datasets/wikiforschools/graph_with_props_text_s
 
 
 if __name__ == '__main__':
-    if False:
+    if True:
         g = create_wiki4schools()
     else:
         g = load_graph('/opt/datasets/wikiforschools/graph_with_props.gt')
