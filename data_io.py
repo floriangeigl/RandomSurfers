@@ -47,7 +47,10 @@ def get_network(name, directed=True):
         net.gp['type'] = net.new_graph_property('string', 'synthetic')
 
     else:
-        net = load_edge_list(name, directed=directed, vertex_id_dtype='string')
+        if name.endswith('.gt'):
+            net = load_graph(name)
+        else:
+            net = load_edge_list(name, directed=directed, vertex_id_dtype='string')
         net.gp['filename'] = net.new_graph_property('string', name)
         net.gp['type'] = net.new_graph_property('string', 'empiric')
 

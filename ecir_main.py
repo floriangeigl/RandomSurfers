@@ -40,10 +40,10 @@ def main():
         #datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools.gt', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
         #pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
     basics.create_folder_structure(base_outdir)
@@ -124,7 +124,7 @@ def main():
         else:
             results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
                                             method=method))
-        write_network_properties(net, network_name, network_prop_file)
+        # write_network_properties(net, network_name, network_prop_file)
         for r in xrange(rewires):
             store_fn = file_name + '_rewired_' + str(r).rjust(3, '0') + '.gt'
             if os.path.isfile(store_fn):
@@ -145,7 +145,7 @@ def main():
                 results.append(
                     self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
                                      method=method))
-            write_network_properties(net, network_name, network_prop_file)
+            # write_network_properties(net, network_name, network_prop_file)
 
     if multip:
         worker_pool.close()

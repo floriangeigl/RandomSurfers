@@ -242,6 +242,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
         if com_prop is not None:
             if not isinstance(com_prop[network.vertex(0)], int):
                 # convert categories-names to int
+                print print_prefix + ' convert categories to ints:'
                 tmp_prop = network.new_vertex_property('int')
                 coms = dict()
                 for v in network.vertices():
@@ -253,7 +254,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
                         coms[v_com] = com_id
                     tmp_prop[v] = com_id
                 com_prop = tmp_prop
-
+            print print_prefix + ' calc modularity...'
             mod = modularity(network, com_prop)
             print print_prefix + ' newman modularity:', mod
         else:
