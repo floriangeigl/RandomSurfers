@@ -23,12 +23,12 @@ def main():
     biases = ['adjacency']
     # bias_strength = list(np.arange(1.1, 2, 0.1))
     bias_strength = range(1, 6)
-    bias_strength.extend(range(0, 100, 5)[1:])
+    bias_strength.extend(range(0, 101, 5)[1:])
     bias_strength.extend(range(100, 1001, 100)[1:])
     bias_strength.extend(range(1000, 10001, 1000)[1:])
     bias_strength = sorted(map(float, bias_strength))
     min_topic_size = 20
-    sample_topics = 20
+    sample_topics = 100
 
     print bias_strength
     # biases = ['adjacency', 'topic_1', 'topic_2', 'topic_3']

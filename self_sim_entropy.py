@@ -275,6 +275,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
         data_dict = dict()
         data_dict['net'] = network
         data_dict['adj'] = adjacency(network)
+        skip_bias = None
         for bias in biases:
             if isinstance(bias, str):
                 # calc bias
@@ -282,6 +283,13 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
                 bias = calc_bias(dump_base_fn, bias, data_dict, dump=network.gp['type'] == 'empiric')
             else:
                 bias_name, bias = bias
+            if skip_bias is not None:
+                if bias_name.startswith(skip_bias):
+                    print print_prefix, '[' + bias_name + ']', '[' + str(datetime.datetime.now().replace(
+                        microsecond=0)) + ']', 'skip'
+                    continue
+                else:
+                    skip_bias = None
 
             print print_prefix, '[' + bias_name + ']', '['+str(datetime.datetime.now().replace(
                 microsecond=0))+']', 'calc stat dist and entropy rate... ( #v:', network.num_vertices(), ', #e:', network.num_edges(), ')'
@@ -310,7 +318,8 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
             try:
                 ent, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias, method=method,
                                                                                  print_prefix=print_prefix + ' [' + bias_name + '] ',
-                                                                                 smooth_bias=False)
+                                                                                 smooth_bias=False,
+                                                                                 calc_entropy_rate=False)
                 stat_distributions[bias_name] = stat_dist
                 #print print_prefix, '[' + biasname + '] entropy rate:', ent
                 entropy_df.at[0, bias_name] = ent
@@ -318,6 +327,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
                 corr_df[bias_name] = stat_dist
             except:
                 print traceback.format_exc()
+                skip_bias = bias_name.split('_cs', 1)[0]
             del bias
 
             # mem_cons.append(('after ' + bias_name, utils.get_memory_consumption_in_mb()))

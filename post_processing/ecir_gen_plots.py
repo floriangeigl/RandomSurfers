@@ -102,11 +102,17 @@ for stat_dist_fn in stat_dist_files:
     # print res_df
     limits = [.25, .5, .75]
     limits_df = pd.DataFrame(index=limits, columns=res_df_i.columns)
+    max_index = res_df_i.index[-1]
     for l in limits:
         tmp = list()
         for col in res_df_i.columns:
             try:
-                tmp.append(res_df_i[col][res_df_i[col] < l].last_valid_index() + 1)
+                bias_strength = res_df_i[col][res_df_i[col] < l].last_valid_index()
+                if bias_strength is not None and bias_strength < max_index:
+                    bias_strength += 1
+                    tmp.append(bias_strength)
+                else:
+                    tmp.append(np.nan)
             except TypeError:
                 tmp.append(np.nan)
         limits_df.loc[l] = tmp

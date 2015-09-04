@@ -143,7 +143,7 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
 
 
 def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps=1e-10, orig_ma_mi_r=None, method='PR',
-                               damping=0.85, smooth_bias=True):
+                               damping=0.85, smooth_bias=True, calc_entropy_rate=True):
     # supported methods:
     # PR: pagerank
     # EV: eigenvector
@@ -223,7 +223,10 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
     else:
         print print_prefix, 'unknown method:', method
     assert stat_dist is not None
-    return entropy_rate(weighted_trans, stat_dist=stat_dist, print_prefix=print_prefix), stat_dist
+    if calc_entropy_rate:
+        return entropy_rate(weighted_trans, stat_dist=stat_dist, print_prefix=print_prefix), stat_dist
+    else:
+        return None, stat_dist
 
 
 def entropy_rate(weighted_adj_matrix, stat_dist=None, base=2, print_prefix=''):
