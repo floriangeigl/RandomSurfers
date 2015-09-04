@@ -28,7 +28,7 @@ def main():
     bias_strength.extend(range(1000, 10001, 1000)[1:])
     bias_strength = sorted(map(float, bias_strength))
     min_topic_size = 20
-    sample_topics = 100
+    sample_topics = 75
 
     print bias_strength
     # biases = ['adjacency', 'topic_1', 'topic_2', 'topic_3']
@@ -40,10 +40,10 @@ def main():
         #datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools.gt', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools.gt', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf.gt', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'daserste/daserste.gt', 'directed': True})
         #pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
     basics.create_folder_structure(base_outdir)
