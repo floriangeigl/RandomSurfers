@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import division
 from tools.gt_tools import SBMGenerator, load_edge_list
 from graph_tool.all import *
@@ -40,9 +41,9 @@ def main():
         #datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools.gt', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools.gt', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf.gt', 'directed': True})
+        #datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf.gt', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'daserste/daserste.gt', 'directed': True})
         #pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
@@ -93,8 +94,13 @@ def main():
             #find median category
             mean_val = np.median(np.array(categories_dist.values()))
             topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
-        else:
+        elif False:
             topics = list(categories_dist.iteritems())
+        elif True:
+            topics = list(filter(
+                lambda x: x[0].startswith('filmmittwoch') or (x[0].startswith('report-m') and x[0].endswith('chen')),
+                categories_dist.iteritems()))
+
         print 'num topics:', len(topics)
         print 'sample topics', random.sample(topics, min(10, len(topics)))
 
