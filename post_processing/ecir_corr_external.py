@@ -109,12 +109,15 @@ def calc_cor(limits_filename, network_files, out_dir):
                 df = pd.DataFrame()
                 print '\t\tcat:', cat
                 cat_nodes = cat_to_vertices[cat]
+                already_checked = set()
                 for i in range(5):
                     for prop_name in property_names:
                         p_map = analysed_properties[prop_name]
                         vals = np.array([p_map[v] for v in cat_nodes])
                         df.at[i, prop_name] = vals.sum()
-                        cat_nodes.update((v_i for v in cat_nodes for v_i in v.in_neighbours()))
+                        in_neighbours = {v_i for v in cat_nodes - already_checked for v_i in v.in_neighbours()}
+                        already_checked.update(cat_nodes)
+                        cat_nodes.update(in_neighbours)
                         #cat_data.append(vals.mean())
                         #cat_data.append(np.median(vals))
                 df.plot()
