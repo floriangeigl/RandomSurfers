@@ -14,6 +14,7 @@ import operator
 from preprocessing.categorize_network_nodes import get_cat_dist
 import copy, time
 
+
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     fast_test = False
@@ -41,9 +42,9 @@ def main():
         #datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools.gt', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'wikiforschools/wiki4schools.gt', 'directed': True})
         #datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf.gt', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf.gt', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'daserste/daserste.gt', 'directed': True})
         #pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
@@ -94,9 +95,9 @@ def main():
             #find median category
             mean_val = np.median(np.array(categories_dist.values()))
             topics.append(min(categories_dist.iteritems(), key=lambda x: abs(mean_val - x[1])))
-        elif False:
-            topics = list(categories_dist.iteritems())
         elif True:
+            topics = list(categories_dist.iteritems())
+        elif False:
             topics = list(filter(
                 lambda x: x[0].startswith('filmmittwoch') or (x[0].startswith('report-m') and x[0].endswith('chen')),
                 categories_dist.iteritems()))

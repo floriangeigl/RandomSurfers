@@ -97,24 +97,28 @@ def calc_cor(limits_filename, network_files, out_dir):
             property_names = sorted(analysed_properties.keys())
             col_names = list()
             for pn in property_names:
-                col_names.append(pn + '_sum')
+                col_names.append(pn)
             #    col_names.append(pn + '_avg')
             #    col_names.append(pn + '_med')
-            col_names.append('internal_e')
-            col_names.append('in_e')
-            col_names.append('out_e')
-            col_names.append('#nodes')
+            #col_names.append('internal_e')
+            #col_names.append('in_e')
+            #col_names.append('out_e')
+            #col_names.append('#nodes')
             data = []
             for cat in limits.columns:
                 cat_data = [limits.at[l, cat]]
                 print '\t\tcat:', cat
-                cat_nodes = cat_to_vertices[cat]
+                cat_nodes = cat_to_vertices[cat].copy()
+                cat_in_nodes = {v_i for v in cat_nodes for v_i in v.in_neighbours()}
+                cat_in_nodes -= cat_nodes
                 for prop_name in property_names:
                     p_map = analysed_properties[prop_name]
-                    vals = np.array([p_map[v] for v in cat_nodes])
-                    cat_data.append(vals.sum())
+                    vals_in = np.array([p_map[v] for v in cat_in_nodes])
+                    vals_self = np.array([p_map[v] for v in cat_nodes])
+                    cat_data.append(vals_in.sum())
                     #cat_data.append(vals.mean())
                     #cat_data.append(np.median(vals))
+                '''
                 internal_links = 0
                 external_in = 0
                 external_out = 0
@@ -129,7 +133,7 @@ def calc_cor(limits_filename, network_files, out_dir):
                 cat_data.append(external_in)
                 cat_data.append(external_out)
                 cat_data.append(len(cat_nodes))
-
+                '''
                 cat_data = tuple(cat_data)
                 data.append(cat_data)
             results[l] = pd.DataFrame(data=data, columns=['strength'] + col_names)
@@ -137,6 +141,7 @@ def calc_cor(limits_filename, network_files, out_dir):
         for l, df in results.iteritems():
             print 'limit:', l
             try:
+                df = np.log10(df)
                 ax_array = pd.scatter_matrix(df, alpha=0.5, lw=0, figsize=(24, 24))
                 # fig = plt.figure(figsize=(24, 24 / len(ax_array)))
                 for i in ax_array[1:]:
@@ -150,25 +155,26 @@ def calc_cor(limits_filename, network_files, out_dir):
                 for idx, (cor, ax, x_label) in enumerate(zip(cor_array, ax_array, df.columns)):
                     ax_title = ''
                     if idx == center_ax_idx:
-                        ax_title += ds_name + ' Limit:' + str(l) + '\n'
+                        ax_title += ds_name + ' Limit:' + str(l) + '_#' + str(len(df.dropna(axis=0, how='any'))) + '\n'
                     ax_title += '$\\rho=$' + '%.2f' % cor
                     ax.set_title(ax_title)
                     ax.xaxis.set_visible(True)
                     ax.set_xlabel(x_label)
-                    #for ax in ax_row:
-                        #ax.set_xscale('log')
-                        # ax.set_yscale('log')
+
+                    #ax.set_xscale('log')
+                    #ax.set_yscale('log')
                 out_fn = out_dir + 'limits/' + ds_name + '_l_' + str(l) + '.png'
                 create_folder_structure(out_fn)
                 plt.savefig(out_fn, dpi=150)
+                plt.close('all')
                 os.system('convert ' + out_fn + ' -trim ' + out_fn)
             except:
                 print traceback.format_exc()
             print df
             print '-' * 80
         out_fn_base = out_fn.rsplit('/', 1)
-        out_fn_base = out_fn_base[0] + '/' + out_fn_base[1].split('_', 1)[0] + '*'
-        os.system('convert ' + out_fn_base + ' -append ' + out_fn_base[:-1] + '.png')
+        out_fn_base = out_fn_base[0] + '/' + out_fn_base[1].split('_', 1)[0] + '_*'
+        os.system('convert ' + out_fn_base + ' -append ' + out_fn_base[:-2] + '.png')
     except:
         print 'ERROR:', traceback.format_exc()
         raise

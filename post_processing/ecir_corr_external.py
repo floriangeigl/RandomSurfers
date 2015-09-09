@@ -108,13 +108,15 @@ def calc_cor(limits_filename, network_files, out_dir):
             for cat in limits.columns:
                 df = pd.DataFrame()
                 print '\t\tcat:', cat
-                cat_nodes = cat_to_vertices[cat]
+                cat_nodes = cat_to_vertices[cat].copy()
                 already_checked = set()
-                for i in range(5):
+                max_distance = 5
+                for i in range(max_distance):
                     for prop_name in property_names:
                         p_map = analysed_properties[prop_name]
                         vals = np.array([p_map[v] for v in cat_nodes])
-                        df.at[i, prop_name] = vals.sum()
+                        df.at[i, prop_name] = vals.sum() / p_map.a.sum()
+                    if i < (max_distance - 1):
                         in_neighbours = {v_i for v in cat_nodes - already_checked for v_i in v.in_neighbours()}
                         already_checked.update(cat_nodes)
                         cat_nodes.update(in_neighbours)
