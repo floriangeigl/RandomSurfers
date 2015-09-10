@@ -35,6 +35,7 @@ def get_stat_dist_sum(net, ds_name, bias_strength, com_sizes, num_samples, out_d
                                                                      smooth_bias=False,
                                                                      calc_entropy_rate=False)
     for com_s in com_sizes:
+        assert com_s <= 1.0000001
         nodes_per_com = min(int(np.round(com_s * net.num_vertices())), net.num_vertices())
         coms = [sorted(random.sample(all_vertices, nodes_per_com)) for i in range(num_samples)]
         print 'com-size:', com_s, ' #coms:', len(coms)
@@ -46,11 +47,14 @@ def get_stat_dist_sum(net, ds_name, bias_strength, com_sizes, num_samples, out_d
             _, stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency_matrix, bias_vec, method=method, print_prefix=print_prefix + ' [' + ('%.2f' % float(com_s)) + ' | ' + ('%.0f' % float((idx + 1) / len(coms) * 100)).zfill(3) + '%] ',smooth_bias=False,calc_entropy_rate=False)
             sum_unbiased = orig_stat_dist[c_idx].sum()
             sum_stat_dist = stat_dist[c_idx].sum()
+            mean_stat_dist = stat_dist[c_idx].mean()
+            median_stat_dist = np.median(stat_dist[c_idx])
             com_nodes = set(c)
             in_neighbours = map(int, list({v_in for v in com_nodes for v_in in v.in_neighbours()} - com_nodes))
             in_neighbours_in_deg = net_indegree.a[in_neighbours].sum()
-            results.append((com_s, sum_stat_dist, in_neighbours_in_deg, sum_unbiased))
-    df = pd.DataFrame(columns=['com-size', 'stat_dist', 'in_neighbours_in_deg', 'unbiased_stat_dist'], data=results)
+            results.append((com_s, sum_stat_dist, mean_stat_dist,median_stat_dist, in_neighbours_in_deg, sum_unbiased))
+    df = pd.DataFrame(columns=['com-size', 'stat_dist', 'stat_dist_mean', 'stat_dist_median', 'in_neighbours_in_deg',
+                               'unbiased_stat_dist'], data=results)
     out_fn_base = out_dir + ds_name + '/' + ds_name + '_bs' + ('%.0f' % float(bias_strength)).zfill(4)
     df.to_pickle(out_fn_base + '.df')
     plot_df(df, bias_strength, out_fn_base + '.png')
