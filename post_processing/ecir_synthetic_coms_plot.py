@@ -72,39 +72,49 @@ def plot_df(df, net, bias_strength, filename):
     df.dropna(axis=0, how='any', inplace=True)
     # print df
     orig_columns = set(df.columns)
+    # plot_df = df[df['sample-size'] < 0.31].copy()
+    plot_df = df
 
     in_deg = np.array(net.degree_property_map('in').a)
-    df['in_neighbours_in_deg'] = df['com_in_neighbours'].apply(lambda x: in_deg[list(x)].sum())
+    plot_df['in_neighbours_in_deg'] = plot_df['com_in_neighbours'].apply(lambda x: in_deg[list(x)].sum())
 
     out_deg = np.array(net.degree_property_map('out').a)
-    df['out_neighbours_out_deg'] = df['com_out_neighbours'].apply(lambda x: out_deg[list(x)].sum())
+    plot_df['out_neighbours_out_deg'] = plot_df['com_out_neighbours'].apply(lambda x: out_deg[list(x)].sum())
 
-    df['ratio_out_out_deg_in_in_deg'] = df['out_neighbours_out_deg'] / df['in_neighbours_in_deg']
+    plot_df['ratio_out_out_deg_in_in_deg'] = plot_df['out_neighbours_out_deg'] / plot_df['in_neighbours_in_deg']
 
-    df['com_in_deg'] = df['node-ids'].apply(lambda x: in_deg[list(x)].sum())
-    df['com_out_deg'] = df['node-ids'].apply(lambda x: out_deg[list(x)].sum())
-    df['ratio_com_out_deg_in_deg'] = df['com_out_deg'] / df['com_in_deg']
+    plot_df['com_in_deg'] = plot_df['node-ids'].apply(lambda x: in_deg[list(x)].sum()) - plot_df['intra_com_links']
+    plot_df['com_out_deg'] = plot_df['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - plot_df['intra_com_links']
+    plot_df['ratio_com_out_deg_in_deg'] = plot_df['com_out_deg'] / plot_df['com_in_deg']
 
-    for col_name in set(df.columns) - orig_columns:
+    for col_name in set(plot_df.columns) - orig_columns:
         current_filename = filename[:-4] + '_' + col_name.replace(' ', '_')
+        sub_folder = current_filename.rsplit('/', 1)[-1].split('.gt', 1)[0]
+        current_filename = current_filename.rsplit('/', 1)
+        current_filename = current_filename[0] + '/' + sub_folder + '/' + current_filename[1]
+        create_folder_structure(current_filename)
         print 'plot:', col_name
         for normed_stat_dist in [True, False]:
-            plot_df = df[df['sample-size'] < 0.3]
             y = plot_df[col_name]
             x = plot_df['sample-size']
             c = plot_df['stat_dist_normed'] if normed_stat_dist else plot_df['stat_dist_com_sum']
-            plt.scatter(x, y, c=c, lw=0, alpha=0.7, cmap='coolwarm')
-            cbar = plt.colorbar()
+            fix, ax = plt.subplots()
+            ac = ax.scatter(x, y, c=c, lw=0, alpha=0.7, cmap='coolwarm')
+            ax.set_xticks(sorted(set(x)), minor=True)
+            cbar = plt.colorbar(ac)
             plt.xlabel('sample size')
-            plt.xlim([0, plot_df['sample-size'].max() + 0.05])
-            plt.ylim([plot_df[col_name].min(), plot_df[col_name].max()])
+            plt.xlim([0, plot_df['sample-size'].max() + 0.01])
+            y_range_one_perc = (plot_df[col_name].max() - plot_df[col_name].min()) * 0.01
+            plt.ylim([plot_df[col_name].min() - y_range_one_perc, plot_df[col_name].max() + y_range_one_perc])
             plt.ylabel(col_name.replace('_', ' '))
-            cbar.set_label('$\\sum \\pi$')
+            cbar.set_label('sample size standardized $\\sum \\pi$' if normed_stat_dist else '$\\sum \\pi$')
             # cbar.set_label('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
 
             plt.title(filename.rsplit('/', 1)[-1].rsplit('.')[0] + '\nBias Strength: ' + str(int(bias_strength)))
             plt.tight_layout()
             out_f = (current_filename + '_normed.png') if normed_stat_dist else (current_filename + '.png')
+
+            plt.grid(which='minor', axis='x')
             plt.savefig(out_f, dpi=150)
             plt.close('all')
     return 0
@@ -136,6 +146,7 @@ def preprocess_df(df, net):
         df['com_in_neighbours'] = df[['com_in_neighbours', 'node-ids']].apply(
             lambda (com_in_neighbours, com_nodes): com_in_neighbours - set(com_nodes), axis=1)
         dirty = True
+    out_neighbs = None
     if 'com_out_neighbours' not in df_cols:
         print '[preprocess]: find com out neighbours'
         print '[preprocess]: \tcreate mapping vertex->out-neighbours'
@@ -146,6 +157,14 @@ def preprocess_df(df, net):
         print '[preprocess]: \tfilter out com nodes'
         df['com_out_neighbours'] = df[['com_out_neighbours', 'node-ids']].apply(
             lambda (com_out_neighbours, com_nodes): com_out_neighbours - set(com_nodes), axis=1)
+        dirty = True
+    if 'intra_com_links' not in df_cols:
+        print '[preprocess]: count intra com links'
+        if out_neighbs is None:
+            print '[preprocess]: \tcreate mapping vertex->out-neighbours'
+            out_neighbs = {int(v): set(map(int, v.out_neighbours())) for v in net.vertices()}
+        df['intra_com_links'] = df['node-ids'].apply(set).apply(
+            lambda x: np.array([len(out_neighbs[i] & x) for i in x]).sum())
         dirty = True
     return df, dirty
 
@@ -161,11 +180,12 @@ def main():
     all_dfs = list()
     net_name = ''
     net = None
-    for i in sorted(result_files):
+    for i in sorted(filter(lambda x: 'preprocessed' not in x, result_files), reverse=True):
         current_net_name = i.rsplit('_bs', 1)[0]
         if current_net_name != net_name:
             print 'load network:', current_net_name.rsplit('/', 1)[-1]
             net = load_graph(current_net_name)
+            net_name = current_net_name
         assert net is not None
         preprocessed_filename = i.rsplit('.df', 1)[0] + '_preprocessed.df'
         if os.path.isfile(preprocessed_filename) and time.ctime(os.path.getmtime(preprocessed_filename)) < time.ctime(
