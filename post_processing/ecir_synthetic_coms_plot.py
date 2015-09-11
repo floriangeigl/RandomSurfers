@@ -87,6 +87,9 @@ def plot_df(df, net, bias_strength, filename):
     plot_df['com_out_deg'] = plot_df['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - plot_df['intra_com_links']
     plot_df['ratio_com_out_deg_in_deg'] = plot_df['com_out_deg'] / plot_df['com_in_deg']
 
+    # TODO: calc unbiased stationary dist here stat_dist(net)
+    #       plot_df['orig_stat_dist_sum'] = pick values of node-ids out of unbiased-stat dist and calc sum
+
     for col_name in set(plot_df.columns) - orig_columns:
         current_filename = filename[:-4] + '_' + col_name.replace(' ', '_')
         sub_folder = current_filename.rsplit('/', 1)[-1].split('.gt', 1)[0]
