@@ -38,7 +38,7 @@ def get_network(name, directed=True):
         else:
             other_con = strong_others_con
         generator = SBMGenerator()
-        net = generator.gen_stock_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links,
+        net = generator.gen_stoch_blockmodel(num_nodes=num_nodes, blocks=num_blocks, num_links=num_links,
                                              other_con=other_con, directed=directed)
         net.gp['type'] = net.new_graph_property('string', 'synthetic')
 

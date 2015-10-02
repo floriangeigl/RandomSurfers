@@ -16,6 +16,9 @@ import multiprocessing as mp
 from graph_tool.all import *
 import datetime
 import time
+import network_matrix_tools
+import operator
+import random
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -61,6 +64,50 @@ def plot_df_fac(df, filename):
     plt.close('all')
 
 
+def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1):
+    new_edges = list()
+    assert len(com_nodes) < net.num_vertices()
+    other_nodes = set(range(0, net.num_vertices())) - set(com_nodes)
+    orig_other_nodes = other_nodes.copy()
+    com_nodes_set = set(com_nodes)
+    if method == 'rnd':
+        for i in range(num_links):
+            while True:
+                src = random.sample(other_nodes, 1)[0]
+                dest = random.sample(com_nodes, 1)[0]
+                if net.edge(src, dest) is not None:
+                    new_edges.append((src, dest))
+                    break
+    elif method == 'top':
+        nodes_deg = np.array(net.degree_property_map('total').a)
+        for i in range(num_links):
+            while True:
+                tmp_o_n = list(other_nodes)
+                src, src_deg = max(zip(tmp_o_n, nodes_deg[tmp_o_n]), key=operator.itemgetter(1))
+                dest, dest_deg = max(zip(com_nodes, nodes_deg[com_nodes]), key=operator.itemgetter(1))
+                # print 'link from:', src_deg, 'to', dest_deg,
+                if net.edge(src, dest) is not None:
+                    new_edges.append((src, dest))
+                    other_nodes = orig_other_nodes
+                    com_nodes_set.remove(dest)
+                    com_nodes = list(com_nodes_set)
+                    # print 'ok'
+                    break
+                else:
+                    # print 'failed'
+                    other_nodes.remove(src)
+
+    net.add_edge_list(new_edges)
+    _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+                                                                            smooth_bias=False,
+                                                                            calc_entropy_rate=False, verbose=False)
+    relinked_stat_dist_sum = relinked_stat_dist[com_nodes].sum()
+    for src, dest in new_edges:
+        e = net.edge(src, dest)
+        net.remove_edge(e)
+    return relinked_stat_dist_sum
+
+
 def plot_df(df, net, bias_strength, filename):
     gb = df[['sample-size', 'stat_dist_com_sum']].groupby('sample-size')
     trans_lambda = lambda x: (x-x.mean()) / x.std()
@@ -87,9 +134,33 @@ def plot_df(df, net, bias_strength, filename):
     plot_df['com_out_deg'] = plot_df['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - plot_df['intra_com_links']
     plot_df['ratio_com_out_deg_in_deg'] = plot_df['com_out_deg'] / plot_df['com_in_deg']
 
-    # TODO: calc unbiased stationary dist here stat_dist(net)
-    #       plot_df['orig_stat_dist_sum'] = pick values of node-ids out of unbiased-stat dist and calc sum
+    _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV', smooth_bias=False,
+                                                                        calc_entropy_rate=False)
 
+    print 'calc stat dist with inserted random links:',
+    links_range = [1, 5, 10, 20]
+    for i in links_range:
+        print i, ',',
+        plot_df['add_rnd_links_' + str(i)] = plot_df['node-ids'].apply(add_links_and_calc, args=(net, 'rnd', i,))
+    print ''
+    print 'calc stat dist with inserted top links:',
+    for i in links_range:
+        print i, ',',
+        plot_df['add_top_links_' + str(i)] = plot_df['node-ids'].apply(add_links_and_calc, args=(net, 'top', i,))
+    print ''
+
+    plot_df['orig_stat_dist_sum'] = plot_df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
+    orig_columns.add('orig_stat_dist_sum')
+    plot_df['stat_dist_sum_fac'] = plot_df['stat_dist_com_sum'] / plot_df['orig_stat_dist_sum']
+    orig_columns.add('stat_dist_sum_fac')
+
+    rnd_labels = ['add_rnd_links_' + str(i) for i in links_range]
+    top_labels = ['add_top_links_' + str(i) for i in links_range]
+
+    print plot_df[['orig_stat_dist_sum', 'stat_dist_com_sum'] + rnd_labels + top_labels].head(20)
+    exit()
+
+    ds_name = filename.rsplit('/', 1)[-1].rsplit('.')[0]
     for col_name in set(plot_df.columns) - orig_columns:
         current_filename = filename[:-4] + '_' + col_name.replace(' ', '_')
         sub_folder = current_filename.rsplit('/', 1)[-1].split('.gt', 1)[0]
@@ -113,13 +184,61 @@ def plot_df(df, net, bias_strength, filename):
             cbar.set_label('sample size standardized $\\sum \\pi$' if normed_stat_dist else '$\\sum \\pi$')
             # cbar.set_label('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
 
-            plt.title(filename.rsplit('/', 1)[-1].rsplit('.')[0] + '\nBias Strength: ' + str(int(bias_strength)))
+            plt.title(ds_name + '\nBias Strength: ' + str(int(bias_strength)))
             plt.tight_layout()
             out_f = (current_filename + '_normed.png') if normed_stat_dist else (current_filename + '.png')
 
             plt.grid(which='minor', axis='x')
             plt.savefig(out_f, dpi=150)
             plt.close('all')
+
+        plot_df.sort(col_name, inplace=True)
+        print '\tsum'
+        # sum
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 10))
+        ax1.plot(None, label='sample-size', c='white')
+        ax2.plot(None, label='sample-size', c='white')
+        for key, grp in plot_df.groupby('sample-size'):
+            if key < .21:
+                ax1 = grp.plot(x=col_name, y='stat_dist_com_sum', ax=ax1, label='  ' + '%.2f' % key)
+                grp['tmp'] = pd.rolling_mean(grp['stat_dist_com_sum'], window=int(.25 * len(grp)), center=True)
+                ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key)
+        # grp_df.plot(x=col_name, legend=False)
+        plt.xlabel(col_name.replace('_', ' '))
+        plt.ylabel(r'$\sum \pi$')
+        out_f = current_filename + '_lines.png'
+        ax1.legend(loc='best', prop={'size': 12})
+        ax2.legend(loc='best', prop={'size': 12})
+        ax1.grid(which='major', axis='y')
+        ax2.grid(which='major', axis='y')
+        plt.title(ds_name)
+        plt.tight_layout()
+        plt.savefig(out_f, dpi=150)
+        plt.close('all')
+
+        # fac
+        print '\tfac'
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 10))
+        ax1.plot(None, label='sample-size', c='white')
+        ax2.plot(None, label='sample-size', c='white')
+        for key, grp in plot_df.groupby('sample-size'):
+            if key < .21:
+                ax1 = grp.plot(x=col_name, y='stat_dist_sum_fac', ax=ax1, label='  ' + '%.2f' % key)
+                grp['tmp'] = pd.rolling_mean(grp['stat_dist_sum_fac'], window=int(.25 * len(grp)), center=True)
+                ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key)
+
+        # grp_df.plot(x=col_name, legend=False)
+        plt.xlabel(col_name.replace('_', ' '))
+        plt.ylabel(r'$\sum \pi_b / \sum \pi_o$')
+        out_f = current_filename + '_lines_fac.png'
+        ax1.legend(loc='best', prop={'size': 12})
+        ax2.legend(loc='best', prop={'size': 12})
+        ax1.grid(which='major', axis='y')
+        ax2.grid(which='major', axis='y')
+        plt.title(ds_name)
+        plt.tight_layout()
+        plt.savefig(out_f, dpi=150)
+        plt.close('all')
     return 0
 
 
@@ -185,6 +304,9 @@ def main():
     net = None
     for i in sorted(filter(lambda x: 'preprocessed' not in x, result_files), reverse=True):
         current_net_name = i.rsplit('_bs', 1)[0]
+        bias_strength = int(i.split('_bs')[-1].split('.')[0])
+        if bias_strength > 2:
+            continue
         if current_net_name != net_name:
             print 'load network:', current_net_name.rsplit('/', 1)[-1]
             net = load_graph(current_net_name)
@@ -216,7 +338,6 @@ def main():
                     print 'Warning currently writing file: retry'
         print 'plot:', i.rsplit('/', 1)[-1]
         print df.columns
-        bias_strength = int(i.split('_bs')[-1].split('.')[0])
 
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))

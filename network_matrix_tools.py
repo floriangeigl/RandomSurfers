@@ -80,7 +80,7 @@ def pagerank_from_transmat(weighted_adj_matrix, print_prefix='', damping=0.85):
     return pi / pi.sum()
 
 
-def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e5):
+def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e5, verbose=True):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
     P.data *= scaling_factor
     assert not np.any(P.data < 0)
@@ -89,15 +89,18 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
     assert np.all(np.isfinite(P.data))
     components = connected_components(P, connection='strong', return_labels=False)
     if components > 1:
-        print print_prefix, 'more than 1 component. eigenvector will not converge.'
-        print print_prefix, 'try using pagerank instead!'
+        if verbose:
+            print print_prefix, 'more than 1 component. eigenvector will not converge.'
+            print print_prefix, 'try using pagerank instead!'
         raise scipy.sparse.linalg.ArpackNoConvergence
-    print print_prefix, 'P values near zero: #', zeros_near_z
+    if verbose:
+        print print_prefix, 'P values near zero: #', zeros_near_z
     try:
-        eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix)  # , init_v=np.array(P.sum(axis=1)).flatten())
+        eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix, verbose=verbose)  # , init_v=np.array(P.sum(axis=1)).flatten())
     except scipy.sparse.linalg.ArpackNoConvergence:
-        print print_prefix, 'eigenvector did not converge!'
-        print print_prefix, 'try using pagerank instead!'
+        if verbose:
+            print print_prefix, 'eigenvector did not converge!'
+            print print_prefix, 'try using pagerank instead!'
         raise
         #raise scipy.sparse.linalg.ArpackNoConvergence
 
@@ -107,15 +110,19 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
             or not np.isclose(eigval, scaling_factor, atol=atol*scaling_factor, rtol=rtol):
         # eigval, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
         components = connected_components(P, connection='strong', return_labels=False)
-        print print_prefix + 'pi = P * pi:', np.allclose(pi, normed_P * pi, atol=atol, rtol=rtol)
-        print print_prefix + 'eigval == 1:', np.isclose(eigval, scaling_factor, atol=atol*scaling_factor, rtol=rtol)
-        print print_prefix, '=' * 80
+        if verbose:
+            print print_prefix + 'pi = P * pi:', np.allclose(pi, normed_P * pi, atol=atol, rtol=rtol)
+            print print_prefix + 'eigval == 1:', np.isclose(eigval, scaling_factor, atol=atol*scaling_factor, rtol=rtol)
+            print print_prefix, '=' * 80
         if components > 1:
-            print print_prefix, utils.color_string('# components: ' + str(components), utils.bcolors.RED)
+            if verbose:
+                print print_prefix, utils.color_string('# components: ' + str(components), utils.bcolors.RED)
         else:
-            print '# components: ', components
-        print print_prefix, "eigval: %.10f" % eigval.real[0]
-        print print_prefix, '=' * 80
+            if verbose:
+                print '# components: ', components
+        if verbose:
+            print print_prefix, "eigval: %.10f" % eigval.real[0]
+            print print_prefix, '=' * 80
         exit()
     close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
     neg_stat_dist = pi < 0
@@ -123,17 +130,20 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
     if np.any(pi < 0):
         # eigvals, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
         components = connected_components(P, connection='strong', return_labels=False)
-        eigval, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
-        print print_prefix + 'negative stat values:', list(map(lambda i: "%.10f" % i, pi[pi < 0]))[:10], '...'
+        eigval, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix, verbose=verbose)
+        if verbose:
+            print print_prefix + 'negative stat values:', list(map(lambda i: "%.10f" % i, pi[pi < 0]))[:10], '...'
         # print print_prefix + 'negative stat sum:', "%.10f" % pi[pi < 0].sum()
         # print print_prefix + 'negative stat max:', "%.10f" % pi[pi < 0].min()
-        print print_prefix, '=' * 80
-        print '# components: ', components
-        print print_prefix, 'eigval:', eigval
-        print print_prefix, '=' * 80
+        if verbose:
+            print print_prefix, '=' * 80
+            print '# components: ', components
+            print print_prefix, 'eigval:', eigval
+            print print_prefix, '=' * 80
         raise scipy.sparse.linalg.ArpackNoConvergence
     while not np.isclose(pi.sum(), 1, atol=atol, rtol=rtol):
-        print print_prefix, utils.color_string('re-normalize stat. dist.'.center(100, '!'), utils.bcolors.RED)
+        if verbose:
+            print print_prefix, utils.color_string('re-normalize stat. dist.'.center(100, '!'), utils.bcolors.RED)
         pi /= pi.sum()
         close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
         neg_stat_dist = pi < 0
@@ -143,7 +153,7 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
 
 
 def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps=1e-10, orig_ma_mi_r=None, method='PR',
-                               damping=0.85, smooth_bias=True, calc_entropy_rate=True):
+                               damping=0.85, smooth_bias=True, calc_entropy_rate=True, verbose=True):
     # supported methods:
     # PR: pagerank
     # EV: eigenvector
@@ -151,7 +161,8 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
     weighted_trans = None
     if bias is not None:
         if np.count_nonzero(bias) == 0:
-            print print_prefix + '\tall zero matrix as weights -> use ones-matrix'
+            if verbose:
+                print print_prefix + '\tall zero matrix as weights -> use ones-matrix'
             bias = lil_matrix(np.ones(bias.shape))
             bias_max_min_r = 1.
         if len(bias.shape) == 1:
@@ -164,7 +175,8 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             except:
                 bias_max_min_r = (bias.max()) / (bias.min())
             if bias.shape != adjacency_matrix.shape:
-                print print_prefix + 'inconsistent shape:', bias.shape, adjacency_matrix.shape
+                if verbose:
+                    print print_prefix + 'inconsistent shape:', bias.shape, adjacency_matrix.shape
             # mask bias (filter out relevant values)
             bias = csr_matrix(bias)
             bias.eliminate_zeros()
@@ -172,7 +184,8 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             # created weighted trans mat
             weighted_trans = adjacency_matrix.multiply(bias)
         else:
-            print print_prefix + '\tunknown bias shape'
+            if verbose:
+                print print_prefix + '\tunknown bias shape'
     else:
         weighted_trans = adjacency_matrix.copy()
     # weighted_trans.eliminate_zeros()
@@ -180,20 +193,23 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
     stat_dist = None
     if method == 'EV':
         try:
-            stat_dist = stationary_dist(weighted_trans, print_prefix=print_prefix)
+            stat_dist = stationary_dist(weighted_trans, print_prefix=print_prefix, verbose=verbose)
             if orig_ma_mi_r is not None:
-                print 'orig bias max/min:', orig_ma_mi_r
-                print 'normalized max/min:', bias_max_min_r
+                if verbose:
+                    print 'orig bias max/min:', orig_ma_mi_r
+                    print 'normalized max/min:', bias_max_min_r
         except scipy.sparse.linalg.ArpackNoConvergence as e:
             if smooth_bias:
-                print print_prefix, 'no converge. add epsilon to bias', eps
+                if verbose:
+                    print print_prefix, 'no converge. add epsilon to bias', eps
                 if bias is None:
                     raise e
                 b_zeros = 0
                 if bias is not None:
                     bias_o = np.float(10 ** int(np.ceil(np.log10(bias.shape[0]))))
                     add_eps = eps/bias_o
-                    print print_prefix, 'absolute eps:', utils.color_string(str(add_eps), utils.bcolors.RED)
+                    if verbose:
+                        print print_prefix, 'absolute eps:', utils.color_string(str(add_eps), utils.bcolors.RED)
                     if len(bias.shape) == 1:
                         # print print_prefix, 'vector bias'
                         bias /= bias.sum()
@@ -211,17 +227,19 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
                             b_zeros = np.isclose(np.array(bias).flatten(), 0., rtol=0., atol=1e-15).sum() / (
                             bias.shape[0] * bias.shape[1])
                             bias += add_eps
-                print print_prefix, b_zeros * 100, '% of all values in bias near zero. '  # eps:', 1e-15
+                if verbose:
+                    print print_prefix, b_zeros * 100, '% of all values in bias near zero. '  # eps:', 1e-15
                 eps *= 10
                 return calc_entropy_and_stat_dist(adjacency_matrix, bias=bias, print_prefix=print_prefix, eps=eps,
                                                   orig_ma_mi_r=bias_max_min_r if orig_ma_mi_r is None else orig_ma_mi_r,
-                                                  smooth_bias=True, method='EV')
+                                                  smooth_bias=True, method='EV', verbose=verbose)
             else:
                 raise e
     elif method == 'PR':
         stat_dist = pagerank_from_transmat(weighted_trans, print_prefix=print_prefix, damping=damping)
     else:
-        print print_prefix, 'unknown method:', method
+        if verbose:
+            print print_prefix, 'unknown method:', method
     assert stat_dist is not None
     if calc_entropy_rate:
         return entropy_rate(weighted_trans, stat_dist=stat_dist, print_prefix=print_prefix), stat_dist

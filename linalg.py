@@ -53,17 +53,21 @@ def transition_matrix(M):
 
 
 def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1,
-                        print_prefix='', dense_fallback=False):
-    print print_prefix + 'largest eigenvec',
+                        print_prefix='', dense_fallback=False, verbose=True):
+    if verbose:
+        print print_prefix + 'largest eigenvec',
     k = min(k, M.shape[0] - 2)
     if scipy.sparse.issparse(M):
-        print 'sparse',
+        if verbose:
+            print 'sparse',
         if symmetric:
-            print 'symmetric'
+            if verbose:
+                print 'symmetric'
             l, v = linalg.eigsh(M, k=k, which="LA")
         else:
             try:
-                print 'asymmetric'
+                if verbose:
+                    print 'asymmetric'
                 #print datetime.datetime.now(), 'normal calc'
                 l, v = linalg.eigs(M, k=k, which="LR", v0=init_v, maxiter=max(M.shape[0], 1000))
                 #print datetime.datetime.now(), 'sigma calc'
@@ -73,7 +77,8 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
                 #exit()
             except scipy.sparse.linalg.ArpackNoConvergence as e:
                 if dense_fallback:
-                    print print_prefix, 'sparse eigvec failed. retry dense.'
+                    if verbose:
+                        print print_prefix, 'sparse eigvec failed. retry dense.'
                     return leading_eigenvector(M.todense(), init_v=init_v, overwrite_a=overwrite_a, tol=tol,
                         max_inc_tol_fac=max_inc_tol_fac, k=k)
                 else:
@@ -82,12 +87,15 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
         u = v[:, 0].real
         return l1, u / u.sum()
     else:
-        print 'dense',
+        if verbose:
+            print 'dense',
         if symmetric:
-            print 'symmetric'
+            if verbose:
+                print 'symmetric'
             l, v = lalg.eigh(M, overwrite_a=overwrite_a)
         else:
-            print 'asymmetric'
+            if verbose:
+                print 'asymmetric'
             l, v = lalg.eig(M, overwrite_a=overwrite_a)
         l1index = largest_eigenvalue_index(l)
         u = np.array(v[:, l1index].real)
