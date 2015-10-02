@@ -66,6 +66,7 @@ def plot_df_fac(df, filename):
 
 def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1):
     new_edges = list()
+    orig_num_edges = net.num_edges()
     assert len(com_nodes) < net.num_vertices()
     other_nodes = set(range(0, net.num_vertices())) - set(com_nodes)
     orig_other_nodes = other_nodes.copy()
@@ -81,14 +82,14 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1):
     elif method == 'top':
         nodes_deg = np.array(net.degree_property_map('total').a)
         for i in range(num_links):
+            dest, dest_deg = max(zip(com_nodes, nodes_deg[com_nodes]), key=operator.itemgetter(1))
             while True:
                 tmp_o_n = list(other_nodes)
                 src, src_deg = max(zip(tmp_o_n, nodes_deg[tmp_o_n]), key=operator.itemgetter(1))
-                dest, dest_deg = max(zip(com_nodes, nodes_deg[com_nodes]), key=operator.itemgetter(1))
                 # print 'link from:', src_deg, 'to', dest_deg,
                 if net.edge(src, dest) is not None:
                     new_edges.append((src, dest))
-                    other_nodes = orig_other_nodes
+                    other_nodes = orig_other_nodes.copy()
                     com_nodes_set.remove(dest)
                     com_nodes = list(com_nodes_set)
                     # print 'ok'
@@ -96,6 +97,12 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1):
                 else:
                     # print 'failed'
                     other_nodes.remove(src)
+                    if not other_nodes:
+                        other_nodes = orig_other_nodes.copy()
+                        com_nodes_set.remove(dest)
+                        com_nodes = list(com_nodes_set)
+                        dest, dest_deg = max(zip(com_nodes, nodes_deg[com_nodes]), key=operator.itemgetter(1))
+
 
     net.add_edge_list(new_edges)
     _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
@@ -105,6 +112,7 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1):
     for src, dest in new_edges:
         e = net.edge(src, dest)
         net.remove_edge(e)
+    assert net.num_edges() == orig_num_edges
     return relinked_stat_dist_sum
 
 
@@ -351,6 +359,7 @@ def main():
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
+    print 'START:', start
     main()
     print 'ALL DONE. Time:', datetime.datetime.now() - start
 
