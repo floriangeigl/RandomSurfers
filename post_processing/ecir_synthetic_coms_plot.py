@@ -364,7 +364,6 @@ def main():
         print df.columns
         insert_links_labels = sorted(filter(lambda x: x.startswith(('add_top_links_', 'add_rnd_links_')), df.columns))
         print df[['orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].head(20)
-        exit()
 
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
