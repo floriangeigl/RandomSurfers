@@ -94,7 +94,7 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
                 if net.edge(src, dest) is not None and (src, dest) not in new_edges:
                     new_edges.add((src, dest))
                     other_nodes = orig_other_nodes.copy()
-                    copy_com_nodes.remove(dest)
+                    # copy_com_nodes.remove(dest)
                     # print 'ok'
                     break
                 else:
