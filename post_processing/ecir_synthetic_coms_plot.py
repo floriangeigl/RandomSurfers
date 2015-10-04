@@ -64,34 +64,37 @@ def plot_df_fac(df, filename):
     plt.close('all')
 
 
-def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1):
-    new_edges = list()
+def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measure=None):
+    new_edges = set()
     orig_num_edges = net.num_edges()
-    assert len(com_nodes) < net.num_vertices()
+    orig_num_com_nodes = len(com_nodes)
+    if orig_num_com_nodes >= net.num_vertices():
+        return None
     other_nodes = set(range(0, net.num_vertices())) - set(com_nodes)
     orig_other_nodes = other_nodes.copy()
-    com_nodes_set = set(com_nodes)
     if method == 'rnd':
-        for i in range(num_links):
+        for e_count in xrange(num_links):
             while True:
                 src = random.sample(other_nodes, 1)[0]
                 dest = random.sample(com_nodes, 1)[0]
-                if net.edge(src, dest) is not None:
-                    new_edges.append((src, dest))
+                if net.edge(src, dest) is not None and (src, dest) not in new_edges:
+                    new_edges.add((src, dest))
                     break
     elif method == 'top':
-        nodes_deg = np.array(net.degree_property_map('total').a)
-        for i in range(num_links):
-            dest, dest_deg = max(zip(com_nodes, nodes_deg[com_nodes]), key=operator.itemgetter(1))
+        copy_com_nodes = set(com_nodes)
+        if top_measure is None:
+            nodes_measure = np.array(net.degree_property_map('in').a)
+        else:
+            nodes_measure = top_measure
+        for e_count in xrange(num_links):
+            dest = max(copy_com_nodes, key=lambda x: nodes_measure[x])
             while True:
-                tmp_o_n = list(other_nodes)
-                src, src_deg = max(zip(tmp_o_n, nodes_deg[tmp_o_n]), key=operator.itemgetter(1))
+                src = max(other_nodes, key=lambda x: nodes_measure[x])
                 # print 'link from:', src_deg, 'to', dest_deg,
-                if net.edge(src, dest) is not None:
-                    new_edges.append((src, dest))
+                if net.edge(src, dest) is not None and (src, dest) not in new_edges:
+                    new_edges.add((src, dest))
                     other_nodes = orig_other_nodes.copy()
-                    com_nodes_set.remove(dest)
-                    com_nodes = list(com_nodes_set)
+                    copy_com_nodes.remove(dest)
                     # print 'ok'
                     break
                 else:
@@ -99,15 +102,14 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1):
                     other_nodes.remove(src)
                     if not other_nodes:
                         other_nodes = orig_other_nodes.copy()
-                        com_nodes_set.remove(dest)
-                        com_nodes = list(com_nodes_set)
-                        dest, dest_deg = max(zip(com_nodes, nodes_deg[com_nodes]), key=operator.itemgetter(1))
-
-
+                        copy_com_nodes.remove(dest)
+                        dest, dest_deg = max(copy_com_nodes, key=lambda x: nodes_measure[x])
+    assert len(new_edges) == num_links
     net.add_edge_list(new_edges)
     _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                             smooth_bias=False,
                                                                             calc_entropy_rate=False, verbose=False)
+    assert orig_num_com_nodes == len(com_nodes)
     relinked_stat_dist_sum = relinked_stat_dist[com_nodes].sum()
     for src, dest in new_edges:
         e = net.edge(src, dest)
@@ -142,31 +144,10 @@ def plot_df(df, net, bias_strength, filename):
     plot_df['com_out_deg'] = plot_df['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - plot_df['intra_com_links']
     plot_df['ratio_com_out_deg_in_deg'] = plot_df['com_out_deg'] / plot_df['com_in_deg']
 
-    _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV', smooth_bias=False,
-                                                                        calc_entropy_rate=False)
-
-    print 'calc stat dist with inserted random links:',
-    links_range = [1, 5, 10, 20]
-    for i in links_range:
-        print i, ',',
-        plot_df['add_rnd_links_' + str(i)] = plot_df['node-ids'].apply(add_links_and_calc, args=(net, 'rnd', i,))
-    print ''
-    print 'calc stat dist with inserted top links:',
-    for i in links_range:
-        print i, ',',
-        plot_df['add_top_links_' + str(i)] = plot_df['node-ids'].apply(add_links_and_calc, args=(net, 'top', i,))
-    print ''
-
     plot_df['orig_stat_dist_sum'] = plot_df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
     orig_columns.add('orig_stat_dist_sum')
     plot_df['stat_dist_sum_fac'] = plot_df['stat_dist_com_sum'] / plot_df['orig_stat_dist_sum']
     orig_columns.add('stat_dist_sum_fac')
-
-    rnd_labels = ['add_rnd_links_' + str(i) for i in links_range]
-    top_labels = ['add_top_links_' + str(i) for i in links_range]
-
-    print plot_df[['orig_stat_dist_sum', 'stat_dist_com_sum'] + rnd_labels + top_labels].head(20)
-    exit()
 
     ds_name = filename.rsplit('/', 1)[-1].rsplit('.')[0]
     for col_name in set(plot_df.columns) - orig_columns:
@@ -253,6 +234,7 @@ def plot_df(df, net, bias_strength, filename):
 def preprocess_df(df, net):
     df_cols = set(df.columns)
     dirty = False
+    print ' preprocessing '.center(120, '=')
     if 'sample-size' not in df_cols:
         num_vertices = net.num_vertices()
         df['sample-size'] = df['node-ids'].apply(lambda x: len(x) / num_vertices)
@@ -296,6 +278,40 @@ def preprocess_df(df, net):
         df['intra_com_links'] = df['node-ids'].apply(set).apply(
             lambda x: np.array([len(out_neighbs[i] & x) for i in x]).sum())
         dirty = True
+    orig_stat_dist = None
+    if 'orig_stat_dist_sum' not in df_cols:
+        if orig_stat_dist is None:
+            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+                                                                                smooth_bias=False,
+                                                                                calc_entropy_rate=False)
+        df['orig_stat_dist_sum'] = df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
+        dirty = True
+    links_range = [1, 5, 10, 20, 100]
+    for i in links_range:
+        col_label = 'add_rnd_links_' + str(i).zfill(3)
+        if col_label not in df_cols:
+            print 'calc stat dist with', i, ' inserted random links'
+            if orig_stat_dist is None:
+                _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+                                                                                    smooth_bias=False,
+                                                                                    calc_entropy_rate=False)
+            df[col_label] = df['node-ids'].apply(add_links_and_calc, args=(net, 'rnd', i,))
+            dirty = True
+
+    for i in links_range:
+        col_label = 'add_top_links_' + str(i).zfill(3)
+        if col_label not in df_cols:
+            print 'calc stat dist with', i, ' inserted top links'
+            if orig_stat_dist is None:
+                _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+                                                                                    smooth_bias=False,
+                                                                                    calc_entropy_rate=False)
+            df[col_label] = df['node-ids'].apply(add_links_and_calc, args=(net, 'top', i, orig_stat_dist))
+            dirty = True
+    if not dirty:
+        print ' preprocessing nothing to do '.center(120, '=')
+    else:
+        print ' preprocessing done '.center(120, '=')
     return df, dirty
 
 
@@ -346,6 +362,9 @@ def main():
                     print 'Warning currently writing file: retry'
         print 'plot:', i.rsplit('/', 1)[-1]
         print df.columns
+        insert_links_labels = sorted(filter(lambda x: x.startswith(('add_top_links_', 'add_rnd_links_')), df.columns))
+        print df[['orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].head(20)
+        exit()
 
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
