@@ -103,7 +103,7 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
                     if not other_nodes:
                         other_nodes = orig_other_nodes.copy()
                         copy_com_nodes.remove(dest)
-                        dest, dest_deg = max(copy_com_nodes, key=lambda x: nodes_measure[x])
+                        dest = max(copy_com_nodes, key=lambda x: nodes_measure[x])
     assert len(new_edges) == num_links
     net.add_edge_list(new_edges)
     _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
