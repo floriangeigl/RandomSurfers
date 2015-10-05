@@ -144,8 +144,6 @@ def plot_df(df, net, bias_strength, filename):
     plot_df['com_out_deg'] = plot_df['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - plot_df['intra_com_links']
     plot_df['ratio_com_out_deg_in_deg'] = plot_df['com_out_deg'] / plot_df['com_in_deg']
 
-    plot_df['orig_stat_dist_sum'] = plot_df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
-    orig_columns.add('orig_stat_dist_sum')
     plot_df['stat_dist_sum_fac'] = plot_df['stat_dist_com_sum'] / plot_df['orig_stat_dist_sum']
     orig_columns.add('stat_dist_sum_fac')
 
@@ -361,13 +359,22 @@ def main():
                     print traceback.format_exc()
                     print 'Warning currently writing file: retry'
         print 'plot:', i.rsplit('/', 1)[-1]
-        print df.columns
+        print 'all cols:', df.columns
+        print '=' * 80
         insert_links_labels = sorted(filter(lambda x: x.startswith(('add_top_links_', 'add_rnd_links_')), df.columns))
-        print df[['orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].head(20)
+        print 'inserted links cols'
+        df.groupby('sample-size').mean()[['orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].to_excel(
+            'overview.xls')
+        exit()
+        for sample_s in sorted(set(df['sample-size'])):
+            tmp_df = df[df['sample-size'] == sample_s]
+            print tmp_df[['sample-size', 'orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].head(
+                5).to_string(header=False)
 
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
+        exit()
         #all_dfs.append(df.copy())
     cors = np.array(cors)
     print 'average corr:', cors.mean()
