@@ -119,6 +119,8 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
 
 
 def plot_df(df, net, bias_strength, filename):
+    label_dict = dict()
+    label_dict['ratio_com_out_deg_in_deg'] = r'$\frac{k_{com}^+}{k_{com}^-}$'
     gb = df[['sample-size', 'stat_dist_com_sum']].groupby('sample-size')
     trans_lambda = lambda x: (x-x.mean()) / x.std()
     gb = gb.transform(trans_lambda)
@@ -191,20 +193,22 @@ def plot_df(df, net, bias_strength, filename):
                 grp['tmp'] = pd.rolling_mean(grp['stat_dist_com_sum'], window=int(.25 * len(grp)), center=True)
                 ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key)
         # grp_df.plot(x=col_name, legend=False)
-        plt.xlabel(col_name.replace('_', ' '))
+        x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
+        plt.xlabel(x_label)
         plt.ylabel(r'$\sum \pi$')
         out_f = current_filename + '_lines.png'
         ax1.legend(loc='best', prop={'size': 12})
         ax2.legend(loc='best', prop={'size': 12})
         ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
+        ax2.set_xlim([0, 2])
         plt.title(ds_name)
         plt.tight_layout()
         plt.savefig(out_f, dpi=150)
         plt.close('all')
 
         # fac
-        print '\tfac'
+        print '\tfrac'
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 10))
         ax1.plot(None, label='sample-size', c='white')
         ax2.plot(None, label='sample-size', c='white')
@@ -215,13 +219,15 @@ def plot_df(df, net, bias_strength, filename):
                 ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key)
 
         # grp_df.plot(x=col_name, legend=False)
-        plt.xlabel(col_name.replace('_', ' '))
-        plt.ylabel(r'$\sum \pi_b / \sum \pi_o$')
+        x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
+        plt.xlabel(x_label)
+        plt.ylabel(r'$\frac{\sum \pi_b}{\sum \pi_o}$')
         out_f = current_filename + '_lines_fac.png'
         ax1.legend(loc='best', prop={'size': 12})
         ax2.legend(loc='best', prop={'size': 12})
         ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
+        ax2.set_xlim([0, 2])
         plt.title(ds_name)
         plt.tight_layout()
         plt.savefig(out_f, dpi=150)
@@ -365,11 +371,6 @@ def main():
         print 'inserted links cols'
         df.groupby('sample-size').mean()[['orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].to_excel(
             'overview.xls')
-        exit()
-        for sample_s in sorted(set(df['sample-size'])):
-            tmp_df = df[df['sample-size'] == sample_s]
-            print tmp_df[['sample-size', 'orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].head(
-                5).to_string(header=False)
 
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
