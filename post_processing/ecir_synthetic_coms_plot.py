@@ -80,7 +80,7 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
             while True:
                 src = random.sample(other_nodes, 1)[0]
                 dest = random.sample(com_nodes, 1)[0]
-                if net.edge(src, dest) is not None and (src, dest) not in new_edges:
+                if net.edge(src, dest) is None and (src, dest) not in new_edges:
                     new_edges.add((src, dest))
                     break
     elif method == 'top':
@@ -148,12 +148,11 @@ def plot_df(df, net, bias_strength, filename):
     plot_df['stat_dist_sum_fac'] = plot_df['stat_dist_com_sum'] / plot_df['orig_stat_dist_sum']
     orig_columns.add('stat_dist_sum_fac')
 
-    ds_name = filename.rsplit('/', 1)[-1].rsplit('.')[0]
+    ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt',1)[0]
     for col_name in set(plot_df.columns) - orig_columns:
         current_filename = filename[:-4] + '_' + col_name.replace(' ', '_')
-        sub_folder = current_filename.rsplit('/', 1)[-1].split('.gt', 1)[0]
         current_filename = current_filename.rsplit('/', 1)
-        current_filename = current_filename[0] + '/' + sub_folder + '/' + current_filename[1]
+        current_filename = current_filename[0] + '/' + ds_name + '/' + current_filename[1].replace('.gt', '')
         create_folder_structure(current_filename)
         print 'plot:', col_name
         for normed_stat_dist in [True, False]:
@@ -294,7 +293,7 @@ def preprocess_df(df, net):
         df['orig_stat_dist_sum'] = df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
         dirty = True
     links_range = [1, 5, 10, 20, 100]
-    force_recalc = True
+    force_recalc = False
     for i in links_range:
         col_label = 'add_rnd_links_' + str(i).zfill(3)
         if col_label not in df_cols or force_recalc:
@@ -349,8 +348,7 @@ def main():
             net_name = current_net_name
         assert net is not None
         preprocessed_filename = i.rsplit('.df', 1)[0] + '_preprocessed.df'
-        if os.path.isfile(preprocessed_filename) and time.ctime(os.path.getmtime(preprocessed_filename)) < time.ctime(
-                os.path.getmtime(i)):
+        if os.path.isfile(preprocessed_filename): # and time.ctime(os.path.getmtime(preprocessed_filename)) > time.ctime(os.path.getmtime(i)):
             print 'read preprocessed file:', preprocessed_filename.rsplit('/', 1)[-1]
             try:
                 df = pd.read_pickle(preprocessed_filename)
@@ -383,7 +381,7 @@ def main():
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
-        # exit()
+        exit()
         #all_dfs.append(df.copy())
     cors = np.array(cors)
     print 'average corr:', cors.mean()
