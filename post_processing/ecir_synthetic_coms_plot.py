@@ -185,11 +185,12 @@ def plot_df(df, net, bias_strength, filename):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 10))
         ax1.plot(None, label='sample-size', c='white')
         ax2.plot(None, label='sample-size', c='white')
+        lw_func = lambda x: 1. + ((x-.01) / (.2-.01))*3
         for key, grp in plot_df.groupby('sample-size'):
             if key < .21:
                 ax1 = grp.plot(x=col_name, y='stat_dist_com_sum', ax=ax1, label='  ' + '%.2f' % key)
                 grp['tmp'] = pd.rolling_mean(grp['stat_dist_com_sum'], window=int(.25 * len(grp)), center=True)
-                ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key)
+                ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
         # grp_df.plot(x=col_name, legend=False)
         x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
         plt.xlabel(x_label)
@@ -216,7 +217,7 @@ def plot_df(df, net, bias_strength, filename):
             if key < .21:
                 ax1 = grp.plot(x=col_name, y='stat_dist_sum_fac', ax=ax1, label='  ' + '%.2f' % key)
                 grp['tmp'] = pd.rolling_mean(grp['stat_dist_sum_fac'], window=int(.25 * len(grp)), center=True)
-                ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key)
+                ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
 
         # grp_df.plot(x=col_name, legend=False)
         x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
@@ -337,10 +338,15 @@ def main():
     all_dfs = list()
     net_name = ''
     net = None
+    skipped_ds = set()
+    skipped_ds.add('daserste')
     for i in sorted(filter(lambda x: 'preprocessed' not in x, result_files), reverse=True):
         current_net_name = i.rsplit('_bs', 1)[0]
         bias_strength = int(i.split('_bs')[-1].split('.')[0])
         if bias_strength > 2:
+            continue
+        elif any((i in current_net_name for i in skipped_ds)):
+            print 'skip ds:', current_net_name
             continue
         if current_net_name != net_name:
             print 'load network:', current_net_name.rsplit('/', 1)[-1]
@@ -381,7 +387,6 @@ def main():
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
-        exit()
         #all_dfs.append(df.copy())
     cors = np.array(cors)
     print 'average corr:', cors.mean()
