@@ -12,6 +12,7 @@ from tools.basics import create_folder_structure, find_files
 import multiprocessing
 import traceback
 from utils import check_aperiodic
+import numpy as np
 import multiprocessing as mp
 from graph_tool.all import *
 import datetime
@@ -19,6 +20,7 @@ import time
 import network_matrix_tools
 import operator
 import random
+import tools.mpl_tools as plt_tools
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -326,6 +328,64 @@ def preprocess_df(df, net):
         print ' preprocessing done '.center(120, '=')
     return df, dirty
 
+def plot_inserted_links(df, columns, filename):
+    print 'plot inserted links:', filename
+    filt_df = df[df['sample-size'] < 0.21]
+    used_columns = ['orig_stat_dist_sum', 'stat_dist_com_sum'] + columns
+    grp_df = filt_df.groupby('sample-size')[used_columns]
+    used_columns = [i.replace('add_', '').replace('_links_', ' ') for i in used_columns]
+    grp_df.columns = ['unbiased', 'biased'] + used_columns[2:]
+
+    grp_mean = grp_df.mean()
+    grp_std = grp_df.std()
+    grp_mean.to_excel(filename + '_inserted_links.xls')
+    fig, ax = plt.subplots()
+
+    for i, label in zip(grp_mean.columns, grp_df.columns):
+        # ax.errorbar(x=grp_mean.index, y=grp_mean[i], yerr=grp_std[i], label=i.replace('add_','').replace('_links_',''), lw=2)
+        links = label.split()
+        if len(links) > 1:
+            links = int(links[-1])
+        else:
+            # lw of other lines
+            links = 5
+
+        print 'links:', links, type(links)
+        if links == 1:
+            linew = 1
+        elif links == 5:
+            linew = 1.5
+        elif links == 10:
+            linew = 2
+        elif links == 20:
+            linew = 2.5
+        elif links == 100:
+            linew = 3
+        else:
+            linew = links
+        if 'top' in label:
+            c = 'red'
+            marker = '*'
+        elif 'rnd' in label:
+            c = 'green'
+            marker = '^'
+        elif label == 'biased':
+            c = 'blue'
+            marker = 'D'
+        elif label == 'unbiased':
+            c = 'lightblue'
+            marker = 'd'
+        ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, lw=linew, color=c,
+                alpha=0.8)
+    plt.xlabel('sample-size')
+    plt.ylabel(r'$\frac{\sum_i \pi\delta}{\sum_i\delta}$')
+    plt.tight_layout()
+    out_fn = filename + '_inserted_links.pdf'
+    plt.savefig(out_fn)
+    plt_tools.crop_pdf(out_fn)
+    legend_fname = filename.rsplit('/', 1)[0] + '/inserted_links_legend.pdf'
+    plt_tools.plot_legend(ax,legend_fname,font_size=12,ncols=4)
+
 
 def main():
     base_dir = '/home/fgeigl/navigability_of_networks/output/ecir_synthetic_coms/'
@@ -382,8 +442,8 @@ def main():
 
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3]
         insert_links_labels = sorted(filter(lambda x: x.startswith(('add_top_links_', 'add_rnd_links_')), df.columns))
-        df.groupby('sample-size').mean()[['orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].to_excel(
-            out_fn + '_inserted_links.xls')
+        plot_inserted_links(df, insert_links_labels, out_fn)
+        exit()
         out_fn += '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
