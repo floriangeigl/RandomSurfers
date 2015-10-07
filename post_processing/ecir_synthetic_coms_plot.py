@@ -290,9 +290,10 @@ def preprocess_df(df, net):
         df['orig_stat_dist_sum'] = df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
         dirty = True
     links_range = [1, 5, 10, 20, 100]
+    force_recalc = True
     for i in links_range:
         col_label = 'add_rnd_links_' + str(i).zfill(3)
-        if col_label not in df_cols:
+        if col_label not in df_cols or force_recalc:
             print 'calc stat dist with', i, ' inserted random links'
             if orig_stat_dist is None:
                 _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
@@ -303,7 +304,7 @@ def preprocess_df(df, net):
 
     for i in links_range:
         col_label = 'add_top_links_' + str(i).zfill(3)
-        if col_label not in df_cols:
+        if col_label not in df_cols or force_recalc:
             print 'calc stat dist with', i, ' inserted top links'
             if orig_stat_dist is None:
                 _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
@@ -374,7 +375,7 @@ def main():
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
-        exit()
+        # exit()
         #all_dfs.append(df.copy())
     cors = np.array(cors)
     print 'average corr:', cors.mean()
