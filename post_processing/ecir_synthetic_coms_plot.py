@@ -115,6 +115,7 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
         e = net.edge(src, dest)
         net.remove_edge(e)
     assert net.num_edges() == orig_num_edges
+    print '.',
     return relinked_stat_dist_sum
 
 
