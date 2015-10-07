@@ -294,24 +294,28 @@ def preprocess_df(df, net):
     for i in links_range:
         col_label = 'add_rnd_links_' + str(i).zfill(3)
         if col_label not in df_cols or force_recalc:
-            print 'calc stat dist with', i, ' inserted random links'
+            print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with', i, ' inserted random links'
             if orig_stat_dist is None:
                 _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                     smooth_bias=False,
                                                                                     calc_entropy_rate=False)
             df[col_label] = df['node-ids'].apply(add_links_and_calc, args=(net, 'rnd', i,))
             dirty = True
+            print ''
+            print datetime.datetime.now().replace(microsecond=0), '[OK]'
 
     for i in links_range:
         col_label = 'add_top_links_' + str(i).zfill(3)
         if col_label not in df_cols or force_recalc:
-            print 'calc stat dist with', i, ' inserted top links'
+            print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with', i, ' inserted top links'
             if orig_stat_dist is None:
                 _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                     smooth_bias=False,
                                                                                     calc_entropy_rate=False)
             df[col_label] = df['node-ids'].apply(add_links_and_calc, args=(net, 'top', i, orig_stat_dist))
             dirty = True
+            print ''
+            print datetime.datetime.now().replace(microsecond=0), '[OK]'
     if not dirty:
         print ' preprocessing nothing to do '.center(120, '=')
     else:
