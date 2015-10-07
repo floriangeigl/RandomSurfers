@@ -200,7 +200,9 @@ def plot_df(df, net, bias_strength, filename):
         ax2.legend(loc='best', prop={'size': 12})
         ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
-        ax2.set_xlim([0, 2])
+        if 'ratio' in col_name:
+            ax1.set_xlim([0, 2])
+            ax2.set_xlim([0, 2])
         plt.title(ds_name)
         plt.tight_layout()
         plt.savefig(out_f, dpi=150)
@@ -226,7 +228,9 @@ def plot_df(df, net, bias_strength, filename):
         ax2.legend(loc='best', prop={'size': 12})
         ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
-        ax2.set_xlim([0, 2])
+        if 'ratio' in col_name:
+            ax1.set_xlim([0, 2])
+            ax2.set_xlim([0, 2])
         plt.title(ds_name)
         plt.tight_layout()
         plt.savefig(out_f, dpi=150)
