@@ -90,8 +90,8 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
             nodes_measure = top_measure
 
         try:
-            sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x])
-            sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x])
+            sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
+            sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
             for dest in sorted_com_nodes:
                 for src in sorted_other_nodes:
                     if net.edge(src, dest) is None:
@@ -307,7 +307,7 @@ def preprocess_df(df, net):
             dirty = True
             print ''
             print datetime.datetime.now().replace(microsecond=0), '[OK]'
-
+    force_recalc = False
     for i in links_range:
         col_label = 'add_top_links_' + str(i).zfill(3)
         if col_label not in df_cols or force_recalc:
@@ -379,12 +379,12 @@ def main():
         print 'plot:', i.rsplit('/', 1)[-1]
         print 'all cols:', df.columns
         print '=' * 80
-        insert_links_labels = sorted(filter(lambda x: x.startswith(('add_top_links_', 'add_rnd_links_')), df.columns))
-        print 'inserted links cols'
-        df.groupby('sample-size').mean()[['orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].to_excel(
-            'overview.xls')
 
-        out_fn = out_dir + i.rsplit('/', 1)[-1][:-3] + '.png'
+        out_fn = out_dir + i.rsplit('/', 1)[-1][:-3]
+        insert_links_labels = sorted(filter(lambda x: x.startswith(('add_top_links_', 'add_rnd_links_')), df.columns))
+        df.groupby('sample-size').mean()[['orig_stat_dist_sum', 'stat_dist_com_sum'] + insert_links_labels].to_excel(
+            out_fn + '_inserted_links.xls')
+        out_fn += '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
         #all_dfs.append(df.copy())
