@@ -290,7 +290,7 @@ def preprocess_df(df, net):
         if orig_stat_dist is None:
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                 smooth_bias=False,
-                                                                                calc_entropy_rate=False)
+                                                                                calc_entropy_rate=False, verbose=False)
         df['orig_stat_dist_sum'] = df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
         dirty = True
     links_range = [1, 5, 10, 20, 100]
@@ -302,7 +302,7 @@ def preprocess_df(df, net):
             if orig_stat_dist is None:
                 _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                     smooth_bias=False,
-                                                                                    calc_entropy_rate=False)
+                                                                                    calc_entropy_rate=False, verbose=False)
             df[col_label] = df['node-ids'].apply(add_links_and_calc, args=(net, 'rnd', i,))
             dirty = True
             print ''
@@ -315,7 +315,7 @@ def preprocess_df(df, net):
             if orig_stat_dist is None:
                 _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                     smooth_bias=False,
-                                                                                    calc_entropy_rate=False)
+                                                                                    calc_entropy_rate=False, verbose=False)
             df[col_label] = df['node-ids'].apply(add_links_and_calc, args=(net, 'top', i, orig_stat_dist))
             dirty = True
             print ''
