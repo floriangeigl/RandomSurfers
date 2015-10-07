@@ -64,6 +64,10 @@ def plot_df_fac(df, filename):
     plt.close('all')
 
 
+class GetOutOfLoops(Exception):
+    pass
+
+
 def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measure=None):
     new_edges = set()
     orig_num_edges = net.num_edges()
@@ -71,7 +75,6 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
     if orig_num_com_nodes >= net.num_vertices():
         return None
     other_nodes = set(range(0, net.num_vertices())) - set(com_nodes)
-    orig_other_nodes = other_nodes.copy()
     if method == 'rnd':
         for e_count in xrange(num_links):
             while True:
@@ -81,29 +84,24 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
                     new_edges.add((src, dest))
                     break
     elif method == 'top':
-        copy_com_nodes = set(com_nodes)
         if top_measure is None:
             nodes_measure = np.array(net.degree_property_map('in').a)
         else:
             nodes_measure = top_measure
-        for e_count in xrange(num_links):
-            dest = max(copy_com_nodes, key=lambda x: nodes_measure[x])
-            while True:
-                src = max(other_nodes, key=lambda x: nodes_measure[x])
-                # print 'link from:', src_deg, 'to', dest_deg,
-                if net.edge(src, dest) is not None and (src, dest) not in new_edges:
-                    new_edges.add((src, dest))
-                    other_nodes = orig_other_nodes.copy()
-                    # copy_com_nodes.remove(dest)
-                    # print 'ok'
-                    break
-                else:
-                    # print 'failed'
-                    other_nodes.remove(src)
-                    if not other_nodes:
-                        other_nodes = orig_other_nodes.copy()
-                        copy_com_nodes.remove(dest)
-                        dest = max(copy_com_nodes, key=lambda x: nodes_measure[x])
+
+        try:
+            sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x])
+            sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x])
+            for dest in sorted_com_nodes:
+                for src in sorted_other_nodes:
+                    if net.edge(src, dest) is None:
+                        new_edges.add((src, dest))
+                        if len(new_edges) >= num_links:
+                            raise GetOutOfLoops
+            print 'could not insert all links:', len(new_edges), 'of', num_links
+        except GetOutOfLoops:
+            pass
+
     assert len(new_edges) == num_links
     net.add_edge_list(new_edges)
     _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
