@@ -7,7 +7,7 @@ if _platform == "linux" or _platform == "linux2":
 import matplotlib.pylab as plt
 import pandas as pd
 from plotting import *
-import os
+import os, sys
 from tools.basics import create_folder_structure, find_files
 import multiprocessing
 import traceback
@@ -116,12 +116,15 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
         net.remove_edge(e)
     assert net.num_edges() == orig_num_edges
     print '.',
+    sys.stdout.flush()
     return relinked_stat_dist_sum
 
 
 def plot_df(df, net, bias_strength, filename):
     label_dict = dict()
-    label_dict['ratio_com_out_deg_in_deg'] = r'$\frac{k_{com}^+}{k_{com}^-}$'
+    label_dict['ratio_com_out_deg_in_deg'] = r'$\frac{k_{g}^+}{k_{g}^-}$'
+    label_dict['com_in_deg'] = r'$k_{g}^-$'
+    label_dict['com_out_deg'] = r'$k_{g}^+$'
     gb = df[['sample-size', 'stat_dist_com_sum']].groupby('sample-size')
     trans_lambda = lambda x: (x-x.mean()) / x.std()
     gb = gb.transform(trans_lambda)
@@ -151,7 +154,7 @@ def plot_df(df, net, bias_strength, filename):
     orig_columns.add('stat_dist_sum_fac')
 
     ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt',1)[0]
-    for col_name in set(plot_df.columns) - orig_columns:
+    for col_name in sorted(set(plot_df.columns) - orig_columns):
         current_filename = filename[:-4] + '_' + col_name.replace(' ', '_')
         current_filename = current_filename.rsplit('/', 1)
         current_filename = current_filename[0] + '/' + ds_name + '/' + current_filename[1].replace('.gt', '')
@@ -182,15 +185,24 @@ def plot_df(df, net, bias_strength, filename):
             plt.close('all')
 
         plot_df.sort(col_name, inplace=True)
-        print '\tsum'
+        one_subplot = True
+        fig_size = (16,10)
+        default_font_size = matplotlib.rcParams['font.size']
+        matplotlib.rcParams.update({'font.size': 20})
+        # print '\tsum'
         # sum
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 10))
-        ax1.plot(None, label='sample-size', c='white')
+        if one_subplot:
+            fig, ax2 = plt.subplots()
+        else:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
+        if not one_subplot:
+            ax1.plot(None, label='sample-size', c='white')
         ax2.plot(None, label='sample-size', c='white')
         lw_func = lambda x: 1. + ((x-.01) / (.2-.01))*3
         for key, grp in plot_df.groupby('sample-size'):
             if key < .21:
-                ax1 = grp.plot(x=col_name, y='stat_dist_com_sum', ax=ax1, label='  ' + '%.2f' % key)
+                if not one_subplot:
+                    ax1 = grp.plot(x=col_name, y='stat_dist_com_sum', ax=ax1, label='  ' + '%.2f' % key)
                 grp['tmp'] = pd.rolling_mean(grp['stat_dist_com_sum'], window=int(.25 * len(grp)), center=True)
                 ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
         # grp_df.plot(x=col_name, legend=False)
@@ -198,26 +210,41 @@ def plot_df(df, net, bias_strength, filename):
         plt.xlabel(x_label)
         plt.ylabel(r'$\sum \pi$')
         out_f = current_filename + '_lines.png'
-        ax1.legend(loc='best', prop={'size': 12})
-        ax2.legend(loc='best', prop={'size': 12})
-        ax1.grid(which='major', axis='y')
+        if not one_subplot:
+            ax1.legend(loc='best', prop={'size': 12})
+            ax2.legend(loc='best', prop={'size': 12})
+        else:
+            ax2.legend_.remove()
+        if not one_subplot:
+            ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
         if 'ratio' in col_name:
-            ax1.set_xlim([0, 2])
+            if not one_subplot:
+                ax1.set_xlim([0, 2])
             ax2.set_xlim([0, 2])
-        plt.title(ds_name)
+        if not one_subplot:
+            plt.title(ds_name)
         plt.tight_layout()
-        plt.savefig(out_f, dpi=150)
+        if not one_subplot:
+            plt.savefig(out_f, dpi=150)
+        else:
+            plt_tools.save_n_crop(out_f.replace('.png', '.pdf'))
+            plt_tools.plot_legend(ax2, out_f.rsplit('/', 2)[0] + '/' + 'lines_legend.pdf', font_size=12)
         plt.close('all')
 
         # fac
-        print '\tfrac'
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 10))
-        ax1.plot(None, label='sample-size', c='white')
+        # print '\tfrac'
+        if one_subplot:
+            fig, ax2 = plt.subplots()
+        else:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
+        if not one_subplot:
+            ax1.plot(None, label='sample-size', c='white')
         ax2.plot(None, label='sample-size', c='white')
         for key, grp in plot_df.groupby('sample-size'):
             if key < .21:
-                ax1 = grp.plot(x=col_name, y='stat_dist_sum_fac', ax=ax1, label='  ' + '%.2f' % key)
+                if not one_subplot:
+                    ax1 = grp.plot(x=col_name, y='stat_dist_sum_fac', ax=ax1, label='  ' + '%.2f' % key)
                 grp['tmp'] = pd.rolling_mean(grp['stat_dist_sum_fac'], window=int(.25 * len(grp)), center=True)
                 ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
 
@@ -226,17 +253,28 @@ def plot_df(df, net, bias_strength, filename):
         plt.xlabel(x_label)
         plt.ylabel(r'$\frac{\sum \pi_b}{\sum \pi_o}$')
         out_f = current_filename + '_lines_fac.png'
-        ax1.legend(loc='best', prop={'size': 12})
-        ax2.legend(loc='best', prop={'size': 12})
-        ax1.grid(which='major', axis='y')
+        if not one_subplot:
+            ax1.legend(loc='best', prop={'size': 12})
+            ax2.legend(loc='best', prop={'size': 12})
+        else:
+            ax2.legend_.remove()
+        if not one_subplot:
+            ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
         if 'ratio' in col_name:
-            ax1.set_xlim([0, 2])
+            if not one_subplot:
+                ax1.set_xlim([0, 2])
             ax2.set_xlim([0, 2])
-        plt.title(ds_name)
+        if not one_subplot:
+            plt.title(ds_name)
         plt.tight_layout()
-        plt.savefig(out_f, dpi=150)
+        if not one_subplot:
+            plt.savefig(out_f, dpi=150)
+        else:
+            plt_tools.save_n_crop(out_f.replace('.png', '.pdf'))
+            plt_tools.plot_legend(ax2, out_f.rsplit('/', 2)[0] + '/' + 'fac_legend.pdf', font_size=12)
         plt.close('all')
+        matplotlib.rcParams.update({'font.size': default_font_size})
     return 0
 
 
@@ -329,6 +367,7 @@ def preprocess_df(df, net):
     return df, dirty
 
 def plot_inserted_links(df, columns, filename):
+    filename = filename.replace('.gt', '')
     print 'plot inserted links:', filename
     filt_df = df[df['sample-size'] < 0.21]
     used_columns = ['orig_stat_dist_sum', 'stat_dist_com_sum'] + columns
@@ -350,7 +389,6 @@ def plot_inserted_links(df, columns, filename):
             # lw of other lines
             links = 5
 
-        print 'links:', links, type(links)
         if links == 1:
             linew = 1
         elif links == 5:
@@ -379,12 +417,12 @@ def plot_inserted_links(df, columns, filename):
                 alpha=0.8)
     plt.xlabel('sample-size')
     plt.ylabel(r'$\frac{\sum_i \pi\delta}{\sum_i\delta}$')
+    plt.xlim([0, 0.2])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
-    plt.savefig(out_fn)
-    plt_tools.crop_pdf(out_fn)
+    plt_tools.save_n_crop(out_fn)
     legend_fname = filename.rsplit('/', 1)[0] + '/inserted_links_legend.pdf'
-    plt_tools.plot_legend(ax,legend_fname,font_size=12,ncols=4)
+    plt_tools.plot_legend(ax, legend_fname, font_size=12, ncols=4)
 
 
 def main():
@@ -443,10 +481,11 @@ def main():
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3]
         insert_links_labels = sorted(filter(lambda x: x.startswith(('add_top_links_', 'add_rnd_links_')), df.columns))
         plot_inserted_links(df, insert_links_labels, out_fn)
-        exit()
+
         out_fn += '.png'
         cors.append(plot_df(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
+        # exit()
         #all_dfs.append(df.copy())
     cors = np.array(cors)
     print 'average corr:', cors.mean()
