@@ -33,7 +33,7 @@ base_line = 'adjacency'
 out_dir = base_dir + 'plots/'
 create_folder_structure(out_dir)
 bias_range = None
-# bias_range = [1, 10]
+bias_range = [0, 101]
 
 stat_dist_files = find_files(base_dir, 'stat_dists.df')
 print stat_dist_files
@@ -125,7 +125,7 @@ for stat_dist_fn in stat_dist_files:
     if len(res_df.columns) > 5:
         ax = res_df.plot(legend=False, logx=True, logy=True)
         plt.xlabel('bias strength')
-        plt.ylabel('sum of stationary values')
+        plt.ylabel(r'\pi_g')
         plt.tight_layout()
         plt.savefig(out_fn)
     else:

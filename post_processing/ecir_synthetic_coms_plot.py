@@ -157,7 +157,7 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
 
 def plot_df(df, net, bias_strength, filename):
     label_dict = dict()
-    label_dict['ratio_com_out_deg_in_deg'] = r'$\frac{k_{g}^+}{k_{g}^-}$'
+    label_dict['ratio_com_out_deg_in_deg'] = r'$\k_{g}^r$'
     label_dict['com_in_deg'] = r'$k_{g}^-$'
     label_dict['com_out_deg'] = r'$k_{g}^+$'
     gb = df[['sample-size', 'stat_dist_com_sum']].groupby('sample-size')
@@ -208,7 +208,7 @@ def plot_df(df, net, bias_strength, filename):
             y_range_one_perc = (plot_df[col_name].max() - plot_df[col_name].min()) * 0.01
             plt.ylim([plot_df[col_name].min() - y_range_one_perc, plot_df[col_name].max() + y_range_one_perc])
             plt.ylabel(col_name.replace('_', ' '))
-            cbar.set_label('sample size standardized $\\sum \\pi$' if normed_stat_dist else '$\\sum \\pi$')
+            cbar.set_label('sample size standardized $\\sum \\pi$' if normed_stat_dist else r'$\pi_g$')
             # cbar.set_label('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
 
             plt.title(ds_name + '\nBias Strength: ' + str(int(bias_strength)))
@@ -243,7 +243,7 @@ def plot_df(df, net, bias_strength, filename):
         # grp_df.plot(x=col_name, legend=False)
         x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
         plt.xlabel(x_label)
-        plt.ylabel(r'$\sum \pi$')
+        plt.ylabel(r'$\pi_g$')
         out_f = current_filename + '_lines.png'
         if not one_subplot:
             ax1.legend(loc='best', prop={'size': 12})
@@ -286,7 +286,7 @@ def plot_df(df, net, bias_strength, filename):
         # grp_df.plot(x=col_name, legend=False)
         x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
         plt.xlabel(x_label)
-        plt.ylabel(r'$\frac{\sum \pi_b}{\sum \pi_o}$')
+        plt.ylabel(r'$\frac{\pi_g^b}{\pi_g^u}$')
         out_f = current_filename + '_lines_fac.png'
         if not one_subplot:
             ax1.legend(loc='best', prop={'size': 12})
