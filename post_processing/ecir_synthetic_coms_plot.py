@@ -21,6 +21,7 @@ import network_matrix_tools
 import operator
 import random
 import tools.mpl_tools as plt_tools
+from scipy.sparse import diags
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -70,7 +71,17 @@ class GetOutOfLoops(Exception):
     pass
 
 
-def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measure=None):
+def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_links=1, top_measure=None):
+    if sample_size > 0.21:
+        # print 'skip sample-size:', sample_size
+        return np.nan
+    if isinstance(num_links, str):
+        if num_links == 'fair':
+            bias_m = np.zeros(net.num_vertices()).astype('int')
+            bias_m[com_nodes] = 1
+            bias_m = diags(bias_m, 0)
+            num_links = int(bias_m.dot(adjacency(net)).sum())
+            # print 'fair links:', num_links
     new_edges = set()
     orig_num_edges = net.num_edges()
     orig_num_com_nodes = len(com_nodes)
@@ -100,6 +111,30 @@ def add_links_and_calc(com_nodes, net=None, method='rnd', num_links=1, top_measu
                         new_edges.add((src, dest))
                         if len(new_edges) >= num_links:
                             raise GetOutOfLoops
+            print 'could not insert all links:', len(new_edges), 'of', num_links
+        except GetOutOfLoops:
+            pass
+    elif method == 'top_block':
+        max_links = int(np.sqrt(num_links))
+        if top_measure is None:
+            nodes_measure = np.array(net.degree_property_map('in').a)
+        else:
+            nodes_measure = top_measure
+
+        try:
+            sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
+            sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
+            for max_links_add in range(3):
+                max_links += 1
+                sorted_other_nodes_block = sorted_other_nodes[:max_links]
+                sorted_com_nodes_block = sorted_com_nodes[:max_links]
+                for dest in sorted_com_nodes_block:
+                    for src in sorted_other_nodes_block:
+                        if net.edge(src, dest) is None:
+                            new_edges.add((src, dest))
+                            if len(new_edges) >= num_links:
+                                raise GetOutOfLoops
+                print 'retry with bigger block'
             print 'could not insert all links:', len(new_edges), 'of', num_links
         except GetOutOfLoops:
             pass
@@ -335,36 +370,51 @@ def preprocess_df(df, net):
         dirty = True
     links_range = [1, 5, 10, 20, 100]
     force_recalc = False
-    for i in links_range:
-        col_label = 'add_rnd_links_' + str(i).zfill(3)
-        if col_label not in df_cols or force_recalc:
-            print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with', i, ' inserted random links'
-            if orig_stat_dist is None:
-                _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
-                                                                                    smooth_bias=False,
-                                                                                    calc_entropy_rate=False, verbose=False)
-            df[col_label] = df['node-ids'].apply(add_links_and_calc, args=(net, 'rnd', i,))
-            dirty = True
-            print ''
-            print datetime.datetime.now().replace(microsecond=0), '[OK]'
+
+    col_label = 'add_rnd_links_fair'
+    if col_label not in df_cols or force_recalc:
+        print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted random links'
+        if orig_stat_dist is None:
+            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+                                                                                smooth_bias=False,
+                                                                                calc_entropy_rate=False, verbose=False)
+        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'rnd', 'fair',))
+        dirty = True
+        print ''
+        print datetime.datetime.now().replace(microsecond=0), '[OK]'
+
     force_recalc = False
-    for i in links_range:
-        col_label = 'add_top_links_' + str(i).zfill(3)
-        if col_label not in df_cols or force_recalc:
-            print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with', i, ' inserted top links'
-            if orig_stat_dist is None:
-                _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
-                                                                                    smooth_bias=False,
-                                                                                    calc_entropy_rate=False, verbose=False)
-            df[col_label] = df['node-ids'].apply(add_links_and_calc, args=(net, 'top', i, orig_stat_dist))
-            dirty = True
-            print ''
-            print datetime.datetime.now().replace(microsecond=0), '[OK]'
+    col_label = 'add_top_links_fair'
+    if col_label not in df_cols or force_recalc:
+        print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links'
+        if orig_stat_dist is None:
+            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+                                                                                smooth_bias=False,
+                                                                                calc_entropy_rate=False, verbose=False)
+        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'top', 'fair', orig_stat_dist))
+        dirty = True
+        print ''
+        print datetime.datetime.now().replace(microsecond=0), '[OK]'
+
+    force_recalc = False
+    col_label = 'add_top_block_links_fair'
+    if col_label not in df_cols or force_recalc:
+        print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links'
+        if orig_stat_dist is None:
+            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+                                                                                smooth_bias=False,
+                                                                                calc_entropy_rate=False, verbose=False)
+        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'top_block', 'fair', orig_stat_dist))
+        dirty = True
+        print ''
+        print datetime.datetime.now().replace(microsecond=0), '[OK]'
+
     if not dirty:
         print ' preprocessing nothing to do '.center(120, '=')
     else:
         print ' preprocessing done '.center(120, '=')
     return df, dirty
+
 
 def plot_inserted_links(df, columns, filename):
     filename = filename.replace('.gt', '')
@@ -437,7 +487,7 @@ def main():
     net_name = ''
     net = None
     skipped_ds = set()
-    skipped_ds.add('daserste')
+    # skipped_ds.add('daserste')
     for i in sorted(filter(lambda x: 'preprocessed' not in x, result_files), reverse=True):
         current_net_name = i.rsplit('_bs', 1)[0]
         bias_strength = int(i.split('_bs')[-1].split('.')[0])
@@ -479,7 +529,9 @@ def main():
         print '=' * 80
 
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3]
-        insert_links_labels = sorted(filter(lambda x: x.startswith(('add_top_links_', 'add_rnd_links_')), df.columns))
+        insert_links_labels = sorted(
+            filter(lambda x: x.startswith(('add_top_links_fair', 'add_rnd_links_fair', 'add_top_block_links_fair')),
+                   df.columns))
         plot_inserted_links(df, insert_links_labels, out_fn)
 
         out_fn += '.png'
