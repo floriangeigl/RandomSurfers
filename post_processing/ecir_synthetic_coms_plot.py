@@ -88,14 +88,15 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
     if orig_num_com_nodes >= net.num_vertices():
         return None
     other_nodes = set(range(0, net.num_vertices())) - set(com_nodes)
+
     if method == 'rnd':
-        for e_count in xrange(num_links):
-            while True:
-                src = random.sample(other_nodes, 1)[0]
-                dest = random.sample(com_nodes, 1)[0]
-                if net.edge(src, dest) is None and (src, dest) not in new_edges:
-                    new_edges.add((src, dest))
-                    break
+        remain_edges = num_links - len(new_edges)
+        while remain_edges:
+            srcs = random.sample(other_nodes, min(remain_edges, len(other_nodes)))
+            dests = random.sample(com_nodes, min(remain_edges, len(com_nodes)))
+            new_edges.update(set(filter(lambda (s, d): net.edge(s, d) is None, zip(srcs, dests))))
+            remain_edges = num_links - len(new_edges)
+
     elif method == 'top':
         if top_measure is None:
             nodes_measure = np.array(net.degree_property_map('in').a)
@@ -267,7 +268,7 @@ def plot_df(df, net, bias_strength, filename):
         if not one_subplot:
             ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
-        ax2.set_xticks(rotation=70)
+        plt.xticks(rotation=70)
         if 'ratio' in col_name:
             if not one_subplot:
                 ax1.set_xlim([0, 2])
@@ -314,7 +315,7 @@ def plot_df(df, net, bias_strength, filename):
         if not one_subplot:
             ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
-        ax2.set_xticks(rotation=70)
+        plt.xticks(rotation=70)
         if 'ratio' in col_name:
             if not one_subplot:
                 ax1.set_xlim([0, 2])
