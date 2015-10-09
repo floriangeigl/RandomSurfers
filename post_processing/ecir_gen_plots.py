@@ -125,7 +125,7 @@ for stat_dist_fn in stat_dist_files:
     if len(res_df.columns) > 5:
         ax = res_df.plot(legend=False, logx=True, logy=True)
         plt.xlabel('bias strength')
-        plt.ylabel(r'\pi_g')
+        plt.ylabel(r'$\pi_g$')
         plt.tight_layout()
         plt.savefig(out_fn)
     else:

@@ -115,7 +115,8 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
         except GetOutOfLoops:
             pass
     elif method == 'top_block':
-        max_links = int(np.sqrt(num_links))
+        max_links = int(num_links / orig_num_com_nodes) + 5
+        # print 'max links:', max_links
         if top_measure is None:
             nodes_measure = np.array(net.degree_property_map('in').a)
         else:
@@ -124,11 +125,12 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
         try:
             sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
             sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
+            max_links -= 1
             for max_links_add in range(3):
                 max_links += 1
                 sorted_other_nodes_block = sorted_other_nodes[:max_links]
-                sorted_com_nodes_block = sorted_com_nodes[:max_links]
-                for dest in sorted_com_nodes_block:
+                # sorted_com_nodes_block = sorted_com_nodes
+                for dest in sorted_com_nodes:
                     for src in sorted_other_nodes_block:
                         if net.edge(src, dest) is None:
                             new_edges.add((src, dest))
@@ -171,7 +173,7 @@ def plot_df(df, net, bias_strength, filename):
     # print df
     orig_columns = set(df.columns)
     # plot_df = df[df['sample-size'] < 0.31].copy()
-    plot_df = df
+    plot_df = df[df['sample-size'] < .21]
 
     in_deg = np.array(net.degree_property_map('in').a)
     plot_df['in_neighbours_in_deg'] = plot_df['com_in_neighbours'].apply(lambda x: in_deg[list(x)].sum())
@@ -234,12 +236,24 @@ def plot_df(df, net, bias_strength, filename):
             ax1.plot(None, label='sample-size', c='white')
         ax2.plot(None, label='sample-size', c='white')
         lw_func = lambda x: 1. + ((x-.01) / (.2-.01))*3
-        for key, grp in plot_df.groupby('sample-size'):
-            if key < .21:
-                if not one_subplot:
-                    ax1 = grp.plot(x=col_name, y='stat_dist_com_sum', ax=ax1, label='  ' + '%.2f' % key)
-                grp['tmp'] = pd.rolling_mean(grp['stat_dist_com_sum'], window=int(.25 * len(grp)), center=True)
-                ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
+
+        if 'ratio' in col_name:
+            min_val, max_val = 0.5, 2.
+        else:
+            min_val, max_val = plot_df[col_name].min(), plot_df[col_name].max()
+        num_bins = 100
+        bins_step_size = (max_val-min_val) / num_bins
+        start_point = min_val + bins_step_size/2
+        bin_points = np.array([start_point + i * bins_step_size for i in range(num_bins)])
+        for key, grp in plot_df[['sample-size', col_name, 'stat_dist_com_sum']].groupby('sample-size'):
+            if not one_subplot:
+                ax1 = grp.plot(x=col_name, y='stat_dist_com_sum', ax=ax1, label='  ' + '%.2f' % key)
+            grp['bin'] = grp[col_name].apply(lambda x: int((x - min_val) / bins_step_size))
+            tmp_grp = grp[['bin', 'stat_dist_com_sum']].groupby('bin').mean()
+            tmp_grp['bin_center'] = tmp_grp.index
+            tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[min(x, num_bins - 1)])
+            tmp_grp = tmp_grp.sort('bin_center')
+            ax2 = tmp_grp.plot(x='bin_center', y='stat_dist_com_sum', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
         # grp_df.plot(x=col_name, legend=False)
         x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
         plt.xlabel(x_label)
@@ -276,12 +290,15 @@ def plot_df(df, net, bias_strength, filename):
         if not one_subplot:
             ax1.plot(None, label='sample-size', c='white')
         ax2.plot(None, label='sample-size', c='white')
-        for key, grp in plot_df.groupby('sample-size'):
-            if key < .21:
-                if not one_subplot:
-                    ax1 = grp.plot(x=col_name, y='stat_dist_sum_fac', ax=ax1, label='  ' + '%.2f' % key)
-                grp['tmp'] = pd.rolling_mean(grp['stat_dist_sum_fac'], window=int(.25 * len(grp)), center=True)
-                ax2 = grp.plot(x=col_name, y='tmp', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
+        for key, grp in plot_df[['sample-size', col_name, 'stat_dist_sum_fac']].groupby('sample-size'):
+            if not one_subplot:
+                ax1 = grp.plot(x=col_name, y='stat_dist_sum_fac', ax=ax1, label='  ' + '%.2f' % key)
+            grp['bin'] = grp[col_name].apply(lambda x: int((x - min_val) / bins_step_size))
+            tmp_grp = grp[['bin', 'stat_dist_sum_fac']].groupby('bin').mean()
+            tmp_grp['bin_center'] = tmp_grp.index
+            tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[min(x, num_bins - 1)])
+            tmp_grp = tmp_grp.sort('bin_center')
+            ax2 = tmp_grp.plot(x='bin_center', y='stat_dist_sum_fac', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
 
         # grp_df.plot(x=col_name, legend=False)
         x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
@@ -399,7 +416,7 @@ def preprocess_df(df, net):
     force_recalc = False
     col_label = 'add_top_block_links_fair'
     if col_label not in df_cols or force_recalc:
-        print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links'
+        print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top block links'
         if orig_stat_dist is None:
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                 smooth_bias=False,
@@ -434,7 +451,10 @@ def plot_inserted_links(df, columns, filename):
         # ax.errorbar(x=grp_mean.index, y=grp_mean[i], yerr=grp_std[i], label=i.replace('add_','').replace('_links_',''), lw=2)
         links = label.split()
         if len(links) > 1:
-            links = int(links[-1])
+            try:
+                links = int(links[-1])
+            except ValueError:
+                links = 5
         else:
             # lw of other lines
             links = 5
@@ -519,7 +539,9 @@ def main():
             while True:
                 # in case of str+c
                 try:
-                    df.to_pickle(preprocessed_filename)
+                    cache_fname = preprocessed_filename + '.cache'
+                    df.to_pickle(cache_fname)
+                    shutil.move(cache_fname, preprocessed_filename)
                     break
                 except:
                     print traceback.format_exc()
