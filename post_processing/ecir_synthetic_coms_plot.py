@@ -267,6 +267,7 @@ def plot_df(df, net, bias_strength, filename):
         if not one_subplot:
             ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
+        ax2.set_xticks(rotation=70)
         if 'ratio' in col_name:
             if not one_subplot:
                 ax1.set_xlim([0, 2])
@@ -313,6 +314,7 @@ def plot_df(df, net, bias_strength, filename):
         if not one_subplot:
             ax1.grid(which='major', axis='y')
         ax2.grid(which='major', axis='y')
+        ax2.set_xticks(rotation=70)
         if 'ratio' in col_name:
             if not one_subplot:
                 ax1.set_xlim([0, 2])
