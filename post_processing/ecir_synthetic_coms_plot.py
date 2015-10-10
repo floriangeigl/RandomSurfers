@@ -123,24 +123,22 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
         else:
             nodes_measure = top_measure
 
-        try:
-            sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
-            sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-            max_links -= 1
-            for max_links_add in range(3):
-                max_links += 1
-                sorted_other_nodes_block = sorted_other_nodes[:max_links]
-                # sorted_com_nodes_block = sorted_com_nodes
-                for dest in sorted_com_nodes:
-                    for src in sorted_other_nodes_block:
-                        if net.edge(src, dest) is None:
-                            new_edges.add((src, dest))
-                            if len(new_edges) >= num_links:
-                                raise GetOutOfLoops
+        sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
+        sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
+        max_links -= 1
+        for max_links_add in range(3):
+            max_links += 1
+            sorted_other_nodes_block = sorted_other_nodes[:max_links]
+            # sorted_com_nodes_block = sorted_com_nodes
+            new_edges = filter(lambda l_e: net.edge(*l_e) is None, ((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes_block))[:num_links]
+            new_edges = set(new_edges)
+            if len(new_edges) >= num_links:
+                break
+            else:
                 print 'retry with bigger block'
+        if len(new_edges) < num_links:
             print 'could not insert all links:', len(new_edges), 'of', num_links
-        except GetOutOfLoops:
-            pass
+
 
     assert len(new_edges) == num_links
     net.add_edge_list(new_edges)
@@ -255,12 +253,10 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     else:
         min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
     min_y_val, max_y_val = df[y_col_name].min(), df[y_col_name].max()
-    num_bins = 25
+    num_bins = 5
     x_val_range = max_x_val - min_x_val
     y_val_range = max_y_val - min_y_val
-    bins_step_size = x_val_range / num_bins
-    start_point = min_x_val + bins_step_size / 2
-    bin_points = np.array([start_point + i * bins_step_size for i in range(num_bins)])
+
     x_annot_offset = x_val_range / 20
 
     if 'ratio' in x_col_name:
@@ -277,13 +273,19 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     for color_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
         key = np.round(key, decimals=3)
         key_str = ('%.3f' % key).rstrip('0')
+        grp_x_min = grp[x_col_name].min()
+        grp_x_max = grp[x_col_name].max()
+        bins_step_size = (grp_x_max - grp_x_min) / num_bins
+        start_point = grp_x_min + bins_step_size / 2
+        bin_points = np.array([start_point + i * bins_step_size for i in range(num_bins)])
+
         if not one_subplot:
             ax1 = grp.plot(x=x_col_name, y=y_col_name, ax=ax1, label='  ' + key_str)
         c = colors[color_idx % len(colors)]
-        grp['bin'] = grp[x_col_name].apply(lambda x: int((x - min_x_val) / bins_step_size))
+        grp['bin'] = grp[x_col_name].apply(lambda x: min(int((x - min_x_val) / bins_step_size), num_bins - 1))
         tmp_grp = grp[['bin', y_col_name]].groupby('bin').mean()
         tmp_grp['bin_center'] = tmp_grp.index
-        tmp_grp = tmp_grp[tmp_grp['bin_center'] < (num_bins-1)]
+        # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort('bin_center')
         if len(tmp_grp) > 5:
