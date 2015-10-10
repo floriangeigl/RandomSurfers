@@ -21,7 +21,7 @@ import operator
 from preprocessing.categorize_network_nodes import get_cat_dist
 import copy, time
 import pandas as pd
-from post_processing.ecir_synthetic_coms_plot import plot_df
+from post_processing.ecir_synthetic_coms_plot import df
 
 
 def get_stat_dist_sum(net, ds_name, bias_strength, com_sizes, num_samples, out_dir, method='EV'):
@@ -54,7 +54,7 @@ def get_stat_dist_sum(net, ds_name, bias_strength, com_sizes, num_samples, out_d
     df = pd.DataFrame(columns=['node-ids', 'stat_dist'], data=results)
     out_fn_base = out_dir + ds_name + '/' + ds_name + '_bs' + ('%.0f' % float(bias_strength)).zfill(4)
     df.to_pickle(out_fn_base + '.df')
-    plot_df(df, bias_strength, out_fn_base + '.png')
+    df(df, bias_strength, out_fn_base + '.png')
     return df
 
 def main():

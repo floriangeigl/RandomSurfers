@@ -158,7 +158,7 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
     return relinked_stat_dist_sum
 
 
-def plot_df(df, net, bias_strength, filename):
+def plot_dataframe(df, net, bias_strength, filename):
     label_dict = dict()
     label_dict['ratio_com_out_deg_in_deg'] = r'$\k_{g}^r$'
     label_dict['com_in_deg'] = r'$k_{g}^-$'
@@ -173,43 +173,43 @@ def plot_df(df, net, bias_strength, filename):
     df.dropna(axis=0, how='any', inplace=True)
     # print df
     orig_columns = set(df.columns)
-    # plot_df = df[df['sample-size'] < 0.31].copy()
-    plot_df = df[df['sample-size'] < .21]
+
+    df_plot = df[df['sample-size'] < .21]
 
     in_deg = np.array(net.degree_property_map('in').a)
-    plot_df['in_neighbours_in_deg'] = plot_df['com_in_neighbours'].apply(lambda x: in_deg[list(x)].sum())
+    df_plot['in_neighbours_in_deg'] = df_plot['com_in_neighbours'].apply(lambda x: in_deg[list(x)].sum())
 
     out_deg = np.array(net.degree_property_map('out').a)
-    plot_df['out_neighbours_out_deg'] = plot_df['com_out_neighbours'].apply(lambda x: out_deg[list(x)].sum())
+    df_plot['out_neighbours_out_deg'] = df_plot['com_out_neighbours'].apply(lambda x: out_deg[list(x)].sum())
 
-    plot_df['ratio_out_out_deg_in_in_deg'] = plot_df['out_neighbours_out_deg'] / plot_df['in_neighbours_in_deg']
+    df_plot['ratio_out_out_deg_in_in_deg'] = df_plot['out_neighbours_out_deg'] / df_plot['in_neighbours_in_deg']
 
-    plot_df['com_in_deg'] = plot_df['node-ids'].apply(lambda x: in_deg[list(x)].sum()) - plot_df['intra_com_links']
-    plot_df['com_out_deg'] = plot_df['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - plot_df['intra_com_links']
-    plot_df['ratio_com_out_deg_in_deg'] = plot_df['com_out_deg'] / plot_df['com_in_deg']
+    df_plot['com_in_deg'] = df_plot['node-ids'].apply(lambda x: in_deg[list(x)].sum()) - df_plot['intra_com_links']
+    df_plot['com_out_deg'] = df_plot['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - df_plot['intra_com_links']
+    df_plot['ratio_com_out_deg_in_deg'] = df_plot['com_out_deg'] / df_plot['com_in_deg']
 
-    plot_df['stat_dist_sum_fac'] = plot_df['stat_dist_com_sum'] / plot_df['orig_stat_dist_sum']
+    df_plot['stat_dist_sum_fac'] = df_plot['stat_dist_com_sum'] / df_plot['orig_stat_dist_sum']
     orig_columns.add('stat_dist_sum_fac')
 
     ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt',1)[0]
-    for col_name in sorted(set(plot_df.columns) - orig_columns):
+    for col_name in sorted(set(df_plot.columns) - orig_columns):
         current_filename = filename[:-4] + '_' + col_name.replace(' ', '_')
         current_filename = current_filename.rsplit('/', 1)
         current_filename = current_filename[0] + '/' + ds_name + '/' + current_filename[1].replace('.gt', '')
         create_folder_structure(current_filename)
         print 'plot:', col_name
         for normed_stat_dist in [True, False]:
-            y = plot_df[col_name]
-            x = plot_df['sample-size']
-            c = plot_df['stat_dist_normed'] if normed_stat_dist else plot_df['stat_dist_com_sum']
+            y = df_plot[col_name]
+            x = df_plot['sample-size']
+            c = df_plot['stat_dist_normed'] if normed_stat_dist else df_plot['stat_dist_com_sum']
             fix, ax = plt.subplots()
             ac = ax.scatter(x, y, c=c, lw=0, alpha=0.7, cmap='coolwarm')
             ax.set_xticks(sorted(set(x)), minor=True)
             cbar = plt.colorbar(ac)
             plt.xlabel('sample size')
-            plt.xlim([0, plot_df['sample-size'].max() + 0.01])
-            y_range_one_perc = (plot_df[col_name].max() - plot_df[col_name].min()) * 0.01
-            plt.ylim([plot_df[col_name].min() - y_range_one_perc, plot_df[col_name].max() + y_range_one_perc])
+            plt.xlim([0, df_plot['sample-size'].max() + 0.01])
+            y_range_one_perc = (df_plot[col_name].max() - df_plot[col_name].min()) * 0.01
+            plt.ylim([df_plot[col_name].min() - y_range_one_perc, df_plot[col_name].max() + y_range_one_perc])
             plt.ylabel(col_name.replace('_', ' '))
             cbar.set_label('sample size standardized $\\sum \\pi$' if normed_stat_dist else r'$\pi_g$')
             # cbar.set_label('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
@@ -222,115 +222,135 @@ def plot_df(df, net, bias_strength, filename):
             plt.savefig(out_f, dpi=150)
             plt.close('all')
 
-        plot_df.sort(col_name, inplace=True)
-        one_subplot = True
-        fig_size = (16,10)
-        default_font_size = matplotlib.rcParams['font.size']
-        matplotlib.rcParams.update({'font.size': 20})
-        # print '\tsum'
-        # sum
-        if one_subplot:
-            fig, ax2 = plt.subplots()
-        else:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
-        if not one_subplot:
-            ax1.plot(None, label='sample-size', c='white')
-        ax2.plot(None, label='sample-size', c='white')
-        lw_func = lambda x: 1. + ((x-.01) / (.2-.01))*3
+        df_plot.sort(col_name, inplace=True)
 
-        if 'ratio' in col_name:
-            min_val, max_val = 0.5, 2.
-        else:
-            min_val, max_val = plot_df[col_name].min(), plot_df[col_name].max()
-        num_bins = 100
-        bins_step_size = (max_val-min_val) / num_bins
-        start_point = min_val + bins_step_size/2
-        bin_points = np.array([start_point + i * bins_step_size for i in range(num_bins)])
-        for key, grp in plot_df[['sample-size', col_name, 'stat_dist_com_sum']].groupby('sample-size'):
-            if not one_subplot:
-                ax1 = grp.plot(x=col_name, y='stat_dist_com_sum', ax=ax1, label='  ' + '%.2f' % key)
-            grp['bin'] = grp[col_name].apply(lambda x: int((x - min_val) / bins_step_size))
-            tmp_grp = grp[['bin', 'stat_dist_com_sum']].groupby('bin').mean()
-            tmp_grp['bin_center'] = tmp_grp.index
-            tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[min(x, num_bins - 1)])
-            tmp_grp = tmp_grp.sort('bin_center')
-            ax2 = tmp_grp.plot(x='bin_center', y='stat_dist_com_sum', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
-        # grp_df.plot(x=col_name, legend=False)
-        x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
-        plt.xlabel(x_label)
-        plt.ylabel(r'$\pi_g$')
-        out_f = current_filename + '_lines.png'
-        if not one_subplot:
-            ax1.legend(loc='best', prop={'size': 12})
-            ax2.legend(loc='best', prop={'size': 12})
-        else:
-            ax2.legend_.remove()
-        if not one_subplot:
-            ax1.grid(which='major', axis='y')
-        ax2.grid(which='major', axis='y')
-        plt.xticks(rotation=70)
-        if 'ratio' in col_name:
-            if not one_subplot:
-                ax1.set_xlim([0, 2])
-            ax2.set_xlim([0, 2])
-        if not one_subplot:
-            plt.title(ds_name)
-        plt.tight_layout()
-        if not one_subplot:
-            plt.savefig(out_f, dpi=150)
-        else:
-            plt_tools.save_n_crop(out_f.replace('.png', '.pdf'))
-            plt_tools.plot_legend(ax2, out_f.rsplit('/', 2)[0] + '/' + 'lines_legend.pdf', font_size=12)
-        plt.close('all')
-
-        # fac
-        # print '\tfrac'
-        if one_subplot:
-            fig, ax2 = plt.subplots()
-        else:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
-        if not one_subplot:
-            ax1.plot(None, label='sample-size', c='white')
-        ax2.plot(None, label='sample-size', c='white')
-        for key, grp in plot_df[['sample-size', col_name, 'stat_dist_sum_fac']].groupby('sample-size'):
-            if not one_subplot:
-                ax1 = grp.plot(x=col_name, y='stat_dist_sum_fac', ax=ax1, label='  ' + '%.2f' % key)
-            grp['bin'] = grp[col_name].apply(lambda x: int((x - min_val) / bins_step_size))
-            tmp_grp = grp[['bin', 'stat_dist_sum_fac']].groupby('bin').mean()
-            tmp_grp['bin_center'] = tmp_grp.index
-            tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[min(x, num_bins - 1)])
-            tmp_grp = tmp_grp.sort('bin_center')
-            ax2 = tmp_grp.plot(x='bin_center', y='stat_dist_sum_fac', ax=ax2, label='  ' + '%.2f' % key, lw=lw_func(key))
-
-        # grp_df.plot(x=col_name, legend=False)
-        x_label = label_dict[col_name] if col_name in label_dict else col_name.replace('_', ' ')
-        plt.xlabel(x_label)
-        plt.ylabel(r'$\frac{\pi_g^b}{\pi_g^u}$')
-        out_f = current_filename + '_lines_fac.png'
-        if not one_subplot:
-            ax1.legend(loc='best', prop={'size': 12})
-            ax2.legend(loc='best', prop={'size': 12})
-        else:
-            ax2.legend_.remove()
-        if not one_subplot:
-            ax1.grid(which='major', axis='y')
-        ax2.grid(which='major', axis='y')
-        plt.xticks(rotation=70)
-        if 'ratio' in col_name:
-            if not one_subplot:
-                ax1.set_xlim([0, 2])
-            ax2.set_xlim([0, 2])
-        if not one_subplot:
-            plt.title(ds_name)
-        plt.tight_layout()
-        if not one_subplot:
-            plt.savefig(out_f, dpi=150)
-        else:
-            plt_tools.save_n_crop(out_f.replace('.png', '.pdf'))
-            plt_tools.plot_legend(ax2, out_f.rsplit('/', 2)[0] + '/' + 'fac_legend.pdf', font_size=12)
-        plt.close('all')
-        matplotlib.rcParams.update({'font.size': default_font_size})
+        label_dict['stat_dist_com_sum'] = r'$\pi_g^b$'
+        label_dict['stat_dist_sum_fac'] = r'$\frac{\pi_g^b}{\pi_g^u}$'
+        plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
+                        ds_name=ds_name)
+        plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict,
+                        ds_name=ds_name)
+        exit()
     return 0
+
+
+def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subplot=True, plt_font_size=20,
+                    fig_size=(16, 10), label_dict=None, ds_name=''):
+    default_font_size = matplotlib.rcParams['font.size']
+    matplotlib.rcParams.update({'font.size': plt_font_size})
+    if label_dict is None:
+        label_dict = dict()
+    if one_subplot:
+        fig, ax2 = plt.subplots()
+        ax1 = None
+    else:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
+    if not one_subplot:
+        ax1.plot(None, label='sample-size', c='white')
+    ax2.plot(None, label='sample-size', c='white')
+    lw_func = lambda x: 1. + ((x - .01) / (.2 - .01)) * 3
+
+    if 'ratio' in x_col_name:
+        min_x_val, max_x_val = 0.5, 2.
+    else:
+        min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
+    min_y_val, max_y_val = df[y_col_name].min(), df[y_col_name].max()
+    num_bins = 25
+    x_val_range = max_x_val - min_x_val
+    y_val_range = max_y_val - min_y_val
+    bins_step_size = x_val_range / num_bins
+    start_point = min_x_val + bins_step_size / 2
+    bin_points = np.array([start_point + i * bins_step_size for i in range(num_bins)])
+    x_annot_offset = x_val_range / 10
+
+    if 'ratio' in x_col_name:
+        plt_x_range = [min_x_val, max_x_val]
+    else:
+        x_offset = x_val_range / 100 * 2
+        plt_x_range = [min_x_val - x_offset, max_x_val + x_offset]
+
+    y_offset = y_val_range / 100 * 2
+    plt_y_range = [min_y_val - y_offset, max_y_val + y_offset]
+
+    plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
+    colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999']
+    for color_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
+        if not one_subplot:
+            ax1 = grp.plot(x=x_col_name, y=y_col_name, ax=ax1, label='  ' + '%.2f' % key)
+        c = colors[color_idx % len(colors)]
+        grp['bin'] = grp[x_col_name].apply(lambda x: int((x - min_x_val) / bins_step_size))
+        tmp_grp = grp[['bin', y_col_name]].groupby('bin').mean()
+        tmp_grp['bin_center'] = tmp_grp.index
+        tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[min(x, num_bins - 1)])
+        tmp_grp = tmp_grp.sort('bin_center')
+        center_idx = int(len(tmp_grp) / 2)
+        center_row = tmp_grp.iloc[center_idx]
+        x_center, y_center = center_row[['bin_center', y_col_name]]
+        annotate_font_size = plt_font_size / 2
+        if len(tmp_grp) < 5:
+            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + '%.2f' % key,
+                               lw=lw_func(key), alpha=0.9, color=c)
+            ax2.annotate('%.2f' % key, xy=(x_center, y_center),
+                         xytext=(
+                             (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset),
+                             y_center), fontsize=annotate_font_size,
+                         arrowprops=dict(facecolor='black', shrink=0.05, width=.25, headwidth=3.),
+                         horizontalalignment='center',
+                         verticalalignment='center')
+        else:
+            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + '%.2f' % key,
+                               lw=lw_func(key), alpha=0.3, color=c)
+            center_row[['bin_center', y_col_name]] = np.nan, np.nan
+            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + '%.2f' % key,
+                               lw=lw_func(key), alpha=0.6, color=c)
+            center_row[['bin_center', y_col_name]] = x_center, y_center
+            last_x, last_y = tmp_grp.iloc[max(0, center_idx - 1)][['bin_center', y_col_name]]
+            next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, center_idx + 1)][['bin_center', y_col_name]]
+            x_diff = next_x - last_x
+            y_diff = next_y - last_y
+            x_diff /= (plt_x_range[1] - plt_x_range[0])
+            y_diff /= (plt_y_range[1] - plt_y_range[0])
+            k = y_diff / x_diff
+            rotn = np.degrees(np.arctan(k))
+            # print 'rotn:', rotn * .9
+            ax2.annotate('%.2f' % key, xy=(x_center, y_center),
+                         xytext=(x_center, y_center), fontsize=annotate_font_size, horizontalalignment='center',
+                         verticalalignment='center', rotation=rotn)
+
+    # grp_df.plot(x=x_col_name, legend=False)
+    x_label = label_dict[x_col_name] if x_col_name in label_dict else x_col_name.replace('_', ' ')
+    plt.xlabel(x_label)
+    y_label = label_dict[y_col_name] if y_col_name in label_dict else y_col_name.replace('_', ' ')
+    plt.ylabel(y_label)
+
+    if not one_subplot:
+        ax1.legend(loc='best', prop={'size': 12})
+        ax2.legend(loc='best', prop={'size': 12})
+        ax1.set_xlim(plt_x_range)
+        ax1.set_ylim(plt_y_range)
+        ax1.grid(which='major', axis='y')
+        plt.title(ds_name)
+    else:
+        ax2.legend_.remove()
+    ax2.set_xlim(plt_x_range)
+    ax2.set_ylim(plt_y_range)
+    ax2.grid(which='major', axis='y')
+    if 'ratio' in x_col_name:
+        plt.xticks()
+    else:
+        plt.xticks()
+        ax2.ticklabel_format(style='sci', axis='x', useOffset=True, useMathText=True, scilimits=(0, 0))
+
+    plt.tight_layout()
+    plt_fn = out_fn_base + out_fn_ext
+    if not one_subplot:
+        plt.savefig(plt_fn + '.png', dpi=150)
+    else:
+        plt_tools.save_n_crop(plt_fn + '.pdf')
+        plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + 'legend.pdf',
+                              font_size=12)
+    plt.close('all')
+    matplotlib.rcParams.update({'font.size': default_font_size})
 
 
 def preprocess_df(df, net):
@@ -560,7 +580,7 @@ def main():
         plot_inserted_links(df, insert_links_labels, out_fn)
 
         out_fn += '.png'
-        cors.append(plot_df(df, net, bias_strength, out_fn))
+        cors.append(plot_dataframe(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
         # exit()
         #all_dfs.append(df.copy())
