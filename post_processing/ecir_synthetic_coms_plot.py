@@ -251,7 +251,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     lw_func = lambda x: 1. + ((x - .01) / (.2 - .01)) * 3
 
     if 'ratio' in x_col_name:
-        min_x_val, max_x_val = 0.5, 1.5
+        min_x_val, max_x_val = 0.5, 2.
     else:
         min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
     min_y_val, max_y_val = df[y_col_name].min(), df[y_col_name].max()
@@ -283,7 +283,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         grp['bin'] = grp[x_col_name].apply(lambda x: int((x - min_x_val) / bins_step_size))
         tmp_grp = grp[['bin', y_col_name]].groupby('bin').mean()
         tmp_grp['bin_center'] = tmp_grp.index
-        tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[min(x, num_bins - 1)])
+        tmp_grp = tmp_grp[tmp_grp['bin_center'] < (num_bins-1)]
+        tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort('bin_center')
         if len(tmp_grp) > 5:
             annotate_idx = np.random.randint(2, len(tmp_grp) - 3)
