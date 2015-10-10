@@ -230,7 +230,7 @@ def plot_dataframe(df, net, bias_strength, filename):
                         ds_name=ds_name)
         plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict,
                         ds_name=ds_name)
-        exit()
+        # exit()
     return 0
 
 
@@ -251,7 +251,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     lw_func = lambda x: 1. + ((x - .01) / (.2 - .01)) * 3
 
     if 'ratio' in x_col_name:
-        min_x_val, max_x_val = 0.5, 2.
+        min_x_val, max_x_val = 0.5, 1.5
     else:
         min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
     min_y_val, max_y_val = df[y_col_name].min(), df[y_col_name].max()
@@ -261,7 +261,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     bins_step_size = x_val_range / num_bins
     start_point = min_x_val + bins_step_size / 2
     bin_points = np.array([start_point + i * bins_step_size for i in range(num_bins)])
-    x_annot_offset = x_val_range / 10
+    x_annot_offset = x_val_range / 20
 
     if 'ratio' in x_col_name:
         plt_x_range = [min_x_val, max_x_val]
@@ -275,22 +275,38 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
     colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999']
     for color_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
+        key = np.round(key, decimals=3)
+        key_str = ('%.3f' % key).rstrip('0')
         if not one_subplot:
-            ax1 = grp.plot(x=x_col_name, y=y_col_name, ax=ax1, label='  ' + '%.2f' % key)
+            ax1 = grp.plot(x=x_col_name, y=y_col_name, ax=ax1, label='  ' + key_str)
         c = colors[color_idx % len(colors)]
         grp['bin'] = grp[x_col_name].apply(lambda x: int((x - min_x_val) / bins_step_size))
         tmp_grp = grp[['bin', y_col_name]].groupby('bin').mean()
         tmp_grp['bin_center'] = tmp_grp.index
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[min(x, num_bins - 1)])
         tmp_grp = tmp_grp.sort('bin_center')
-        center_idx = int(len(tmp_grp) / 2)
-        center_row = tmp_grp.iloc[center_idx]
+        if len(tmp_grp) > 5:
+            annotate_idx = np.random.randint(2, len(tmp_grp) - 3)
+        else:
+            annotate_idx = int(len(tmp_grp) / 2)
+        center_row = tmp_grp.iloc[annotate_idx]
         x_center, y_center = center_row[['bin_center', y_col_name]]
         annotate_font_size = plt_font_size / 2
+        last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
+        next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, annotate_idx + 1)][['bin_center', y_col_name]]
         if len(tmp_grp) < 5:
-            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + '%.2f' % key,
+            if len(tmp_grp) % 2 == 0:
+                x_center = last_x + (next_x - last_x) / 2
+                y_center = last_y + (next_y - last_y) / 2
+            if len(tmp_grp) == 1:
+                c_bin_center, c_y_val = tmp_grp.iloc[0][['bin_center', y_col_name]]
+                tmp_grp = pd.DataFrame(columns=['bin_center', y_col_name],
+                                       data=[(c_bin_center - bins_step_size, c_y_val),
+                                             (c_bin_center + bins_step_size, c_y_val)])
+
+            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
                                lw=lw_func(key), alpha=0.9, color=c)
-            ax2.annotate('%.2f' % key, xy=(x_center, y_center),
+            ax2.annotate(key_str, xy=(x_center, y_center),
                          xytext=(
                              (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset),
                              y_center), fontsize=annotate_font_size,
@@ -298,22 +314,20 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
                          horizontalalignment='center',
                          verticalalignment='center')
         else:
-            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + '%.2f' % key,
+            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
                                lw=lw_func(key), alpha=0.3, color=c)
             center_row[['bin_center', y_col_name]] = np.nan, np.nan
-            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + '%.2f' % key,
+            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
                                lw=lw_func(key), alpha=0.6, color=c)
             center_row[['bin_center', y_col_name]] = x_center, y_center
-            last_x, last_y = tmp_grp.iloc[max(0, center_idx - 1)][['bin_center', y_col_name]]
-            next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, center_idx + 1)][['bin_center', y_col_name]]
             x_diff = next_x - last_x
             y_diff = next_y - last_y
             x_diff /= (plt_x_range[1] - plt_x_range[0])
             y_diff /= (plt_y_range[1] - plt_y_range[0])
             k = y_diff / x_diff
-            rotn = np.degrees(np.arctan(k))
+            rotn = np.degrees(np.arctan(k)) * .8
             # print 'rotn:', rotn * .9
-            ax2.annotate('%.2f' % key, xy=(x_center, y_center),
+            ax2.annotate(key_str, xy=(x_center, y_center),
                          xytext=(x_center, y_center), fontsize=annotate_font_size, horizontalalignment='center',
                          verticalalignment='center', rotation=rotn)
 
