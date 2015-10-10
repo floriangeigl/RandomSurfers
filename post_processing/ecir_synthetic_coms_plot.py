@@ -253,7 +253,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     else:
         min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
     min_y_val, max_y_val = df[y_col_name].min(), df[y_col_name].max()
-    num_bins = 5
+    num_bins = 6
     x_val_range = max_x_val - min_x_val
     y_val_range = max_y_val - min_y_val
 
@@ -282,7 +282,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         if not one_subplot:
             ax1 = grp.plot(x=x_col_name, y=y_col_name, ax=ax1, label='  ' + key_str)
         c = colors[color_idx % len(colors)]
-        grp['bin'] = grp[x_col_name].apply(lambda x: min(int((x - min_x_val) / bins_step_size), num_bins - 1))
+        grp['bin'] = grp[x_col_name].apply(lambda x: min(int((x - grp_x_min) / bins_step_size), num_bins - 1))
         tmp_grp = grp[['bin', y_col_name]].groupby('bin').mean()
         tmp_grp['bin_center'] = tmp_grp.index
         # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
