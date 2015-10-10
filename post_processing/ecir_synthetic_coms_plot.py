@@ -297,7 +297,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         annotate_font_size = plt_font_size / 2
         last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
         next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, annotate_idx + 1)][['bin_center', y_col_name]]
-        if len(tmp_grp) < 5:
+        if grp_x_max - grp_x_min < x_val_range / 100 * 5:
             if len(tmp_grp) % 2 == 0:
                 x_center = last_x + (next_x - last_x) / 2
                 y_center = last_y + (next_y - last_y) / 2
@@ -308,7 +308,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
                                              (c_bin_center + bins_step_size, c_y_val)])
 
             ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
-                               lw=lw_func(key), alpha=0.9, color=c)
+                               lw=lw_func(key), alpha=1., color=c)
             ax2.annotate(key_str, xy=(x_center, y_center),
                          xytext=(
                              (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset),
@@ -318,10 +318,10 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
                          verticalalignment='center')
         else:
             ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
-                               lw=lw_func(key), alpha=0.3, color=c)
+                               lw=lw_func(key), alpha=0.5, color=c)
             center_row[['bin_center', y_col_name]] = np.nan, np.nan
             ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
-                               lw=lw_func(key), alpha=0.6, color=c)
+                               lw=lw_func(key), alpha=0.5, color=c)
             center_row[['bin_center', y_col_name]] = x_center, y_center
             x_diff = next_x - last_x
             y_diff = next_y - last_y
