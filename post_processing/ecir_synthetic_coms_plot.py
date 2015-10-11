@@ -247,13 +247,15 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         ax1.plot(None, label='sample-size', c='white')
     ax2.plot(None, label='sample-size', c='white')
     lw_func = lambda x: 1. + ((x - .01) / (.2 - .01)) * 3
-
+    legend_plot = True
+    all_sample_sizes = set(df['sample-size'])
     if 'ratio' in x_col_name:
         min_x_val, max_x_val = 0.5, 2.
         df = df[(df[x_col_name] <= max_x_val) & (df[x_col_name] >= min_x_val)]
     else:
-        all_sample_sizes = set(sorted(set(df['sample-size']))[::2])
-        df = df[df['sample-size'].apply(lambda x: x in all_sample_sizes)]
+        filtered_sample_size = set(sorted(all_sample_sizes)[::2])
+        legend_plot = False
+        df = df[df['sample-size'].apply(lambda x: x in filtered_sample_size)]
         min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
         # print 'sample-sizes:', sorted(set(df['sample-size']))
     min_y_val, max_y_val = df[y_col_name].min(), df[y_col_name].max()
@@ -310,7 +312,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
             x_center += ((next_x - x_center) / 2)
             y_center += ((next_y - y_center) / 2)
 
-        ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.9)
+        ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.9,
+                              label='  ' + key_str)
         annotate_bbox = dict(boxstyle='round4,pad=0.2', fc='white', ec=c, alpha=0.7)
         annotate_kwargs = dict(ha='center', va='center', bbox=annotate_bbox, fontsize=annotate_font_size)
         annotate_arrow = dict(arrowstyle="->, head_width=1.", facecolor='black',
@@ -323,12 +326,12 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
                                        data=[(c_bin_center - bins_step_size, c_y_val),
                                              (c_bin_center + bins_step_size, c_y_val)])
 
-            ax2 = tmp_grp.plot(label='  ' + key_str, ax=ax2, **ax2_plt_kwargs)
+            ax2 = tmp_grp.plot(ax=ax2, **ax2_plt_kwargs)
             ax2.annotate(key_str, xy=(x_center, y_center), xytext=(
                 (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset), y_center),
                          arrowprops=annotate_arrow, **annotate_kwargs)
         else:
-            ax2 = tmp_grp.plot(label='  ' + key_str, ax=ax2, **ax2_plt_kwargs)
+            ax2 = tmp_grp.plot(ax=ax2, **ax2_plt_kwargs)
             x_diff = next_x - last_x
             y_diff = next_y - last_y
             x_diff /= (plt_x_range[1] - plt_x_range[0])
@@ -368,8 +371,9 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         plt.savefig(plt_fn + '.png', dpi=150)
     else:
         plt_tools.save_n_crop(plt_fn + '.pdf')
-        plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + '_legend.pdf',
-                              font_size=12)
+        if legend_plot and set(df['sample-size']) == all_sample_sizes:
+            plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + '_legend.pdf',
+                                  font_size=12)
     plt.close('all')
     matplotlib.rcParams.update({'font.size': default_font_size})
 
