@@ -158,9 +158,9 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
 
 def plot_dataframe(df, net, bias_strength, filename):
     label_dict = dict()
-    label_dict['ratio_com_out_deg_in_deg'] = r'$\k_{g}^r$'
-    label_dict['com_in_deg'] = r'$k_{g}^-$'
-    label_dict['com_out_deg'] = r'$k_{g}^+$'
+    label_dict['ratio_com_out_deg_in_deg'] = r'$k_g^r$'
+    label_dict['com_in_deg'] = r'$k_g^-$'
+    label_dict['com_out_deg'] = r'$k_g^+$'
     gb = df[['sample-size', 'stat_dist_com_sum']].groupby('sample-size')
     trans_lambda = lambda x: (x-x.mean()) / x.std()
     gb = gb.transform(trans_lambda)
@@ -257,7 +257,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     x_val_range = max_x_val - min_x_val
     y_val_range = max_y_val - min_y_val
 
-    x_annot_offset = x_val_range / 20
+    x_annot_offset = x_val_range / 15
 
     if 'ratio' in x_col_name:
         plt_x_range = [min_x_val, max_x_val]
@@ -271,6 +271,9 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
     colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999']
     for color_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
+        use_arrows = False
+        rnd_label_pos = False
+
         key = np.round(key, decimals=3)
         key_str = ('%.3f' % key).rstrip('0')
         grp_x_min = grp[x_col_name].min()
@@ -288,7 +291,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort('bin_center')
-        if len(tmp_grp) > 5:
+        if len(tmp_grp) > 5 and rnd_label_pos:
             annotate_idx = np.random.randint(2, len(tmp_grp) - 3)
         else:
             annotate_idx = int(len(tmp_grp) / 2)
@@ -297,7 +300,14 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         annotate_font_size = plt_font_size / 2
         last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
         next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, annotate_idx + 1)][['bin_center', y_col_name]]
-        if grp_x_max - grp_x_min < x_val_range / 100 * 5:
+
+        ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.9)
+        annotate_bbox = dict(boxstyle='round4,pad=0.2', fc='white', ec=c, alpha=0.7)
+        annotate_kwargs = dict(ha='center', va='center', bbox=annotate_bbox, fontsize=annotate_font_size)
+        annotate_arrow = dict(arrowstyle="->, head_width=1.", facecolor='black',
+                              connectionstyle='angle3') #tail_width=.25, shrink_factor=0.05
+
+        if grp_x_max - grp_x_min < x_val_range / 100 * 5 and use_arrows:
             if len(tmp_grp) % 2 == 0:
                 x_center = last_x + (next_x - last_x) / 2
                 y_center = last_y + (next_y - last_y) / 2
@@ -307,22 +317,12 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
                                        data=[(c_bin_center - bins_step_size, c_y_val),
                                              (c_bin_center + bins_step_size, c_y_val)])
 
-            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
-                               lw=lw_func(key), alpha=1., color=c)
-            ax2.annotate(key_str, xy=(x_center, y_center),
-                         xytext=(
-                             (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset),
-                             y_center), fontsize=annotate_font_size,
-                         arrowprops=dict(facecolor='black', shrink=0.05, width=.25, headwidth=3.),
-                         horizontalalignment='center',
-                         verticalalignment='center')
+            ax2 = tmp_grp.plot(label='  ' + key_str, ax=ax2, **ax2_plt_kwargs)
+            ax2.annotate(key_str, xy=(x_center, y_center), xytext=(
+                (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset), y_center),
+                         arrowprops=annotate_arrow, **annotate_kwargs)
         else:
-            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
-                               lw=lw_func(key), alpha=0.5, color=c)
-            center_row[['bin_center', y_col_name]] = np.nan, np.nan
-            ax2 = tmp_grp.plot(x='bin_center', y=y_col_name, ax=ax2, label='  ' + key_str,
-                               lw=lw_func(key), alpha=0.5, color=c)
-            center_row[['bin_center', y_col_name]] = x_center, y_center
+            ax2 = tmp_grp.plot(label='  ' + key_str, ax=ax2, **ax2_plt_kwargs)
             x_diff = next_x - last_x
             y_diff = next_y - last_y
             x_diff /= (plt_x_range[1] - plt_x_range[0])
@@ -330,9 +330,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
             k = y_diff / x_diff
             rotn = np.degrees(np.arctan(k)) * .8
             # print 'rotn:', rotn * .9
-            ax2.annotate(key_str, xy=(x_center, y_center),
-                         xytext=(x_center, y_center), fontsize=annotate_font_size, horizontalalignment='center',
-                         verticalalignment='center', rotation=rotn)
+            ax2.annotate(key_str, xy=(x_center, y_center), xytext=(x_center, y_center), rotation=rotn, **annotate_kwargs)
 
     # grp_df.plot(x=x_col_name, legend=False)
     x_label = label_dict[x_col_name] if x_col_name in label_dict else x_col_name.replace('_', ' ')
@@ -364,7 +362,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         plt.savefig(plt_fn + '.png', dpi=150)
     else:
         plt_tools.save_n_crop(plt_fn + '.pdf')
-        plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + 'legend.pdf',
+        plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + '_legend.pdf',
                               font_size=12)
     plt.close('all')
     matplotlib.rcParams.update({'font.size': default_font_size})
