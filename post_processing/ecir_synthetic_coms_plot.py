@@ -305,7 +305,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
             annotate_idx = int((len(tmp_grp)-1) / 2)
         center_row = tmp_grp.iloc[annotate_idx]
         x_center, y_center = center_row[['bin_center', y_col_name]]
-        annotate_font_size = plt_font_size / 2.5
+        annotate_font_size = plt_font_size / 2
         last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
         next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, annotate_idx + 1)][['bin_center', y_col_name]]
         if len(tmp_grp) % 2 == 0 or label_on_line:
@@ -373,7 +373,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         plt_tools.save_n_crop(plt_fn + '.pdf')
         if legend_plot and set(df['sample-size']) == all_sample_sizes:
             plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + '_legend.pdf',
-                                  font_size=12)
+                                  font_size=12, nrows=2)
     plt.close('all')
     matplotlib.rcParams.update({'font.size': default_font_size})
 
