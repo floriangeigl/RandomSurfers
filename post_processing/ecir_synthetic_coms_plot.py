@@ -496,21 +496,23 @@ def plot_inserted_links(df, columns, filename):
     fig, ax = plt.subplots()
 
     for i, label in zip(grp_mean.columns, grp_df.columns):
+        label = label.replace('_', '')
         if 'top' in label:
-            c = 'red'
+            c = '#e41a1c'
             marker = '^'
             if 'block' in label:
                 marker = 'v'
+                c = '#377eb8'
         elif 'rnd' in label:
-            c = 'green'
+            c = '#4daf4a'
             marker = '*'
         elif label == 'biased':
-            c = 'blue'
+            c = '#984ea3'
             marker = 'D'
         elif label == 'unbiased':
-            c = 'lightblue'
+            c = '#ff7f00'
             marker = 'd'
-        ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, lw=3, color=c,
+        ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=3, lw=3, color=c,
                 alpha=0.9, solid_capstyle="round")
     plt.xlabel('sample-size')
     plt.ylabel(r'$\pi_g$')
@@ -519,7 +521,7 @@ def plot_inserted_links(df, columns, filename):
     out_fn = filename + '_inserted_links.pdf'
     plt_tools.save_n_crop(out_fn)
     legend_fname = filename.rsplit('/', 1)[0] + '/inserted_links_legend.pdf'
-    plt_tools.plot_legend(ax, legend_fname, font_size=12, ncols=4)
+    plt_tools.plot_legend(ax, legend_fname, font_size=12)
 
 
 def main():
@@ -584,7 +586,7 @@ def main():
         plot_inserted_links(df, insert_links_labels, out_fn)
 
         out_fn += '.png'
-        cors.append(plot_dataframe(df, net, bias_strength, out_fn))
+        # cors.append(plot_dataframe(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
         # exit()
         #all_dfs.append(df.copy())
