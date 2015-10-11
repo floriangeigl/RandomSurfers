@@ -27,7 +27,9 @@ pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
 matplotlib.rcParams.update({'font.size': 25})
 default_x_ticks_pad = matplotlib.rcParams['xtick.major.pad']
+default_y_ticks_pad = matplotlib.rcParams['xtick.major.pad']
 matplotlib.rcParams['xtick.major.pad'] *= 2
+matplotlib.rcParams['ytick.major.pad'] *= 2
 
 
 def plot_df_fac(df, filename):
@@ -532,7 +534,7 @@ def main():
     create_folder_structure(out_dir)
 
     result_files = find_files(base_dir, '.df')
-    print result_files
+    # print result_files
     cors = list()
     all_dfs = list()
     net_name = ''
