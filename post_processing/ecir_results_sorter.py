@@ -34,7 +34,7 @@ cp_all_files(exp2_files, exp2_dir)
 exp3_files = find_files(base_dir, ('_inserted_links.pdf', 'inserted_links_legend.pdf'))
 cp_all_files(exp3_files, exp3_dir)
 
-if True:
+if False:
     table_dir = base_dir + 'tables/'
     create_folder_structure(table_dir)
     net_files = find_files(base_dir, '.gt')

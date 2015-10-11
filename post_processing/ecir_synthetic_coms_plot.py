@@ -26,6 +26,8 @@ from scipy.sparse import diags
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
 matplotlib.rcParams.update({'font.size': 25})
+default_x_ticks_pad = matplotlib.rcParams['xtick.major.pad']
+matplotlib.rcParams['xtick.major.pad'] *= 2
 
 
 def plot_df_fac(df, filename):
@@ -373,7 +375,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         plt_tools.save_n_crop(plt_fn + '.pdf')
         if legend_plot and set(df['sample-size']) == all_sample_sizes:
             plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + '_legend.pdf',
-                                  font_size=12, nrows=2)
+                                  font_size=12, nrows=2, legend_name_idx=0)
     plt.close('all')
     matplotlib.rcParams.update({'font.size': default_font_size})
 
@@ -496,7 +498,7 @@ def plot_inserted_links(df, columns, filename):
     fig, ax = plt.subplots()
 
     for i, label in zip(grp_mean.columns, grp_df.columns):
-        label = label.replace('_', '')
+        label = label.replace('_', ' ')
         if 'top' in label:
             c = '#e41a1c'
             marker = '^'
@@ -512,11 +514,11 @@ def plot_inserted_links(df, columns, filename):
         elif label == 'unbiased':
             c = '#ff7f00'
             marker = 'd'
-        ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=3, lw=3, color=c,
+        ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=12, lw=3, color=c,
                 alpha=0.9, solid_capstyle="round")
     plt.xlabel('sample-size')
     plt.ylabel(r'$\pi_g$')
-    plt.xlim([0, 0.2])
+    plt.xlim([0, 0.21])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
     plt_tools.save_n_crop(out_fn)
@@ -586,12 +588,13 @@ def main():
         plot_inserted_links(df, insert_links_labels, out_fn)
 
         out_fn += '.png'
-        # cors.append(plot_dataframe(df, net, bias_strength, out_fn))
+        cors.append(plot_dataframe(df, net, bias_strength, out_fn))
         df['bias_strength'] = bias_strength
         # exit()
         #all_dfs.append(df.copy())
     cors = np.array(cors)
     print 'average corr:', cors.mean()
+    import post_processing.ecir_results_sorter
     #all_dfs = pd.concat(all_dfs)
     #plot_df_fac(all_dfs, out_dir + '/all_dfs.png')
 
