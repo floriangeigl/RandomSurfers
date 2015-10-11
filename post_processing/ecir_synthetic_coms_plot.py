@@ -25,7 +25,7 @@ from scipy.sparse import diags
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
-matplotlib.rcParams.update({'font.size': 20})
+matplotlib.rcParams.update({'font.size': 25})
 
 
 def plot_df_fac(df, filename):
@@ -232,7 +232,7 @@ def plot_dataframe(df, net, bias_strength, filename):
     return 0
 
 
-def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subplot=True, plt_font_size=20,
+def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subplot=True, plt_font_size=25,
                     fig_size=(16, 10), label_dict=None, ds_name=''):
     default_font_size = matplotlib.rcParams['font.size']
     matplotlib.rcParams.update({'font.size': plt_font_size})
@@ -250,8 +250,12 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
 
     if 'ratio' in x_col_name:
         min_x_val, max_x_val = 0.5, 2.
+        df = df[(df[x_col_name] <= max_x_val) & (df[x_col_name] >= min_x_val)]
     else:
+        all_sample_sizes = set(sorted(set(df['sample-size']))[::2])
+        df = df[df['sample-size'].apply(lambda x: x in all_sample_sizes)]
         min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
+        # print 'sample-sizes:', sorted(set(df['sample-size']))
     min_y_val, max_y_val = df[y_col_name].min(), df[y_col_name].max()
     num_bins = 6
     x_val_range = max_x_val - min_x_val
@@ -294,12 +298,15 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         if len(tmp_grp) > 5 and rnd_label_pos:
             annotate_idx = np.random.randint(2, len(tmp_grp) - 3)
         else:
-            annotate_idx = int(len(tmp_grp) / 2)
+            annotate_idx = int((len(tmp_grp)-1) / 2)
         center_row = tmp_grp.iloc[annotate_idx]
         x_center, y_center = center_row[['bin_center', y_col_name]]
-        annotate_font_size = plt_font_size / 2
+        annotate_font_size = plt_font_size / 2.5
         last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
         next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, annotate_idx + 1)][['bin_center', y_col_name]]
+        if len(tmp_grp) % 2 == 0:
+            x_center += ((next_x - x_center) / 2)
+            y_center += ((next_y - y_center) / 2)
 
         ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.9)
         annotate_bbox = dict(boxstyle='round4,pad=0.2', fc='white', ec=c, alpha=0.7)
@@ -308,9 +315,6 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
                               connectionstyle='angle3') #tail_width=.25, shrink_factor=0.05
 
         if grp_x_max - grp_x_min < x_val_range / 100 * 5 and use_arrows:
-            if len(tmp_grp) % 2 == 0:
-                x_center = last_x + (next_x - last_x) / 2
-                y_center = last_y + (next_y - last_y) / 2
             if len(tmp_grp) == 1:
                 c_bin_center, c_y_val = tmp_grp.iloc[0][['bin_center', y_col_name]]
                 tmp_grp = pd.DataFrame(columns=['bin_center', y_col_name],
@@ -486,45 +490,24 @@ def plot_inserted_links(df, columns, filename):
     fig, ax = plt.subplots()
 
     for i, label in zip(grp_mean.columns, grp_df.columns):
-        # ax.errorbar(x=grp_mean.index, y=grp_mean[i], yerr=grp_std[i], label=i.replace('add_','').replace('_links_',''), lw=2)
-        links = label.split()
-        if len(links) > 1:
-            try:
-                links = int(links[-1])
-            except ValueError:
-                links = 5
-        else:
-            # lw of other lines
-            links = 5
-
-        if links == 1:
-            linew = 1
-        elif links == 5:
-            linew = 1.5
-        elif links == 10:
-            linew = 2
-        elif links == 20:
-            linew = 2.5
-        elif links == 100:
-            linew = 3
-        else:
-            linew = links
         if 'top' in label:
             c = 'red'
-            marker = '*'
+            marker = '^'
+            if 'block' in label:
+                marker = 'v'
         elif 'rnd' in label:
             c = 'green'
-            marker = '^'
+            marker = '*'
         elif label == 'biased':
             c = 'blue'
             marker = 'D'
         elif label == 'unbiased':
             c = 'lightblue'
             marker = 'd'
-        ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, lw=linew, color=c,
-                alpha=0.8)
+        ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, lw=3, color=c,
+                alpha=0.9, solid_capstyle="round")
     plt.xlabel('sample-size')
-    plt.ylabel(r'$\frac{\sum_i \pi\delta}{\sum_i\delta}$')
+    plt.ylabel(r'$\pi_g$')
     plt.xlim([0, 0.2])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
