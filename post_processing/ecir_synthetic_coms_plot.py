@@ -276,7 +276,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999']
     for color_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
         use_arrows = False
-        rnd_label_pos = False
+        rnd_label_pos = True
 
         key = np.round(key, decimals=3)
         key_str = ('%.3f' % key).rstrip('0')
@@ -295,8 +295,10 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort('bin_center')
+        label_on_line = False
         if len(tmp_grp) > 5 and rnd_label_pos:
-            annotate_idx = np.random.randint(2, len(tmp_grp) - 3)
+            annotate_idx = np.random.randint(1, len(tmp_grp) - 3)
+            label_on_line = True
         else:
             annotate_idx = int((len(tmp_grp)-1) / 2)
         center_row = tmp_grp.iloc[annotate_idx]
@@ -304,7 +306,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         annotate_font_size = plt_font_size / 2.5
         last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
         next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, annotate_idx + 1)][['bin_center', y_col_name]]
-        if len(tmp_grp) % 2 == 0:
+        if len(tmp_grp) % 2 == 0 or label_on_line:
             x_center += ((next_x - x_center) / 2)
             y_center += ((next_y - y_center) / 2)
 
