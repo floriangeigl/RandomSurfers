@@ -310,11 +310,14 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         center_row = tmp_grp.iloc[annotate_idx]
         x_center, y_center = center_row[['bin_center', y_col_name]]
         annotate_font_size = plt_font_size / 2
-        last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
+
         next_x, next_y = tmp_grp.iloc[min(len(tmp_grp) - 1, annotate_idx + 1)][['bin_center', y_col_name]]
         if len(tmp_grp) % 2 == 0 or label_on_line:
             x_center += ((next_x - x_center) / 2)
             y_center += ((next_y - y_center) / 2)
+            last_x, last_y = tmp_grp.iloc[max(0, annotate_idx)][['bin_center', y_col_name]]
+        else:
+            last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
 
         ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.9,
                               label='  ' + key_str)
@@ -596,6 +599,7 @@ def main():
         #all_dfs.append(df.copy())
     cors = np.array(cors)
     print 'average corr:', cors.mean()
+    print 'collect and sort results'
     import post_processing.ecir_results_sorter
     #all_dfs = pd.concat(all_dfs)
     #plot_df_fac(all_dfs, out_dir + '/all_dfs.png')
