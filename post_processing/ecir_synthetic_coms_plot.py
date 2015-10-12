@@ -547,7 +547,7 @@ def main():
     out_dir = base_dir + 'plots/'
     create_folder_structure(out_dir)
 
-    result_files = find_files(base_dir, '.df')
+    result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
     # print result_files
     cors = list()
     all_dfs = list()
