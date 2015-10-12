@@ -12,7 +12,7 @@ net_files = filter(lambda x: 'bow_tie' not in x, find_files(base_dir, '.gt'))
 df = pd.DataFrame()
 
 for r_idx, g_f in enumerate(net_files):
-    print 'analyze:', g_f.rsplit('/', 1)[-1]
+    print 'analyze:', g_f.rsplit('/', 1)[-1], 'n:', g.num_vertices(), 'm:', g.num_edges()
     g = load_graph(g_f)
     df.at[r_idx, 'dataset'] = g_f.rsplit('/', 1)[-1].replace('.gt', '').replace('_', ' ')
     df.at[r_idx, 'n'] = g.num_vertices()
