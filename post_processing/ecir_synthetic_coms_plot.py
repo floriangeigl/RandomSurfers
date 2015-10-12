@@ -280,9 +280,11 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
 
     plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
     colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999']
-    for color_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
+    markers = "ov^<>8sp*+x"
+    for style_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
         use_arrows = False
         rnd_label_pos = True
+        annotate = False
 
         key = np.round(key, decimals=3)
         key_str = ('%.3f' % key).rstrip('0')
@@ -294,7 +296,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
 
         if not one_subplot:
             ax1 = grp.plot(x=x_col_name, y=y_col_name, ax=ax1, label='  ' + key_str)
-        c = colors[color_idx % len(colors)]
+        c = colors[style_idx % len(colors)]
+        m = markers[style_idx % len(markers)]
         grp['bin'] = grp[x_col_name].apply(lambda x: min(int((x - grp_x_min) / bins_step_size), num_bins - 1))
         tmp_grp = grp[['bin', y_col_name]].groupby('bin').mean()
         tmp_grp['bin_center'] = tmp_grp.index
@@ -320,7 +323,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
             last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
 
         ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.9,
-                              label='  ' + key_str)
+                              label='  ' + key_str, marker=m)
         annotate_bbox = dict(boxstyle='round4,pad=0.2', fc='white', ec=c, alpha=0.7)
         annotate_kwargs = dict(ha='center', va='center', bbox=annotate_bbox, fontsize=annotate_font_size)
         annotate_arrow = dict(arrowstyle="->, head_width=1.", facecolor='black',
@@ -334,8 +337,9 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
                                              (c_bin_center + bins_step_size, c_y_val)])
 
             ax2 = tmp_grp.plot(ax=ax2, **ax2_plt_kwargs)
-            ax2.annotate(key_str, xy=(x_center, y_center), xytext=(
-                (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset), y_center),
+            if annotate:
+                ax2.annotate(key_str, xy=(x_center, y_center), xytext=(
+                    (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset), y_center),
                          arrowprops=annotate_arrow, **annotate_kwargs)
         else:
             ax2 = tmp_grp.plot(ax=ax2, **ax2_plt_kwargs)
@@ -346,7 +350,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
             k = y_diff / x_diff
             rotn = np.degrees(np.arctan(k)) * .8
             # print 'rotn:', rotn * .9
-            ax2.annotate(key_str, xy=(x_center, y_center), xytext=(x_center, y_center), rotation=rotn, **annotate_kwargs)
+            if annotate:
+                ax2.annotate(key_str, xy=(x_center, y_center), xytext=(x_center, y_center), rotation=rotn, **annotate_kwargs)
 
     # grp_df.plot(x=x_col_name, legend=False)
     x_label = label_dict[x_col_name] if x_col_name in label_dict else x_col_name.replace('_', ' ')
@@ -498,12 +503,17 @@ def plot_inserted_links(df, columns, filename):
     grp_df.columns = ['unbiased', 'biased'] + used_columns[2:]
 
     grp_mean = grp_df.mean()
-    grp_std = grp_df.std()
     grp_mean.to_excel(filename + '_inserted_links.xls')
     fig, ax = plt.subplots()
-
+    print grp_df.columns
+    label_dict = dict()
+    label_dict['unbiased'] = 'unbiased'
+    label_dict['biased'] = 'biased'
+    label_dict['rnd fair'] = 'random'
+    label_dict['top_block fair'] = 'top'
     for i, label in zip(grp_mean.columns, grp_df.columns):
-        label = label.replace('_', ' ')
+        if label not in label_dict:
+            continue
         if 'top' in label:
             c = '#e41a1c'
             marker = '^'
@@ -519,6 +529,7 @@ def plot_inserted_links(df, columns, filename):
         elif label == 'unbiased':
             c = '#ff7f00'
             marker = 'd'
+        label = label_dict[label]
         ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=12, lw=3, color=c,
                 alpha=0.9, solid_capstyle="round")
     plt.xlabel('sample-size')
