@@ -533,7 +533,7 @@ def plot_inserted_links(df, columns, filename):
         ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=12, lw=3, color=c,
                 alpha=0.9, solid_capstyle="round")
     plt.xlabel('sample-size')
-    plt.ylabel(r'$\pi_g$')
+    plt.ylabel(r'$\sum_{i} \pi_i \delta_i')
     plt.xlim([0, 0.21])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
