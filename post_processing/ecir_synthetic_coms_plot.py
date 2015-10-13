@@ -193,6 +193,7 @@ def plot_dataframe(df, net, bias_strength, filename):
     df_plot['stat_dist_sum_fac'] = df_plot['stat_dist_com_sum'] / df_plot['orig_stat_dist_sum']
     df_plot['stat_dist_diff'] = df_plot['stat_dist_com_sum'] - df_plot['orig_stat_dist_sum']
     orig_columns.add('stat_dist_sum_fac')
+    orig_columns.add('stat_dist_diff')
 
     ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt',1)[0]
     for col_name in sorted(set(df_plot.columns) - orig_columns):
