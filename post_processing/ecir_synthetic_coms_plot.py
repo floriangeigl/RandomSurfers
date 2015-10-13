@@ -191,6 +191,7 @@ def plot_dataframe(df, net, bias_strength, filename):
     df_plot['ratio_com_out_deg_in_deg'] = df_plot['com_out_deg'] / df_plot['com_in_deg']
 
     df_plot['stat_dist_sum_fac'] = df_plot['stat_dist_com_sum'] / df_plot['orig_stat_dist_sum']
+    df_plot['stat_dist_diff'] = df_plot['stat_dist_com_sum'] - df_plot['orig_stat_dist_sum']
     orig_columns.add('stat_dist_sum_fac')
 
     ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt',1)[0]
@@ -228,7 +229,10 @@ def plot_dataframe(df, net, bias_strength, filename):
 
         label_dict['stat_dist_com_sum'] = r'$\pi_g^b$'
         label_dict['stat_dist_sum_fac'] = r'$\frac{\pi_g^b}{\pi_g^u}$'
+        label_dict['stat_dist_diff'] = r'$\pi_g^b - \pi_g^u$'
         plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
+                        ds_name=ds_name)
+        plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
                         ds_name=ds_name)
         plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict,
                         ds_name=ds_name)
