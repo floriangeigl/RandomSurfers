@@ -569,6 +569,7 @@ def main():
             print 'skip ds:', current_net_name
             continue
         if current_net_name != net_name:
+            print '*' * 120
             print 'load network:', current_net_name.rsplit('/', 1)[-1]
             net = load_graph(current_net_name)
             net_name = current_net_name
