@@ -1,6 +1,7 @@
 from tools.basics import find_files, create_folder_structure
 from tools.pd_tools import print_tex_table
 import pandas as pd
+import numpy as np
 from graph_tool.all import *
 import powerlaw
 import os
@@ -20,6 +21,8 @@ else:
     df = pd.DataFrame()
     for r_idx, g_f in enumerate(net_files):
         g = load_graph(g_f)
+        lcc = label_largest_component(g).a
+        assert np.all(lcc == 1)
         print 'analyze:', g_f.rsplit('/', 1)[-1], 'n:', g.num_vertices(), 'm:', g.num_edges()
         df.at[r_idx, 'dataset'] = g_f.rsplit('/', 1)[-1].replace('.gt', '').replace('_', ' ')
         df.at[r_idx, 'n'] = g.num_vertices()
@@ -38,7 +41,8 @@ else:
     df.to_pickle(cached_results_file)
 print df
 tex_table_str = print_tex_table(df, cols=['dataset', 'n', 'm', 'c', r'$\alpha$', 'x-min', 'pd'], mark_min=False,
-                                mark_max=False, digits=0)
+                                mark_max=False, digits=[0, 0, 0, 5, 3, 0, 3], trim_zero_digits=True,
+                                colors=[(20, 'blue'), (30, 'blue'), (40, 'blue')])
 print tex_table_str
 with open(table_dir + 'datasets.tex', 'w') as f:
     f.write(tex_table_str)

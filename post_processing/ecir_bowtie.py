@@ -11,8 +11,13 @@ from collections import defaultdict
 import random
 import network_matrix_tools
 import pandas as pd
-from tools.mpl_tools import plot_set_limits
+from tools.mpl_tools import plot_set_limits, save_n_crop
 import datetime
+matplotlib.rcParams.update({'font.size': 25})
+default_x_ticks_pad = matplotlib.rcParams['xtick.major.pad']
+default_y_ticks_pad = matplotlib.rcParams['xtick.major.pad']
+matplotlib.rcParams['xtick.major.pad'] *= 2
+matplotlib.rcParams['ytick.major.pad'] *= 2
 
 
 def bias_pr(node_ids, adjacency_matrix, bias_strength=2):
@@ -68,20 +73,23 @@ def main():
         plt.xlabel('bias strength')
         plt.ylabel(r'$\pi_g^b$')
         plt.xlim([0, max(bias_strength)])
-        plt.savefig(out_dir + 'bow_tie_iter_bs.pdf')
+        plt.tight_layout()
+        save_n_crop(out_dir + 'bow_tie_iter_bs.pdf')
         plt.close('all')
 
         grp_df.plot.bar(x=grp_df.index, y='orig_pr', legend=False, lw=0, alpha=0.8)
         plt.ylabel(r'$\pi_g^b$')
         plot_set_limits(axis='y', values=grp_df['orig_pr'])
-        plt.savefig(out_dir + 'bow_tie_pr.pdf')
+        plt.tight_layout()
+        save_n_crop(out_dir + 'bow_tie_pr.pdf')
         plt.close('all')
 
         grp_df['bias_fac'] = grp_df['biased_pr_2'] / grp_df['orig_pr']
         grp_df.plot.bar(x=grp_df.index, y='bias_fac', legend=False, lw=0, alpha=0.8)
         plt.ylabel(r'$\pi_g^b$')
         plot_set_limits(axis='y', values=grp_df['bias_fac'])
-        plt.savefig(out_dir + 'bow_tie_pr_fac.pdf')
+        plt.tight_layout()
+        save_n_crop(out_dir + 'bow_tie_pr_fac.pdf')
         plt.close('all')
 
 if __name__ == '__main__':

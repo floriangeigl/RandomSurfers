@@ -327,7 +327,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
             last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
 
         ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.9,
-                              label='  ' + key_str, marker=m)
+                              label='  ' + key_str, marker=m, markersize=12)
         annotate_bbox = dict(boxstyle='round4,pad=0.2', fc='white', ec=c, alpha=0.7)
         annotate_kwargs = dict(ha='center', va='center', bbox=annotate_bbox, fontsize=annotate_font_size)
         annotate_arrow = dict(arrowstyle="->, head_width=1.", facecolor='black',
@@ -368,13 +368,13 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         ax2.legend(loc='best', prop={'size': 12})
         ax1.set_xlim(plt_x_range)
         ax1.set_ylim(plt_y_range)
-        ax1.grid(which='major', axis='y')
+        ax1.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
         plt.title(ds_name)
     else:
         ax2.legend_.remove()
     ax2.set_xlim(plt_x_range)
     ax2.set_ylim(plt_y_range)
-    ax2.grid(which='major', axis='y')
+    ax2.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     if 'ratio' in x_col_name:
         plt.xticks()
     else:
@@ -551,7 +551,7 @@ def main():
     out_dir = base_dir + 'plots/'
     create_folder_structure(out_dir)
 
-    result_files = find_files(base_dir, '.df')
+    result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
     # print result_files
     cors = list()
     all_dfs = list()
