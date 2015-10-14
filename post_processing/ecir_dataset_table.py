@@ -16,7 +16,7 @@ cached_results_file = base_dir + 'datasets_table.df'
 sample_sizes = [0.01, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2]
 
 
-if cached_results_file and os.path.isfile(cached_results_file) and True:
+if cached_results_file and os.path.isfile(cached_results_file) and False:
     df = pd.read_pickle(cached_results_file)
 else:
 
@@ -25,12 +25,11 @@ else:
         g = load_graph(g_f)
         lcc = label_largest_component(g).a
         assert np.all(lcc == 1)
-        print 'analyze:', g_f.rsplit('/', 1)[-1], 'n:', g.num_vertices(), 'm:', g.num_edges()
+        print 'analyze:', g_f.rsplit('/', 1)[-1]
+        print g
         df.at[r_idx, 'dataset'] = g_f.rsplit('/', 1)[-1].replace('.gt', '').replace('_', ' ')
         df.at[r_idx, 'n'] = g.num_vertices()
         df.at[r_idx, 'm'] = g.num_edges()
-        print '\tglobal clustering'
-        df.at[r_idx, 'c'] = global_clustering(g)[0]
         print '\tpowerlaw'
         deg_dist = g.degree_property_map('total').a
         p_law_res = powerlaw.Fit(deg_dist, discrete=True)
@@ -38,6 +37,13 @@ else:
         df.at[r_idx, 'x-min'] = p_law_res.xmin
         print '\tpseudo diameter'
         df.at[r_idx, 'pd'] = pseudo_diameter(g)[0]
+        if True:
+            print '\tmake graph undirected'
+            g.set_directed(False)
+            print g
+        print '\tglobal clustering'
+        df.at[r_idx, 'c'] = global_clustering(g)[0]
+
         for sample_s in sample_sizes:
             df.at[r_idx, 'ss ' + ('%.3f' % sample_s).rstrip('0')] = g.num_vertices() * sample_s
 
