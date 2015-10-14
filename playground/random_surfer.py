@@ -11,31 +11,18 @@ def rand_surf(g, weights, hobs):
             weights = g.ep[weights]
         except KeyError:
             weights = None
-        vertices = list(g.vertices())
-        degrees = np.array(g.degree_property_map('in').a)
-        rand_num = random.random() * degrees.sum()
-        weights_sum = 0.
-        for v, w in zip(vertices, degrees):
-            weights_sum += w
-            if weights_sum >= rand_num:
-                current_v = v
-                break
 
-        current_v = random.sample(list(g.vertices()), k=1)[0]
+        current_v = random.choice(list(g.vertices()))
         for i in xrange(hobs):
             visits[current_v] += 1
             out_neighbours = list(current_v.out_neighbours())
             if weights is None:
-                current_v = random.sample(out_neighbours, 1)[0]
+                current_v = random.choice(out_neighbours)
             else:
-                out_weights = np.array(list(map(lambda x: weights[g.edge(current_v, x)], out_neighbours)))
-                rand_num = random.random() * out_weights.sum()
-                weights_sum = 0.
-                for v, w in zip(out_neighbours, out_weights):
-                    weights_sum += w
-                    if weights_sum >= rand_num:
-                        current_v = v
-                        break
+                out_weights = np.array([weights[g.edge(current_v, x)] for x in out_neighbours])
+                out_weights = out_weights.cumsum()
+                rand_num = random.random() * out_weights[-1]
+                current_v = out_neighbours[np.searchsorted(out_weights, rand_num)]
         return np.array(visits.a).astype('float')
     except:
         print traceback.format_exc()

@@ -13,8 +13,10 @@ create_folder_structure(table_dir)
 net_files = filter(lambda x: 'bow_tie' not in x, find_files(base_dir, '.gt'))
 cached_results_file = ''
 cached_results_file = base_dir + 'datasets_table.df'
+sample_sizes = [0.01, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2]
 
-if cached_results_file and os.path.isfile(cached_results_file):
+
+if cached_results_file and os.path.isfile(cached_results_file) and True:
     df = pd.read_pickle(cached_results_file)
 else:
 
@@ -36,12 +38,18 @@ else:
         df.at[r_idx, 'x-min'] = p_law_res.xmin
         print '\tpseudo diameter'
         df.at[r_idx, 'pd'] = pseudo_diameter(g)[0]
+        for sample_s in sample_sizes:
+            df.at[r_idx, 'ss ' + ('%.3f' % sample_s).rstrip('0')] = g.num_vertices() * sample_s
 
     df.sort_values(by='n', inplace=True)
     df.to_pickle(cached_results_file)
 print df
-tex_table_str = print_tex_table(df, cols=['dataset', 'n', 'm', 'c', r'$\alpha$', 'x-min', 'pd'], mark_min=False,
-                                mark_max=False, digits=[0, 0, 0, 5, 3, 0, 3], trim_zero_digits=True,
+sample_sizes_cols = filter(lambda x: x.startswith('ss '), df.columns)
+sample_sizes_cols = [sample_sizes_cols[0]] + [sample_sizes_cols[-1]]
+tex_table_str = print_tex_table(df, cols=['dataset', 'n', 'm', 'c', r'$\alpha$', 'x-min', 'pd'] + sample_sizes_cols,
+                                mark_min=False,
+                                mark_max=False, digits=[0, 0, 0, 5, 3, 0, 3] + ([0] * len(sample_sizes_cols)),
+                                trim_zero_digits=True,
                                 colors=[(20, 'blue'), (30, 'blue'), (40, 'blue')])
 print tex_table_str
 with open(table_dir + 'datasets.tex', 'w') as f:

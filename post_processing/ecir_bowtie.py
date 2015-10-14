@@ -12,6 +12,7 @@ import random
 import network_matrix_tools
 import pandas as pd
 from tools.mpl_tools import plot_set_limits, save_n_crop
+from tools.pd_tools import print_tex_table
 import datetime
 matplotlib.rcParams.update({'font.size': 25})
 default_x_ticks_pad = matplotlib.rcParams['xtick.major.pad']
@@ -27,6 +28,18 @@ def bias_pr(node_ids, adjacency_matrix, bias_strength=2):
                                                                           smooth_bias=False, calc_entropy_rate=False,
                                                                           verbose=False)
     return biased_stat_dist[node_ids].sum()
+
+
+def group_degree(nodes, type, net):
+    nodes = set(map(net.vertex, nodes))
+    if type == 'in':
+        neigh_f = lambda x: x.in_neighbours()
+    elif type == 'out':
+        neigh_f = lambda x: x.out_neighbours()
+    else:
+        neigh_f = lambda x: x.neighbours()
+    return sum((1 for n in nodes for n_i in filter(lambda x: x not in nodes, neigh_f(n))))
+
 
 def main():
     base_dir = '/home/fgeigl/navigability_of_networks/output/ecir_synthetic_coms/'
@@ -63,9 +76,42 @@ def main():
         df['orig_pr'] = df['node-ids'].map(lambda x: orig_pr[x].sum())
         for bs in bias_strength:
             df['biased_pr_' + str(bs)] = df['node-ids'].apply(bias_pr, args=(adjacency_matrix, bs))
+        df['in_deg'] = df['node-ids'].apply(group_degree, args=('in', g))
+        df['out_deg'] = df['node-ids'].apply(group_degree, args=('out', g))
+        df['degrees ratio'] = df['out_deg'] / df['in_deg']
+        df['degrees ratio'] = df['degrees ratio'].map(lambda x: x if np.isfinite(x) else np.nan)
         df.drop('node-ids', inplace=True, axis=1)
-        grp_df = df.groupby('component').mean()
-        plot_df = grp_df.T.copy()
+        grp_df = df.groupby('component')
+        grp_df_mean = grp_df.mean()
+        grp_df_std = grp_df.std().T
+        plot_df = grp_df_mean.T.copy()
+
+        print plot_df
+
+        tex_df = plot_df.copy().T
+        tex_df.columns = [x.replace('_', ' ') for x in tex_df.columns]
+        drop_biases = [1, 5, 10, 25, 75, 200]
+        print tex_df.columns
+        for db in drop_biases:
+            tex_df.drop('biased pr ' + str(db), inplace=True, axis=1)
+
+        print print_tex_table(tex_df, trim_zero_digits=True, print_index=True)
+
+        x = plot_df.loc['degrees ratio']
+        x_std = grp_df_std.loc['degrees ratio']
+
+        y = plot_df.loc['biased_pr_2']
+        y_std = grp_df_std.loc['biased_pr_2']
+        for idx, label in enumerate(plot_df.columns):
+            plt.errorbar(x[idx], y[idx], xerr=x_std[idx], yerr=y_std[idx], linestyle="None", label=label)
+        plt.xlabel('degrees ratio')
+        plt.ylabel(r'$\pi_g^b$')
+        plt.xlim([-.1, 1.1])
+        plt.legend(loc='best')
+        plt.tight_layout()
+        save_n_crop(out_dir + 'bow_tie_degrees_ratio.pdf')
+        plt.close('all')
+
         plot_df.drop(filter(lambda x: 'biased_pr' not in x, plot_df.index), inplace=True)
         plot_df['bs'] = plot_df.index
         plot_df['bs'] = plot_df['bs'].map(lambda x: int(x.rsplit('_', 1)[-1]))
@@ -77,17 +123,17 @@ def main():
         save_n_crop(out_dir + 'bow_tie_iter_bs.pdf')
         plt.close('all')
 
-        grp_df.plot.bar(x=grp_df.index, y='orig_pr', legend=False, lw=0, alpha=0.8)
+        grp_df_mean.plot.bar(x=grp_df_mean.index, y='orig_pr', legend=False, lw=0, alpha=0.8)
         plt.ylabel(r'$\pi_g^b$')
-        plot_set_limits(axis='y', values=grp_df['orig_pr'])
+        plot_set_limits(axis='y', values=grp_df_mean['orig_pr'])
         plt.tight_layout()
         save_n_crop(out_dir + 'bow_tie_pr.pdf')
         plt.close('all')
 
-        grp_df['bias_fac'] = grp_df['biased_pr_2'] / grp_df['orig_pr']
-        grp_df.plot.bar(x=grp_df.index, y='bias_fac', legend=False, lw=0, alpha=0.8)
+        grp_df_mean['bias_fac'] = grp_df_mean['biased_pr_2'] / grp_df_mean['orig_pr']
+        grp_df_mean.plot.bar(x=grp_df_mean.index, y='bias_fac', legend=False, lw=0, alpha=0.8)
         plt.ylabel(r'$\pi_g^b$')
-        plot_set_limits(axis='y', values=grp_df['bias_fac'])
+        plot_set_limits(axis='y', values=grp_df_mean['bias_fac'])
         plt.tight_layout()
         save_n_crop(out_dir + 'bow_tie_pr_fac.pdf')
         plt.close('all')
