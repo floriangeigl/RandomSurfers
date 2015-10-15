@@ -54,7 +54,7 @@ sample_sizes_cols = filter(lambda x: x.startswith('ss '), df.columns)
 sample_sizes_cols = [sample_sizes_cols[0]] + [sample_sizes_cols[-1]]
 tex_table_str = print_tex_table(df, cols=['dataset', 'n', 'm', 'c', r'$\alpha$', 'x-min', 'pd'] + sample_sizes_cols,
                                 digits=[0, 0, 0, 1, 3, 0, 3] + ([0] * len(sample_sizes_cols)), trim_zero_digits=True,
-                                colors=[(20, 'blue'), (30, 'blue'), (40, 'blue')],
+                                colors=False,
                                 scientific_notation=[False, False, False, True, False, False, False, False, False],
                                 min_style='', max_style='', mark_min='', mark_max='')
 print tex_table_str

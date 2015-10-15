@@ -41,7 +41,7 @@ def plot_df_fac(df, filename):
     plt.yscale('log')
     plt.xlim([0, 1])
     plt.xlabel('com-size')
-    plt.ylabel('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
+    plt.ylabel(r'$\tau$')
     plt.title('all datasets')
     cbar = plt.colorbar()
     cbar.set_label('bias strength')
@@ -64,7 +64,7 @@ def plot_df_fac(df, filename):
     plt.yscale('log')
     plt.xlim([0, 1])
     plt.xlabel('category size')
-    plt.ylabel('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
+    plt.ylabel(r'$\tau$')
     plt.title('all datasets')
     plt.tight_layout()
     plt.savefig(filename, dpi=150)
@@ -162,9 +162,9 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
 
 def plot_dataframe(df, net, bias_strength, filename):
     label_dict = dict()
-    label_dict['ratio_com_out_deg_in_deg'] = r'$k_g^r$'
-    label_dict['com_in_deg'] = r'$k_g^-$'
-    label_dict['com_out_deg'] = r'$k_g^+$'
+    label_dict['ratio_com_out_deg_in_deg'] = r'$d_G^r$'
+    label_dict['com_in_deg'] = r'$d_G^-$'
+    label_dict['com_out_deg'] = r'$d_G^+$'
     gb = df[['sample-size', 'stat_dist_com_sum']].groupby('sample-size')
     trans_lambda = lambda x: (x-x.mean()) / x.std()
     gb = gb.transform(trans_lambda)
@@ -215,7 +215,7 @@ def plot_dataframe(df, net, bias_strength, filename):
             y_range_one_perc = (df_plot[col_name].max() - df_plot[col_name].min()) * 0.01
             plt.ylim([df_plot[col_name].min() - y_range_one_perc, df_plot[col_name].max() + y_range_one_perc])
             plt.ylabel(col_name.replace('_', ' '))
-            cbar.set_label('sample size standardized $\\sum \\pi$' if normed_stat_dist else r'$\pi_g$')
+            cbar.set_label(r'sample size standardized $\sum \pi$' if normed_stat_dist else r'$\pi_G$')
             # cbar.set_label('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
 
             plt.title(ds_name + '\nBias Strength: ' + str(int(bias_strength)))
@@ -228,9 +228,9 @@ def plot_dataframe(df, net, bias_strength, filename):
 
         df_plot.sort(col_name, inplace=True)
 
-        label_dict['stat_dist_com_sum'] = r'$\pi_g^b$'
-        label_dict['stat_dist_sum_fac'] = r'$\frac{\pi_g^b}{\pi_g^u}$'
-        label_dict['stat_dist_diff'] = r'$\pi_g^b - \pi_g^u$'
+        label_dict['stat_dist_com_sum'] = r'$\pi_G^b$'
+        label_dict['stat_dist_sum_fac'] = r'$\tau$'
+        label_dict['stat_dist_diff'] = r'$\pi_G^b - \pi_G^u$'
         plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
                         ds_name=ds_name)
         plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
@@ -538,7 +538,7 @@ def plot_inserted_links(df, columns, filename):
         ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=12, lw=3, color=c,
                 alpha=0.9, solid_capstyle="round")
     plt.xlabel('sample-size')
-    plt.ylabel(r'$\sum_{i} \pi_i \delta_i$')
+    plt.ylabel(r'$\pi_G^b$')
     plt.xlim([0, 0.21])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'

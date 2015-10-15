@@ -105,7 +105,7 @@ def main():
         for idx, label in enumerate(plot_df.columns):
             plt.errorbar(x[idx], y[idx], xerr=x_std[idx], yerr=y_std[idx], linestyle="None", label=label)
         plt.xlabel('degrees ratio')
-        plt.ylabel(r'$\pi_g^b$')
+        plt.ylabel(r'$\pi_G^b$')
         plt.xlim([-.1, 1.1])
         plt.legend(loc='best')
         plt.tight_layout()
@@ -117,14 +117,14 @@ def main():
         plot_df['bs'] = plot_df['bs'].map(lambda x: int(x.rsplit('_', 1)[-1]))
         plot_df.plot(x='bs', lw=3)
         plt.xlabel('bias strength')
-        plt.ylabel(r'$\pi_g^b$')
+        plt.ylabel(r'$\pi_G^b$')
         plt.xlim([0, max(bias_strength)])
         plt.tight_layout()
         save_n_crop(out_dir + 'bow_tie_iter_bs.pdf')
         plt.close('all')
 
         grp_df_mean.plot.bar(x=grp_df_mean.index, y='orig_pr', legend=False, lw=0, alpha=0.8)
-        plt.ylabel(r'$\pi_g^b$')
+        plt.ylabel(r'$\pi_G^b$')
         plot_set_limits(axis='y', values=grp_df_mean['orig_pr'])
         plt.tight_layout()
         save_n_crop(out_dir + 'bow_tie_pr.pdf')
@@ -132,7 +132,7 @@ def main():
 
         grp_df_mean['bias_fac'] = grp_df_mean['biased_pr_2'] / grp_df_mean['orig_pr']
         grp_df_mean.plot.bar(x=grp_df_mean.index, y='bias_fac', legend=False, lw=0, alpha=0.8)
-        plt.ylabel(r'$\pi_g^b$')
+        plt.ylabel(r'$\pi_G^b$')
         plot_set_limits(axis='y', values=grp_df_mean['bias_fac'])
         plt.tight_layout()
         save_n_crop(out_dir + 'bow_tie_pr_fac.pdf')
