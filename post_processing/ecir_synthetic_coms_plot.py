@@ -162,7 +162,7 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
 
 def plot_dataframe(df, net, bias_strength, filename):
     label_dict = dict()
-    label_dict['ratio_com_out_deg_in_deg'] = r'$d_G^r$'
+    label_dict['ratio_com_out_deg_in_deg'] = r'degree ratio ($d_G^r$)'
     label_dict['com_in_deg'] = r'$d_G^-$'
     label_dict['com_out_deg'] = r'$d_G^+$'
     gb = df[['sample-size', 'stat_dist_com_sum']].groupby('sample-size')
@@ -228,8 +228,8 @@ def plot_dataframe(df, net, bias_strength, filename):
 
         df_plot.sort(col_name, inplace=True)
 
-        label_dict['stat_dist_com_sum'] = r'$\pi_G^b$'
-        label_dict['stat_dist_sum_fac'] = r'$\tau$'
+        label_dict['stat_dist_com_sum'] = r'visit probability ($\pi_G^b$)'
+        label_dict['stat_dist_sum_fac'] = r'bias potential ($\tau$)'
         label_dict['stat_dist_diff'] = r'$\pi_G^b - \pi_G^u$'
         plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
                         ds_name=ds_name)
@@ -390,7 +390,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         plt_tools.save_n_crop(plt_fn + '.pdf')
         if legend_plot and set(df['sample-size']) == all_sample_sizes:
             plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + '_legend.pdf',
-                                  font_size=12, nrows=2, legend_name_idx=0)
+                                  font_size=12, nrows=1, legend_name_idx=0)
     plt.close('all')
     matplotlib.rcParams.update({'font.size': default_font_size})
 
@@ -515,7 +515,7 @@ def plot_inserted_links(df, columns, filename):
     label_dict['unbiased'] = 'unbiased'
     label_dict['biased'] = 'biased'
     label_dict['rnd fair'] = 'random'
-    label_dict['top_block fair'] = 'top'
+    label_dict['top_block fair'] = 'informed'
     for i, label in zip(grp_mean.columns, grp_df.columns):
         if label not in label_dict:
             continue
@@ -537,8 +537,8 @@ def plot_inserted_links(df, columns, filename):
         label = label_dict[label]
         ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=12, lw=3, color=c,
                 alpha=0.9, solid_capstyle="round")
-    plt.xlabel('sample-size')
-    plt.ylabel(r'$\pi_G^b$')
+    plt.xlabel('sample size')
+    plt.ylabel(r'visit probability ($\pi_G^b$)')
     plt.xlim([0, 0.21])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
