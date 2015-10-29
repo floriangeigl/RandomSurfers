@@ -243,6 +243,8 @@ def plot_dataframe(df, net, bias_strength, filename):
 
 def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subplot=True, plt_font_size=25,
                     fig_size=(16, 10), label_dict=None, ds_name=''):
+    if x_col_name not in  ['ratio_com_out_deg_in_deg', 'com_in_deg', 'com_out_deg']:
+        return
     default_font_size = matplotlib.rcParams['font.size']
     matplotlib.rcParams.update({'font.size': plt_font_size})
     if label_dict is None:
@@ -259,7 +261,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     legend_plot = True
     all_sample_sizes = set(df['sample-size'])
     if 'ratio' in x_col_name:
-        min_x_val, max_x_val = 0.5, 2.
+        min_x_val, max_x_val = 0.4, 2.
         df = df[(df[x_col_name] <= max_x_val) & (df[x_col_name] >= min_x_val)]
     else:
         filtered_sample_size = set(sorted(all_sample_sizes)[::2])
@@ -286,13 +288,16 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
     colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999']
     markers = "ov^<>8sp*+x"
+    print x_col_name, y_col_name, sorted(set(df['sample-size']))
     for style_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
         use_arrows = False
         rnd_label_pos = True
         annotate = False
+        print ds_name, key, 'corr:\n', grp[[x_col_name, y_col_name]].corr()[x_col_name, y_col_name]
 
         key = np.round(key, decimals=3)
         key_str = ('%.3f' % key).rstrip('0')
+
         grp_x_min = grp[x_col_name].min()
         grp_x_max = grp[x_col_name].max()
         bins_step_size = (grp_x_max - grp_x_min) / num_bins
@@ -305,10 +310,14 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         m = markers[style_idx % len(markers)]
         grp['bin'] = grp[x_col_name].apply(lambda x: min(int((x - grp_x_min) / bins_step_size), num_bins - 1))
         tmp_grp = grp[['bin', y_col_name]].groupby('bin').mean()
+
         tmp_grp['bin_center'] = tmp_grp.index
         # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort('bin_center')
+        if key_str == '0.125' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' not in y_col_name:
+            ax2.axvline(x=tmp_grp.iloc[2]['bin_center'], color='black', lw=2)
+        # print ds_name, x_col_name, key, '\n', tmp_grp
         label_on_line = False
         if len(tmp_grp) > 5 and rnd_label_pos:
             annotate_idx = np.random.randint(1, len(tmp_grp) - 3)
@@ -357,7 +366,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
             # print 'rotn:', rotn * .9
             if annotate:
                 ax2.annotate(key_str, xy=(x_center, y_center), xytext=(x_center, y_center), rotation=rotn, **annotate_kwargs)
-
+    # time.sleep(10)
     # grp_df.plot(x=x_col_name, legend=False)
     x_label = label_dict[x_col_name] if x_col_name in label_dict else x_col_name.replace('_', ' ')
     plt.xlabel(x_label)
@@ -553,13 +562,15 @@ def main():
     create_folder_structure(out_dir)
 
     result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
-    # print result_files
+    print result_files
     cors = list()
     all_dfs = list()
     net_name = ''
     net = None
     skipped_ds = set()
     # skipped_ds.add('daserste')
+    # skipped_ds.add('wiki4schools')
+    # skipped_ds.add('tvthek_orf')
     for i in sorted(filter(lambda x: 'preprocessed' not in x, result_files), reverse=True):
         current_net_name = i.rsplit('_bs', 1)[0]
         bias_strength = int(i.split('_bs')[-1].split('.')[0])
