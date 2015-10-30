@@ -196,6 +196,8 @@ def plot_dataframe(df, net, bias_strength, filename):
     orig_columns.add('stat_dist_diff')
 
     ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt',1)[0]
+    # print df_plot[['com_in_deg','com_out_deg']].corr()
+    # return
     for col_name in sorted(set(df_plot.columns) - orig_columns):
         current_filename = filename[:-4] + '_' + col_name.replace(' ', '_')
         current_filename = current_filename.rsplit('/', 1)
@@ -233,8 +235,8 @@ def plot_dataframe(df, net, bias_strength, filename):
         label_dict['stat_dist_diff'] = r'$\pi_G^b - \pi_G^u$'
         plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
                         ds_name=ds_name)
-        plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
-                        ds_name=ds_name)
+        #plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
+        #                ds_name=ds_name)
         plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict,
                         ds_name=ds_name)
         # exit()
@@ -293,10 +295,11 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         use_arrows = False
         rnd_label_pos = True
         annotate = False
-        print ds_name, key, 'corr:\n', grp[[x_col_name, y_col_name]].corr()[x_col_name, y_col_name]
+
 
         key = np.round(key, decimals=3)
         key_str = ('%.3f' % key).rstrip('0')
+        print ds_name, key_str, 'corr:\n', grp[[x_col_name, y_col_name]].corr().iloc[0]
 
         grp_x_min = grp[x_col_name].min()
         grp_x_max = grp[x_col_name].max()
@@ -316,7 +319,9 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort('bin_center')
         if key_str == '0.125' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' not in y_col_name:
-            ax2.axvline(x=tmp_grp.iloc[2]['bin_center'], color='black', lw=2)
+            y1 = tmp_grp.iloc[1][y_col_name]
+            y0 = tmp_grp.iloc[0][y_col_name]
+            ax2.axhline(y=(y0 + y1) / 2, color='black', lw=2)
         # print ds_name, x_col_name, key, '\n', tmp_grp
         label_on_line = False
         if len(tmp_grp) > 5 and rnd_label_pos:
@@ -546,6 +551,7 @@ def plot_inserted_links(df, columns, filename):
         label = label_dict[label]
         ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=12, lw=3, color=c,
                 alpha=0.9, solid_capstyle="round")
+    ax.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     plt.xlabel('sample size')
     plt.ylabel(r'visit probability ($\pi_G^b$)')
     plt.xlim([0, 0.21])
