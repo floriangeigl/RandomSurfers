@@ -11,7 +11,7 @@ import os
 from tools.basics import create_folder_structure, find_files
 import multiprocessing
 import traceback
-from utils import check_aperiodic
+from tools.gt_tools import *
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
