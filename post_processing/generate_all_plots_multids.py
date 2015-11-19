@@ -61,7 +61,7 @@ def create_plots(fn, colored_categories=None):
 
 
 
-base_dir = '/home/fgeigl/navigability_of_networks/output/wsdm/'
+base_dir = '/home/fgeigl/navigability_of_networks/output/steering_rnd_surfer/'
 base_line = 'adjacency'
 out_dir = base_dir + 'plots/'
 create_folder_structure(out_dir)
