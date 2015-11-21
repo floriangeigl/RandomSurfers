@@ -218,10 +218,10 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
 
 def self_sim_entropy(network, name, out_dir, biases, error_q, method):
     try:
-        if True:
+        if False:
             # network.set_directed(False)
             # remove_parallel_edges(network)
-            remove_self_loops(network)
+            # remove_self_loops(network)
         start_time = datetime.datetime.now()
         base_line_type = 'adjacency'
         out_data_dir = out_dir.rsplit('/', 2)[0] + '/data/'
