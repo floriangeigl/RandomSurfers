@@ -11,7 +11,7 @@ import os
 from tools.basics import create_folder_structure, find_files
 import multiprocessing
 import traceback
-from utils import check_aperiodic
+from tools.gt_tools import *
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -61,7 +61,7 @@ def create_plots(fn, colored_categories=None):
 
 
 
-base_dir = '/home/fgeigl/navigability_of_networks/output/wsdm/'
+base_dir = '/home/fgeigl/navigability_of_networks/output/steering_rnd_surfer/'
 base_line = 'adjacency'
 out_dir = base_dir + 'plots/'
 create_folder_structure(out_dir)

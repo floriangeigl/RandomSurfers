@@ -15,24 +15,24 @@ def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     fast_test = False
     rewires = 0
-    base_outdir = 'output/wsdm/'
+    base_outdir = 'output/steering_rnd_surfer/'
     empiric_data_dir = '/opt/datasets/'
-    method = 'EV' # EV: Eigenvector, PR: PageRank
+    method = 'EV'  # EV: Eigenvector, PR: PageRank
     biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
     # biases = ['adjacency', 'topic_1', 'topic_2', 'topic_3']
     datasets = list()
-    #datasets.append({'name': 'toy_example', 'directed': False})
-    #datasets.append({'name': 'karate'})
-    #datasets.append({'name': empiric_data_dir + 'karate/karate.edgelist', 'directed': False})
+    # datasets.append({'name': 'toy_example', 'directed': False})
+    # datasets.append({'name': 'karate'})
+    # datasets.append({'name': empiric_data_dir + 'karate/karate.edgelist', 'directed': False})
     if not fast_test:
-        #datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
+        # datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
+        # datasets.append({'name': empiric_data_dir + 'getdigital/getdigital', 'directed': True})
+        # datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
+        # datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
+        # datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
         datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
-        #datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
-        #pass
+        # datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
+        # pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
     basics.create_folder_structure(base_outdir)
     if multip:
@@ -112,11 +112,12 @@ def main():
     # col_names.append(list(filter(lambda x: 'karate' in x, df.columns))[0])
     col_names = list()
 
-    #col_names.append(list(filter(lambda x: 'price_net_n' in x, df.columns))[0])
-    #col_names.append(list(filter(lambda x: 'sbm_weak_n' in x, df.columns))[0])
-    #col_names.append(list(filter(lambda x: 'sbm_strong_n' in x, df.columns))[0])
-    #gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2, columns=col_names)
+    # col_names.append(list(filter(lambda x: 'price_net_n' in x, df.columns))[0])
+    # col_names.append(list(filter(lambda x: 'sbm_weak_n' in x, df.columns))[0])
+    # col_names.append(list(filter(lambda x: 'sbm_strong_n' in x, df.columns))[0])
+    # gini_to_table(gini_dfs, base_outdir + 'gini_table.txt', digits=2, columns=col_names)
     # import filter_output
+
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
