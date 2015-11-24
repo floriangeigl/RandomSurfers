@@ -219,6 +219,7 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
 def self_sim_entropy(network, name, out_dir, biases, error_q, method):
     try:
         if False:
+            print('rm parallel edges/loops/...')
             # network.set_directed(False)
             # remove_parallel_edges(network)
             # remove_self_loops(network)
@@ -387,7 +388,7 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
             stat_dist_ser = pd.Series(data=stat_dist)
 
             # calc gini coef and trapped values
-            stat_dist_ser.sort(ascending=True)
+            stat_dist_ser.sort_values(ascending=True)
             stat_dist_ser.index = range(len(stat_dist_ser))
             gcoef = utils.gini_coeff(stat_dist_ser)
             gini_coef_df.at[bias_name, name] = gcoef
