@@ -20,6 +20,8 @@ from graph_tool.all import *
 from collections import defaultdict, Counter
 import powerlaw
 from tools.basics import *
+import tools.mpl_tools as mpl_tools
+
 
 def shift_data_pos(data, shift_min=True):
     changed_data = False
@@ -113,6 +115,7 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
                           min_y=min_y, max_y=max_y, min_x=min_x, max_x=max_x, categories=cat, **kwargs)
     return bias_factors_df
 
+
 def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=None, filter_zeros=True, legend=True, categories=None, **kwargs):
     font_size = 22
     matplotlib.rcParams.update({'font.size': font_size})
@@ -189,17 +192,11 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     plt.savefig(fname, dpi=150)
     plt.show()
     plt.close('all')
+
     if legend:
         print 'plot legend'
-        matplotlib.rcParams.update({'font.size': 12})
-        f2 = plt.figure(figsize=(16, 3))
-        f2.legend(*ax.get_legend_handles_labels(), loc='center', ncol=4)
         legend_fname = fname.rsplit('/', 1)[0] + '/bf_scatter_legend.pdf'
-        plt.savefig(legend_fname, bbox_tight=True)
-        os.system('pdfcrop ' + legend_fname + ' ' + legend_fname + ' &> /dev/null')
-        plt.show()
-        plt.close('all')
-        matplotlib.rcParams.update({'font.size': font_size})
+        mpl_tools.plot_legend(ax=ax, filename=legend_fname, font_size=12, figsize=(16, 3), ncols=4)
 
     plot_scatter_heatmap(x_data, y_data, logy=True, logx=True, logbins=True, bins=100,
                          axis_range=[[min_x, max_x], [min_y, max_y]])
@@ -207,9 +204,8 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     plt.ylabel(y_label + (' (shifted)' if y_data_mod else ''))
     plt.axhline(np.log10(1.), color='white', alpha=1., lw=3, ls='--')
     plt.tight_layout()
-    fname = fname.rsplit('.')[0] + '_heatmap.pdf'
-    plt.savefig(fname)
-    os.system('pdfcrop ' + fname + ' ' + fname)
+    fname = fname.rsplit('.', 1)[0] + '_heatmap.pdf'
+    mpl_tools.save_n_crop(fname)
     plt.show()
     plt.close('all')
 
@@ -271,12 +267,18 @@ def create_scatter(df, x, y, fname, filter_zeros=True):
     plt.close('all')
 
     plot_scatter_heatmap(x_data, y_data, logx=True, logy=True, logbins=True, bins=100)
+    x_data_log = np.log10(x_data)
+    y_data_log = np.log10(y_data)
+    plt.plot(np.linspace(x_data_log.min(), x_data_log.max()), np.linspace(y_data_log.min(), y_data_log.max()), lw=2,
+             c='black', alpha=.7)  # , ls='--')
     plt.xlabel(x)
     plt.ylabel(y)
     fname = fname.replace('.png', '') + '_heatmap.png'
+    print('plot line on:', fname)
     plt.savefig(fname, dpi=150)
     plt.show()
     plt.close('all')
+
 
 def create_ginis_from_df(df, columns=None, output_folder='./', zoom=None, filter_zeros=True, legend=True, font_size=16,
                          ms=5, out_fn=None, **kwargs):
@@ -357,16 +359,11 @@ def create_ginis_from_df(df, columns=None, output_folder='./', zoom=None, filter
             if i != 'idx':
                 legend_ax = df.plot(x='idx', y=i, alpha=.9, marker=m, ms=ms, color=c, ax=legend_ax, **kwargs)
         legend_ax.plot([0, 100], [0, 1], ls='--', lw=1, alpha=1.)
-        matplotlib.rcParams.update({'font.size': 20})
-        f2 = plt.figure(figsize=(30,3))
-        f2.legend(legend_ax.get_legend_handles_labels()[0], list(df.columns) + ['Uniform'], loc='center', ncol=3)
-        # plt.tight_layout()
-        # plt.subplots_adjust(left=0.85)
         legend_fname = output_folder + 'gini_legend.pdf'
-        plt.savefig(legend_fname, bbox_tight=True)
-        plt.show()
-        plt.close('all')
-        os.system('pdfcrop ' + legend_fname + ' ' + legend_fname)
+        mpl_tools.plot_legend(legend_ax, legend_fname, font_size=20, figsize=(30, 3), ncols=3,
+                              labels=list(df.columns) + ['Uniform'])
+    plt.close('all')
+
 
 def plot_entropy_rates(entropy_rates, filename):
     entropy_rates = entropy_rates.T
@@ -429,24 +426,22 @@ def plot_degree_distributions(filnames, output_dir):
         net = load_graph(i)
         net_fn_name = i.rsplit('/', 1)[-1].replace('.gt', '')
         # net_name = i.rsplit('/', 1)[-1].replace('.gt', '').replace('_', ' ')
-        deg_seq = net.degree_property_map('total').a
-        deg_dict = defaultdict(int, Counter(deg_seq))
-        x_axis = range(0, max(deg_dict.keys()) + 1)
-        plt.plot(x_axis, [deg_dict[i] for i in x_axis], lw=1, alpha=0.9)
-        # pl = powerlaw.Fit(np.array(deg_seq))
-        #print '-' * 10
-        #print i.rsplit('/', 1)[-1]
-        #print 'powerlaw'
-        #print '\txmin', pl.xmin
-        #print '\talpha', pl.alpha
-        #print '-' * 10
-        plt.xscale('log')
-        plt.yscale('log')
-        plt.grid('on')
-        plt.xlabel('degree')
-        plt.ylabel('number of vertices')
-        plt.tight_layout()
-        plt.savefig(output_dir + net_fn_name + '.pdf')
-        plt.show()
-        plt.close('all')
+        for deg_type in ['in', 'out', 'total']:
+            counts, bins = vertex_hist(net, deg_type)
+            df = pd.DataFrame(index=bins[:-1], data=counts, columns=[deg_type])
+            df.plot(loglog=True)
+            # pl = powerlaw.Fit(np.array(deg_seq))
+            #print '-' * 10
+            #print i.rsplit('/', 1)[-1]
+            #print 'powerlaw'
+            #print '\txmin', pl.xmin
+            #print '\talpha', pl.alpha
+            #print '-' * 10
+            plt.grid('on')
+            plt.xlabel('degree')
+            plt.ylabel('number of vertices')
+            plt.tight_layout()
+            plt.savefig(output_dir + net_fn_name + '_' + deg_type + '.pdf')
+            plt.show()
+            plt.close('all')
 

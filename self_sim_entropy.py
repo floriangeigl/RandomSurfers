@@ -345,7 +345,8 @@ def self_sim_entropy(network, name, out_dir, biases, error_q, method):
             print 'add categories to stationary distribution'
             cat_pmap = network.vp['category']
             stat_distributions['category'] = [cat_pmap[v] for v in network.vertices()]
-        #save to df
+
+        # save to df
         pd.DataFrame.from_dict(stat_distributions).to_pickle(out_data_dir + name + '_stat_dists.df')
         if 'category' in stat_distributions:
             del stat_distributions['category']

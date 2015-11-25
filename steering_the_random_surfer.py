@@ -26,7 +26,7 @@ def main():
     # datasets.append({'name': empiric_data_dir + 'karate/karate.edgelist', 'directed': False})
     if not fast_test:
         # datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'getdigital/getdigital_de_resolved_cleaned.gt', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'getdigital_eu/getdigital_eu_resolved_cleaned.gt', 'directed': True})
         # datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
         # datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
         # datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
