@@ -154,9 +154,22 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
 
 def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps=1e-10, orig_ma_mi_r=None, method='PR',
                                damping=0.85, smooth_bias=True, calc_entropy_rate=True, verbose=True):
-    # supported methods:
-    # PR: pagerank
-    # EV: eigenvector
+
+    """
+    :param adjacency_matrix: sparse adjacency matrix (scipy csr-matrix)
+    :param bias: optional either vector (node based bias) or matrix (link based bias)
+    :param print_prefix: optional (can be used to mark print output with special prefix)
+    :param eps: epsilon to smooth bias, if algo not converges
+    :param orig_ma_mi_r: used for recursive calls, just leave it None
+    :param method: can be one of
+        'PR': use pagerank to find stationary distribution
+        'EV': use eigenvector to find stationary distribution (graph needs to be strongly connected)
+    :param damping: damping factor if pagerank is used for calculations
+    :param smooth_bias: allow fallback to smooth bias
+    :param calc_entropy_rate: calculate and return entropy rate
+    :param verbose: -
+    :return: entropy_rate, stationary_distribution
+    """
     bias_max_min_r = None
     weighted_trans = None
     if bias is not None:
