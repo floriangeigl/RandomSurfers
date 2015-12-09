@@ -6,7 +6,7 @@ if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')
 import matplotlib.pylab as plt
 import pandas as pd
-from plotting import *
+from post_processing.plotting import *
 import os
 from tools.basics import create_folder_structure, find_files
 from tools.pd_tools import print_tex_table

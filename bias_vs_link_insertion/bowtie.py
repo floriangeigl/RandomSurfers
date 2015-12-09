@@ -42,7 +42,7 @@ def group_degree(nodes, type, net):
 
 
 def main():
-    base_dir = '/home/fgeigl/navigability_of_networks/output/ecir_synthetic_coms/'
+    base_dir = '/home/fgeigl/navigability_of_networks/output/bias_link_ins/'
     g = load_graph(base_dir + 'bow_tie.gt')
     out_dir = base_dir
     print g

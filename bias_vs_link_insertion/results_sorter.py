@@ -10,7 +10,7 @@ def cp_all_files(files, dest):
             pass
 
 
-base_dir = '/home/fgeigl/navigability_of_networks/output/ecir_synthetic_coms/'
+base_dir = '/home/fgeigl/navigability_of_networks/output/bias_link_ins/'
 exp1_dir = base_dir + 'exp1/'
 exp2_dir = base_dir + 'exp2/'
 exp3_dir = base_dir + 'exp3/'

@@ -1,27 +1,23 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
+
 from sys import platform as _platform
+
 import matplotlib
 
 if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')
-import matplotlib.pylab as plt
-from tools.gt_tools import SBMGenerator, load_edge_list
-from graph_tool.all import *
 import tools.basics as basics
 import multiprocessing
 import datetime
-from self_sim_entropy import self_sim_entropy
 import network_matrix_tools
 from data_io import *
 import utils
 import Queue
 import os
-import operator
-from preprocessing.categorize_network_nodes import get_cat_dist
-import copy, time
+import time
 import pandas as pd
-from post_processing.ecir_synthetic_coms_plot import plot_dataframe
+from bias_vs_link_insertion.synthetic_coms_plot import plot_dataframe
 
 
 def get_stat_dist_sum(net, ds_name, bias_strength, com_sizes, num_samples, out_dir, method='EV'):
@@ -57,9 +53,10 @@ def get_stat_dist_sum(net, ds_name, bias_strength, com_sizes, num_samples, out_d
     plot_dataframe(df, bias_strength, out_fn_base + '.png')
     return df
 
+
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
-    base_outdir = 'output/ecir_synthetic_coms/'
+    base_outdir = 'output/bias_link_ins/'
     empiric_data_dir = '/opt/datasets/'
     method = 'EV' # EV: Eigenvector, PR: PageRank
     bias_strength = [2, 3, 5, 10, 15, 30, 60, 100]

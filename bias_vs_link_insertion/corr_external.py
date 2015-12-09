@@ -6,7 +6,7 @@ if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')
 import matplotlib.pylab as plt
 import pandas as pd
-from plotting import *
+from post_processing.plotting import *
 import os
 from tools.basics import create_folder_structure, find_files
 import multiprocessing
@@ -20,7 +20,7 @@ pd.set_option('display.max_colwidth', 600)
 # matplotlib.rcParams.update({'font.size': 20})
 
 
-base_dir = '/home/fgeigl/navigability_of_networks/output/ecir/'
+base_dir = '/home/fgeigl/navigability_of_networks/output/bias_link_ins/'
 base_line = 'adjacency'
 out_dir = base_dir + 'plots/'
 create_folder_structure(out_dir)
@@ -97,84 +97,37 @@ def calc_cor(limits_filename, network_files, out_dir):
             property_names = sorted(analysed_properties.keys())
             col_names = list()
             for pn in property_names:
-                col_names.append(pn)
-            #    col_names.append(pn + '_avg')
+                col_names.append(pn + '_sum')
+                #col_names.append(pn + '_avg')
             #    col_names.append(pn + '_med')
             #col_names.append('internal_e')
             #col_names.append('in_e')
             #col_names.append('out_e')
             #col_names.append('#nodes')
-            data = []
+
             for cat in limits.columns:
-                cat_data = [limits.at[l, cat]]
+                df = pd.DataFrame()
                 print '\t\tcat:', cat
                 cat_nodes = cat_to_vertices[cat].copy()
-                cat_in_nodes = {v_i for v in cat_nodes for v_i in v.in_neighbours()}
-                cat_in_nodes -= cat_nodes
-                for prop_name in property_names:
-                    p_map = analysed_properties[prop_name]
-                    vals_in = np.array([p_map[v] for v in cat_in_nodes])
-                    vals_self = np.array([p_map[v] for v in cat_nodes])
-                    cat_data.append(vals_in.sum())
-                    #cat_data.append(vals.mean())
-                    #cat_data.append(np.median(vals))
-                '''
-                internal_links = 0
-                external_in = 0
-                external_out = 0
-                for v in map(lambda x: net.vertex(x), cat_nodes):
-                    for out_v in v.out_neighbours():
-                        if out_v in cat_nodes:
-                            internal_links += 1
-                        else:
-                            external_out += 1
-                    external_in += len(list(filter(lambda in_v: in_v not in cat_nodes, v.in_neighbours())))
-                cat_data.append(internal_links)
-                cat_data.append(external_in)
-                cat_data.append(external_out)
-                cat_data.append(len(cat_nodes))
-                '''
-                cat_data = tuple(cat_data)
-                data.append(cat_data)
-            results[l] = pd.DataFrame(data=data, columns=['strength'] + col_names)
-        out_fn = None
-        for l, df in results.iteritems():
-            print 'limit:', l
-            try:
-                df = np.log10(df)
-                ax_array = pd.scatter_matrix(df, alpha=0.5, lw=0, figsize=(24, 24))
-                # fig = plt.figure(figsize=(24, 24 / len(ax_array)))
-                for i in ax_array[1:]:
-                    for j in i:
-                        plt.delaxes(j)
-                cor_array = np.array(df.corr(method='pearson'))
-                cor_array = cor_array[0]
-                ax_array = ax_array[0]
-
-                center_ax_idx = int(len(ax_array) / 2)
-                for idx, (cor, ax, x_label) in enumerate(zip(cor_array, ax_array, df.columns)):
-                    ax_title = ''
-                    if idx == center_ax_idx:
-                        ax_title += ds_name + ' Limit:' + str(l) + '_#' + str(len(df.dropna(axis=0, how='any'))) + '\n'
-                    ax_title += '$\\rho=$' + '%.2f' % cor
-                    ax.set_title(ax_title)
-                    ax.xaxis.set_visible(True)
-                    ax.set_xlabel(x_label)
-
-                    #ax.set_xscale('log')
-                    #ax.set_yscale('log')
-                out_fn = out_dir + 'limits/' + ds_name + '_l_' + str(l) + '.png'
+                already_checked = set()
+                max_distance = 5
+                for i in range(max_distance):
+                    for prop_name in property_names:
+                        p_map = analysed_properties[prop_name]
+                        vals = np.array([p_map[v] for v in cat_nodes])
+                        df.at[i, prop_name] = vals.sum() / p_map.a.sum()
+                    if i < (max_distance - 1):
+                        in_neighbours = {v_i for v in cat_nodes - already_checked for v_i in v.in_neighbours()}
+                        already_checked.update(cat_nodes)
+                        cat_nodes.update(in_neighbours)
+                        #cat_data.append(vals.mean())
+                        #cat_data.append(np.median(vals))
+                df.plot()
+                out_fn = out_dir + 'limits_curves/' + ds_name + '_' + cat.replace(' ', '-') + '_' + '_l_' + str(
+                    l) + '.png'
                 create_folder_structure(out_fn)
                 plt.savefig(out_fn, dpi=150)
                 plt.close('all')
-                os.system('convert ' + out_fn + ' -trim ' + out_fn)
-            except:
-                print traceback.format_exc()
-            print df
-            print '-' * 80
-        out_fn_base = out_fn.rsplit('/', 1)
-        out_fn_base = out_fn_base[0] + '/' + out_fn_base[1].split('_', 1)[0] + '_*'
-        os.system('convert ' + out_fn_base + ' -append ' + out_fn_base[:-2] + '.png')
     except:
         print 'ERROR:', traceback.format_exc()
         raise

@@ -1,19 +1,9 @@
 from __future__ import division
-from tools.gt_tools import SBMGenerator, load_edge_list, load_property
-import tools.basics as basics
-import multiprocessing
-import datetime
-import traceback
-import pandas as pd
-from graph_tool.all import *
-from self_sim_entropy import self_sim_entropy
-import powerlaw as fit_powerlaw
-import numpy as np
-from graph_tool.all import *
-import random
-import os
 
-import utils
+from graph_tool.all import *
+
+import tools.basics as basics
+from structural_biases.process_network import process_network
 
 base_outdir = 'output_text_sim/'
 
@@ -27,4 +17,4 @@ net = load_graph('/opt/datasets/wikiforschools/graph_with_props.gt')
 print net
 net.gp['type'] = net.new_graph_property('string','empiric')
 net.gp['filename'] = net.new_graph_property('string', 'wiki4schools')
-self_sim_entropy(net, name=name, out_dir=outdir, biases=biases, error_q=None)
+process_network(net, name=name, out_dir=outdir, biases=biases, error_q=None)

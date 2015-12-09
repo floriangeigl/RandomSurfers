@@ -1,25 +1,26 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
-from tools.gt_tools import SBMGenerator, load_edge_list
-from graph_tool.all import *
-import tools.basics as basics
-import multiprocessing
-import datetime
-from self_sim_entropy import self_sim_entropy
-from data_io import *
-import utils
+
 import Queue
-import os
+import copy
+import datetime
+import multiprocessing
 import operator
+import os
+import time
+
+import tools.basics as basics
+import utils
+from data_io import *
 from preprocessing.categorize_network_nodes import get_cat_dist
-import copy, time
+from structural_biases.process_network import process_network
 
 
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     fast_test = False
     rewires = 0
-    base_outdir = 'output/ecir/'
+    base_outdir = 'output/bias_link_ins/'
     empiric_data_dir = '/opt/datasets/'
     method = 'EV' # EV: Eigenvector, PR: PageRank
     biases = ['adjacency']
@@ -124,13 +125,13 @@ def main():
         print 'sample biases', random.sample(current_biases, min(10, len(current_biases)))
 
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,),
+            worker_pool.apply_async(process_network, args=(net,),
                                     kwds={'name': network_name, 'out_dir': out_dir, 'biases': current_biases,
                                           'error_q': error_q, 'method': method}, callback=async_callback)
             num_tasks += 1
         else:
-            results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
-                                            method=method))
+            results.append(process_network(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
+                                           method=method))
         # write_network_properties(net, network_name, network_prop_file)
         for r in xrange(rewires):
             store_fn = file_name + '_rewired_' + str(r).rjust(3, '0') + '.gt'
@@ -144,14 +145,14 @@ def main():
                 net.save(store_fn)
             network_name = store_fn.rsplit('/', 1)[-1].replace('.gt', '')
             if multip:
-                worker_pool.apply_async(self_sim_entropy, args=(net,),
+                worker_pool.apply_async(process_network, args=(net,),
                                         kwds={'name': network_name, 'out_dir': out_dir, 'biases': current_biases,
                                               'error_q': error_q, 'method': method}, callback=async_callback)
                 num_tasks += 1
             else:
                 results.append(
-                    self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
-                                     method=method))
+                    process_network(net, name=network_name, out_dir=out_dir, biases=current_biases, error_q=error_q,
+                                    method=method))
             # write_network_properties(net, network_name, network_prop_file)
 
     if multip:

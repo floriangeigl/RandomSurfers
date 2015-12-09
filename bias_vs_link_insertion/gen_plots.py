@@ -6,7 +6,7 @@ if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')
 import matplotlib.pylab as plt
 import pandas as pd
-from plotting import *
+from post_processing.plotting import *
 import os
 from tools.basics import create_folder_structure, find_files
 import multiprocessing
@@ -28,7 +28,7 @@ def get_stat_dist_bias_sum(df, col_name, cat_name, category_col_name):
     return bias_sum, cat_filter.sum()
 
 
-base_dir = '/home/fgeigl/navigability_of_networks/output/ecir/'
+base_dir = '/home/fgeigl/navigability_of_networks/output/bias_link_ins/'
 base_line = 'adjacency'
 out_dir = base_dir + 'plots/'
 create_folder_structure(out_dir)

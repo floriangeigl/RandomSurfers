@@ -7,7 +7,7 @@ import powerlaw
 import os
 
 
-base_dir = '/home/fgeigl/navigability_of_networks/output/ecir_synthetic_coms/'
+base_dir = '/home/fgeigl/navigability_of_networks/output/bias_link_ins/'
 table_dir = base_dir + 'tables/'
 create_folder_structure(table_dir)
 net_files = filter(lambda x: 'bow_tie' not in x, find_files(base_dir, '.gt'))

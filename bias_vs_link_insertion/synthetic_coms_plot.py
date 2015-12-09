@@ -1,27 +1,24 @@
-from __future__ import division
+from __future__ import division, print_function
+
 from sys import platform as _platform
+
 import matplotlib
 
 if _platform == "linux" or _platform == "linux2":
     matplotlib.use('Agg')
-import matplotlib.pylab as plt
-import pandas as pd
-from plotting import *
-import os, sys
+from matplotlib import gridspec
+from post_processing.plotting import *
+import os
 from tools.basics import create_folder_structure, find_files
-import multiprocessing
 import traceback
-from utils import check_aperiodic
 import numpy as np
-import multiprocessing as mp
 from graph_tool.all import *
 import datetime
-import time
 import network_matrix_tools
-import operator
 import random
 import tools.mpl_tools as plt_tools
 from scipy.sparse import diags
+import sys
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -54,8 +51,8 @@ def plot_df_fac(df, filename):
         filt_df = df[df['bias_strength'] == i]
         grp = filt_df.groupby('com-size')
         tmp_df = grp.agg(np.mean)
-        #print tmp_df
-        #tmp_df.to_pickle(filename.rsplit('/', 1)[0] + '/tmp.df')
+        # print tmp_df
+        # tmp_df.to_pickle(filename.rsplit('/', 1)[0] + '/tmp.df')
         x = tmp_df.index
         y = tmp_df['stat_dist_fac']
         err = np.array(grp.agg(np.std)['stat_dist_fac'])
@@ -79,6 +76,12 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
     if sample_size > 0.21:
         # print 'skip sample-size:', sample_size
         return np.nan
+    if not np.isclose(sample_size, add_links_and_calc.sample_size):
+        add_links_and_calc.sample_size = sample_size
+        add_links_and_calc.calc_counter = 0
+        add_links_and_calc.ss_string = "%.3f" % sample_size
+        print('')
+    add_links_and_calc.calc_counter += 1
     if isinstance(num_links, str):
         if num_links == 'fair':
             bias_m = np.zeros(net.num_vertices()).astype('int')
@@ -95,11 +98,16 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
 
     if method == 'rnd':
         remain_edges = num_links - len(new_edges)
-        while remain_edges:
-            srcs = random.sample(other_nodes, min(remain_edges, len(other_nodes)))
-            dests = random.sample(com_nodes, min(remain_edges, len(com_nodes)))
-            new_edges.update(set(filter(lambda (s, d): net.edge(s, d) is None, zip(srcs, dests))))
-            remain_edges = num_links - len(new_edges)
+        other_nodes = np.array(list(other_nodes))
+        com_nodes = np.array(list(com_nodes))
+        if len(other_nodes) > 0 and len(com_nodes) > 0:
+            while remain_edges > 0:
+                size = max(2, 10 - remain_edges) * remain_edges
+                srcs = np.random.choice(other_nodes, size=size, replace=True)
+                dests = np.random.choice(com_nodes, size=size, replace=True)
+                new_edges.update(set(filter(lambda (s, d): net.edge(s, d) is None, set(zip(srcs, dests)))))
+                remain_edges = num_links - len(new_edges)
+            new_edges = random.sample(new_edges, num_links)
 
     elif method == 'top':
         if top_measure is None:
@@ -110,13 +118,12 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
         try:
             sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
             sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-            for dest in sorted_com_nodes:
-                for src in sorted_other_nodes:
-                    if net.edge(src, dest) is None:
-                        new_edges.add((src, dest))
-                        if len(new_edges) >= num_links:
-                            raise GetOutOfLoops
-            print 'could not insert all links:', len(new_edges), 'of', num_links
+            for src, dest in ((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes if
+                              net.edge(src, dest) is None):
+                new_edges.add((src, dest))
+                if len(new_edges) >= num_links:
+                    raise GetOutOfLoops
+            print('could not insert all links:', len(new_edges), 'of', num_links)
         except GetOutOfLoops:
             pass
     elif method == 'top_block':
@@ -135,14 +142,13 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
             sorted_other_nodes_block = sorted_other_nodes[:max_links]
             # sorted_com_nodes_block = sorted_com_nodes
             new_edges = filter(lambda l_e: net.edge(*l_e) is None, ((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes_block))[:num_links]
-            new_edges = set(new_edges)
+            new_edges = set(list(new_edges))
             if len(new_edges) >= num_links:
                 break
             else:
-                print 'retry with bigger block'
+                print('retry with bigger block')
         if len(new_edges) < num_links:
-            print 'could not insert all links:', len(new_edges), 'of', num_links
-
+            print('could not insert all links:', len(new_edges), 'of', num_links)
 
     assert len(new_edges) == num_links
     net.add_edge_list(new_edges)
@@ -155,7 +161,7 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
         e = net.edge(src, dest)
         net.remove_edge(e)
     assert net.num_edges() == orig_num_edges
-    print '.',
+    print('\r', add_links_and_calc.ss_string, add_links_and_calc.calc_counter, end='')
     sys.stdout.flush()
     return relinked_stat_dist_sum
 
@@ -203,7 +209,7 @@ def plot_dataframe(df, net, bias_strength, filename):
         current_filename = current_filename.rsplit('/', 1)
         current_filename = current_filename[0] + '/' + ds_name + '/' + current_filename[1].replace('.gt', '')
         create_folder_structure(current_filename)
-        print 'plot:', col_name
+        print('plot:', col_name)
         for normed_stat_dist in [True, False]:
             y = df_plot[col_name]
             x = df_plot['sample-size']
@@ -228,9 +234,9 @@ def plot_dataframe(df, net, bias_strength, filename):
             plt.savefig(out_f, dpi=150)
             plt.close('all')
 
-        df_plot.sort(col_name, inplace=True)
+        df_plot.sort_values(by=col_name, inplace=True)
 
-        label_dict['stat_dist_com_sum'] = r'visit probability ($\pi_G^b$)'
+        label_dict['stat_dist_com_sum'] = r'stationary prob. ($\pi_G^b$)'
         label_dict['stat_dist_sum_fac'] = r'bias potential ($\tau$)'
         label_dict['stat_dist_diff'] = r'$\pi_G^b - \pi_G^u$'
         plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
@@ -238,27 +244,33 @@ def plot_dataframe(df, net, bias_strength, filename):
         #plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
         #                ds_name=ds_name)
         plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict,
-                        ds_name=ds_name)
+                        ds_name=ds_name, plot_histo=False)
         # exit()
     return 0
 
 
-def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subplot=True, plt_font_size=25,
-                    fig_size=(16, 10), label_dict=None, ds_name=''):
-    if x_col_name not in  ['ratio_com_out_deg_in_deg', 'com_in_deg', 'com_out_deg']:
+def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_subplot=True, plt_font_size=25,
+                    fig_size=(16, 10), label_dict=None, ds_name='', plt_std=True, plot_histo=True):
+    if x_col_name not in ['ratio_com_out_deg_in_deg', 'com_in_deg', 'com_out_deg']:
         return
     default_font_size = matplotlib.rcParams['font.size']
     matplotlib.rcParams.update({'font.size': plt_font_size})
     if label_dict is None:
         label_dict = dict()
     if one_subplot:
-        fig, ax2 = plt.subplots()
-        ax1 = None
+        if plot_histo:
+            fig = plt.figure()
+            gs = gridspec.GridSpec(2, 1, height_ratios=[1, 3])
+            ax1 = plt.subplot(gs[0])
+            ax2 = plt.subplot(gs[1])
+        else:
+            fig, ax2 = plt.subplots()
+            ax1 = None
     else:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
     if not one_subplot:
-        ax1.plot(None, label='sample-size', c='white')
-    ax2.plot(None, label='sample-size', c='white')
+        ax1.plot([np.nan], [np.nan], label='sample-size', c='white')
+    ax2.plot([np.nan], [np.nan], label='sample-size', c='white')
     lw_func = lambda x: 1. + ((x - .01) / (.2 - .01)) * 3
     legend_plot = True
     all_sample_sizes = set(df['sample-size'])
@@ -290,16 +302,15 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
     plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
     colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999']
     markers = "ov^<>8sp*+x"
-    print x_col_name, y_col_name, sorted(set(df['sample-size']))
+    print(x_col_name, y_col_name, sorted(set(df['sample-size'])))
     for style_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
         use_arrows = False
         rnd_label_pos = True
         annotate = False
 
-
         key = np.round(key, decimals=3)
         key_str = ('%.3f' % key).rstrip('0')
-        print ds_name, key_str, 'corr:\n', grp[[x_col_name, y_col_name]].corr().iloc[0]
+        # print(ds_name, key_str, 'corr:\n', grp[[x_col_name, y_col_name]].corr().iloc[0])
 
         grp_x_min = grp[x_col_name].min()
         grp_x_max = grp[x_col_name].max()
@@ -312,12 +323,15 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         c = colors[style_idx % len(colors)]
         m = markers[style_idx % len(markers)]
         grp['bin'] = grp[x_col_name].apply(lambda x: min(int((x - grp_x_min) / bins_step_size), num_bins - 1))
-        tmp_grp = grp[['bin', y_col_name]].groupby('bin').mean()
+        grp_obj = grp[['bin', y_col_name]].groupby('bin')
+        tmp_grp = grp_obj.mean()
+        tmp_grp['std'] = grp_obj.std()
+        tmp_grp['count'] = grp_obj.count()
 
         tmp_grp['bin_center'] = tmp_grp.index
         # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
-        tmp_grp = tmp_grp.sort('bin_center')
+        tmp_grp = tmp_grp.sort_values(by='bin_center')
         if key_str == '0.125' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' not in y_col_name:
             y1 = tmp_grp.iloc[1][y_col_name]
             y0 = tmp_grp.iloc[0][y_col_name]
@@ -341,7 +355,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         else:
             last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
 
-        ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.9,
+        ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.95,
                               label='  ' + key_str, marker=m, markersize=12)
         annotate_bbox = dict(boxstyle='round4,pad=0.2', fc='white', ec=c, alpha=0.7)
         annotate_kwargs = dict(ha='center', va='center', bbox=annotate_bbox, fontsize=annotate_font_size)
@@ -350,12 +364,13 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
 
         if grp_x_max - grp_x_min < x_val_range / 100 * 5 and use_arrows:
             if len(tmp_grp) == 1:
-                c_bin_center, c_y_val = tmp_grp.iloc[0][['bin_center', y_col_name]]
-                tmp_grp = pd.DataFrame(columns=['bin_center', y_col_name],
-                                       data=[(c_bin_center - bins_step_size, c_y_val),
-                                             (c_bin_center + bins_step_size, c_y_val)])
+                c_bin_center, c_y_val, c_std, c_count = tmp_grp.iloc[0][['bin_center', y_col_name, 'std', 'count']]
+                tmp_grp = pd.DataFrame(columns=['bin_center', y_col_name, 'std', 'count'],
+                                       data=[(c_bin_center - bins_step_size, c_y_val, c_std, c_count),
+                                             (c_bin_center + bins_step_size, c_y_val, c_std, c_count)])
 
             ax2 = tmp_grp.plot(ax=ax2, **ax2_plt_kwargs)
+
             if annotate:
                 ax2.annotate(key_str, xy=(x_center, y_center), xytext=(
                     (x_center + x_annot_offset) if x_center < plt_x_center else (x_center - x_annot_offset), y_center),
@@ -371,6 +386,13 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
             # print 'rotn:', rotn * .9
             if annotate:
                 ax2.annotate(key_str, xy=(x_center, y_center), xytext=(x_center, y_center), rotation=rotn, **annotate_kwargs)
+        if plt_std:
+            tmp_grp['std'].fillna(0., inplace=True)
+            ax2.fill_between(tmp_grp['bin_center'], tmp_grp[y_col_name] - tmp_grp['std'],
+                             tmp_grp[y_col_name] + tmp_grp['std'], color=c, alpha=0.25, label=None, interpolate=True)
+        if plot_histo:
+            ax1 = tmp_grp.plot(x='bin_center', y='count', ax=ax1, lw=lw_func(key), color=c, solid_capstyle="round",
+                               alpha=.95, marker=m, markersize=12)
     # time.sleep(10)
     # grp_df.plot(x=x_col_name, legend=False)
     x_label = label_dict[x_col_name] if x_col_name in label_dict else x_col_name.replace('_', ' ')
@@ -387,6 +409,14 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         plt.title(ds_name)
     else:
         ax2.legend_.remove()
+        if plot_histo:
+            ax1.legend_.remove()
+            ax1.set_xlim(plt_x_range)
+            ax1.get_xaxis().set_visible(False)
+            ax1.set_yticks(np.linspace(*ax1.get_ylim(), num=4).astype('int'))
+            ax1.set_xticks([])
+            ax1.set_ylabel('N')
+            ax1.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     ax2.set_xlim(plt_x_range)
     ax2.set_ylim(plt_y_range)
     ax2.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
@@ -396,7 +426,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
         plt.xticks()
         ax2.ticklabel_format(style='sci', axis='x', useOffset=True, useMathText=True, scilimits=(0, 0))
 
-    plt.tight_layout()
+    plt.tight_layout(h_pad=0.001)
     plt_fn = out_fn_base + out_fn_ext
     if not one_subplot:
         plt.savefig(plt_fn + '.png', dpi=150)
@@ -410,48 +440,49 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base,out_fn_ext, one_subp
 
 
 def preprocess_df(df, net):
+    add_links_and_calc.sample_size = -1.
     df_cols = set(df.columns)
     dirty = False
-    print ' preprocessing '.center(120, '=')
+    print(' preprocessing '.center(120, '='))
     if 'sample-size' not in df_cols:
         num_vertices = net.num_vertices()
         df['sample-size'] = df['node-ids'].apply(lambda x: len(x) / num_vertices)
     if 'stat_dist_com' not in df_cols:
-        print '[preprocess]: filter com stat-dist'
+        print('[preprocess]: filter com stat-dist')
         df['stat_dist_com'] = df[['node-ids', 'stat_dist']].apply(
             lambda (node_ids, stat_dist): list(stat_dist[node_ids]), axis=1).apply(np.array)
         dirty = True
     if 'stat_dist_com_sum' not in df_cols:
-        print '[preprocess]: sum com stat-dist'
+        print('[preprocess]: sum com stat-dist')
         df['stat_dist_com_sum'] = df['stat_dist_com'].apply(np.sum)
         dirty = True
     if 'com_in_neighbours' not in df_cols:
-        print '[preprocess]: find com in neighbours'
-        print '[preprocess]: \tcreate mapping vertex->in-neighbours'
+        print('[preprocess]: find com in neighbours')
+        print('[preprocess]: \tcreate mapping vertex->in-neighbours')
         in_neighbs = {int(v): set(map(int, v.in_neighbours())) for v in net.vertices()}
-        print '[preprocess]: \tcreate union of in-neigbs'
+        print('[preprocess]: \tcreate union of in-neigbs')
         df['com_in_neighbours'] = df['node-ids'].apply(
             lambda x: set.union(*map(lambda v_id: in_neighbs[v_id], x)))
-        print '[preprocess]: \tfilter out com nodes'
+        print('[preprocess]: \tfilter out com nodes')
         df['com_in_neighbours'] = df[['com_in_neighbours', 'node-ids']].apply(
             lambda (com_in_neighbours, com_nodes): com_in_neighbours - set(com_nodes), axis=1)
         dirty = True
     out_neighbs = None
     if 'com_out_neighbours' not in df_cols:
-        print '[preprocess]: find com out neighbours'
-        print '[preprocess]: \tcreate mapping vertex->out-neighbours'
+        print('[preprocess]: find com out neighbours')
+        print('[preprocess]: \tcreate mapping vertex->out-neighbours')
         out_neighbs = {int(v): set(map(int, v.out_neighbours())) for v in net.vertices()}
-        print '[preprocess]: \tcreate union of out-neigbs'
+        print('[preprocess]: \tcreate union of out-neigbs')
         df['com_out_neighbours'] = df['node-ids'].apply(
             lambda x: set.union(*map(lambda v_id: out_neighbs[v_id], x)))
-        print '[preprocess]: \tfilter out com nodes'
+        print('[preprocess]: \tfilter out com nodes')
         df['com_out_neighbours'] = df[['com_out_neighbours', 'node-ids']].apply(
             lambda (com_out_neighbours, com_nodes): com_out_neighbours - set(com_nodes), axis=1)
         dirty = True
     if 'intra_com_links' not in df_cols:
-        print '[preprocess]: count intra com links'
+        print('[preprocess]: count intra com links')
         if out_neighbs is None:
-            print '[preprocess]: \tcreate mapping vertex->out-neighbours'
+            print('[preprocess]: \tcreate mapping vertex->out-neighbours')
             out_neighbs = {int(v): set(map(int, v.out_neighbours())) for v in net.vertices()}
         df['intra_com_links'] = df['node-ids'].apply(set).apply(
             lambda x: np.array([len(out_neighbs[i] & x) for i in x]).sum())
@@ -469,52 +500,52 @@ def preprocess_df(df, net):
 
     col_label = 'add_rnd_links_fair'
     if col_label not in df_cols or force_recalc:
-        print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted random links'
+        print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted random links')
         if orig_stat_dist is None:
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
         df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'rnd', 'fair',))
         dirty = True
-        print ''
-        print datetime.datetime.now().replace(microsecond=0), '[OK]'
+        print('')
+        print(datetime.datetime.now().replace(microsecond=0), '[OK]')
 
     force_recalc = False
     col_label = 'add_top_links_fair'
     if col_label not in df_cols or force_recalc:
-        print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links'
+        print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links')
         if orig_stat_dist is None:
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
         df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'top', 'fair', orig_stat_dist))
         dirty = True
-        print ''
-        print datetime.datetime.now().replace(microsecond=0), '[OK]'
+        print('')
+        print(datetime.datetime.now().replace(microsecond=0), '[OK]')
 
     force_recalc = False
     col_label = 'add_top_block_links_fair'
     if col_label not in df_cols or force_recalc:
-        print datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top block links'
+        print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top block links')
         if orig_stat_dist is None:
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
         df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'top_block', 'fair', orig_stat_dist))
         dirty = True
-        print ''
-        print datetime.datetime.now().replace(microsecond=0), '[OK]'
+        print('')
+        print(datetime.datetime.now().replace(microsecond=0), '[OK]')
 
     if not dirty:
-        print ' preprocessing nothing to do '.center(120, '=')
+        print(' preprocessing nothing to do '.center(120, '='))
     else:
-        print ' preprocessing done '.center(120, '=')
+        print(' preprocessing done '.center(120, '='))
     return df, dirty
 
 
 def plot_inserted_links(df, columns, filename):
     filename = filename.replace('.gt', '')
-    print 'plot inserted links:', filename
+    print('plot inserted links:', filename)
     filt_df = df[df['sample-size'] < 0.21]
     used_columns = ['orig_stat_dist_sum', 'stat_dist_com_sum'] + columns
     grp_df = filt_df.groupby('sample-size')[used_columns]
@@ -524,7 +555,7 @@ def plot_inserted_links(df, columns, filename):
     grp_mean = grp_df.mean()
     grp_mean.to_excel(filename + '_inserted_links.xls')
     fig, ax = plt.subplots()
-    print grp_df.columns
+    print(grp_df.columns)
     label_dict = dict()
     label_dict['unbiased'] = 'unbiased'
     label_dict['biased'] = 'biased'
@@ -553,7 +584,7 @@ def plot_inserted_links(df, columns, filename):
                 alpha=0.9, solid_capstyle="round")
     ax.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     plt.xlabel('sample size')
-    plt.ylabel(r'visit probability ($\pi_G^b$)')
+    plt.ylabel(r'stationary prob. ($\pi_G^b$)')
     plt.xlim([0, 0.21])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
@@ -563,12 +594,12 @@ def plot_inserted_links(df, columns, filename):
 
 
 def main():
-    base_dir = '/home/fgeigl/navigability_of_networks/output/ecir_synthetic_coms/'
+    base_dir = '/home/fgeigl/navigability_of_networks/output/bias_link_ins/'
     out_dir = base_dir + 'plots/'
     create_folder_structure(out_dir)
 
     result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
-    print result_files
+    print(result_files)
     cors = list()
     all_dfs = list()
     net_name = ''
@@ -577,35 +608,37 @@ def main():
     # skipped_ds.add('daserste')
     # skipped_ds.add('wiki4schools')
     # skipped_ds.add('tvthek_orf')
-    for i in sorted(filter(lambda x: 'preprocessed' not in x, result_files), reverse=True):
+    for i in sorted(filter(lambda x: 'preprocessed' not in x, result_files),
+                    key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
         current_net_name = i.rsplit('_bs', 1)[0]
         bias_strength = int(i.split('_bs')[-1].split('.')[0])
-        if bias_strength > 2:
+        if bias_strength > 30:
+            print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):
-            print 'skip ds:', current_net_name
+            print('skip ds:', current_net_name)
             continue
         if current_net_name != net_name:
-            print '*' * 120
-            print 'load network:', current_net_name.rsplit('/', 1)[-1]
+            print('*' * 120)
+            print('load network:', current_net_name.rsplit('/', 1)[-1])
             net = load_graph(current_net_name)
             net_name = current_net_name
         assert net is not None
         preprocessed_filename = i.rsplit('.df', 1)[0] + '_preprocessed.df'
         if os.path.isfile(preprocessed_filename): # and time.ctime(os.path.getmtime(preprocessed_filename)) > time.ctime(os.path.getmtime(i)):
-            print 'read preprocessed file:', preprocessed_filename.rsplit('/', 1)[-1]
+            print('read preprocessed file:', preprocessed_filename.rsplit('/', 1)[-1])
             try:
                 df = pd.read_pickle(preprocessed_filename)
             except:
-                print traceback.format_exc()
-                print 'fallback: read orig file:', i.rsplit('/', 1)[-1]
+                print(traceback.format_exc())
+                print('fallback: read orig file:', i.rsplit('/', 1)[-1])
                 df = pd.read_pickle(i)
         else:
-            print 'read:', i.rsplit('/', 1)[-1]
+            print('read:', i.rsplit('/', 1)[-1])
             df = pd.read_pickle(i)
         df, is_df_dirty = preprocess_df(df, net)
         if is_df_dirty:
-            print 'store preprocessed df'
+            print('store preprocessed df')
             while True:
                 # in case of str+c
                 try:
@@ -614,11 +647,11 @@ def main():
                     shutil.move(cache_fname, preprocessed_filename)
                     break
                 except:
-                    print traceback.format_exc()
-                    print 'Warning currently writing file: retry'
-        print 'plot:', i.rsplit('/', 1)[-1]
-        print 'all cols:', df.columns
-        print '=' * 80
+                    print(traceback.format_exc())
+                    print('Warning currently writing file: retry')
+        print('plot:', i.rsplit('/', 1)[-1])
+        print('all cols:', df.columns)
+        print('=' * 80)
 
         out_fn = out_dir + i.rsplit('/', 1)[-1][:-3]
         insert_links_labels = sorted(
@@ -632,16 +665,15 @@ def main():
         # exit()
         #all_dfs.append(df.copy())
     cors = np.array(cors)
-    print 'average corr:', cors.mean()
-    print 'collect and sort results'
-    import post_processing.ecir_results_sorter
+    print('average corr:', cors.mean())
+    print('collect and sort results')
     #all_dfs = pd.concat(all_dfs)
     #plot_df_fac(all_dfs, out_dir + '/all_dfs.png')
 
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
-    print 'START:', start
+    print('START:', start)
     main()
-    print 'ALL DONE. Time:', datetime.datetime.now() - start
+    print('ALL DONE. Time:', datetime.datetime.now() - start)
 

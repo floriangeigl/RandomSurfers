@@ -1,14 +1,14 @@
 from __future__ import division
-from tools.gt_tools import SBMGenerator, load_edge_list
-from graph_tool.all import *
-import tools.basics as basics
-import multiprocessing
-import datetime
-from self_sim_entropy import self_sim_entropy
-from data_io import *
-import utils
+
 import Queue
+import datetime
+import multiprocessing
 import os
+
+import tools.basics as basics
+import utils
+from data_io import *
+from structural_biases.process_network import process_network
 
 
 def main():
@@ -62,12 +62,12 @@ def main():
         basics.create_folder_structure(out_dir)
         print net
         if multip:
-            worker_pool.apply_async(self_sim_entropy, args=(net,),
+            worker_pool.apply_async(process_network, args=(net,),
                                     kwds={'name': network_name, 'out_dir': out_dir, 'biases': biases,
                                           'error_q': error_q, 'method': method}, callback=async_callback)
         else:
-            results.append(self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
-                                            method=method))
+            results.append(process_network(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
+                                           method=method))
         write_network_properties(net, network_name, network_prop_file)
         for r in xrange(rewires):
             store_fn = file_name + '_rewired_' + str(r).rjust(3, '0') + '.gt'
@@ -81,13 +81,13 @@ def main():
                 net.save(store_fn)
             network_name = store_fn.rsplit('/', 1)[-1].replace('.gt', '')
             if multip:
-                worker_pool.apply_async(self_sim_entropy, args=(net,),
+                worker_pool.apply_async(process_network, args=(net,),
                                         kwds={'name': network_name, 'out_dir': out_dir, 'biases': biases,
                                               'error_q': error_q, 'method': method}, callback=async_callback)
             else:
                 results.append(
-                    self_sim_entropy(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
-                                     method=method))
+                    process_network(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
+                                    method=method))
             write_network_properties(net, network_name, network_prop_file)
 
     if multip:

@@ -15,10 +15,12 @@ from graph_tool.all import *
 import operator
 import multiprocessing
 
+
 def calc_common_neigh(adjacency_matrix):
     com_neigh = lil_matrix(adjacency_matrix.dot(adjacency_matrix))
     com_neigh.setdiag(0)
     return com_neigh
+
 
 def calc_cosine(adjacency_matrix, weight_direct_link=False):
     if weight_direct_link:

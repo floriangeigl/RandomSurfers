@@ -1,5 +1,5 @@
 import pandas as pd
-from plotting import create_bf_scatters_from_df, create_scatters_from_df, create_ginis_from_df
+from post_processing.plotting import create_bf_scatters_from_df, create_scatters_from_df, create_ginis_from_df
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
 
