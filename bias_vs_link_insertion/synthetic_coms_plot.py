@@ -19,6 +19,7 @@ import random
 import tools.mpl_tools as plt_tools
 from scipy.sparse import diags
 import sys
+import itertools
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -89,7 +90,11 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
             bias_m = diags(bias_m, 0)
             num_links = int(bias_m.dot(adjacency(net)).sum())
             # print 'fair links:', num_links
-    new_edges = set()
+    print('\r', add_links_and_calc.ss_string, add_links_and_calc.calc_counter, '#links:', int(num_links / 1000), 'k',
+          end='')
+    sys.stdout.flush()
+
+    new_edges = list()
     orig_num_edges = net.num_edges()
     orig_num_com_nodes = len(com_nodes)
     if orig_num_com_nodes >= net.num_vertices():
@@ -97,17 +102,11 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
     other_nodes = set(range(0, net.num_vertices())) - set(com_nodes)
 
     if method == 'rnd':
-        remain_edges = num_links - len(new_edges)
         other_nodes = np.array(list(other_nodes))
         com_nodes = np.array(list(com_nodes))
-        if len(other_nodes) > 0 and len(com_nodes) > 0:
-            while remain_edges > 0:
-                size = max(2, 10 - remain_edges) * remain_edges
-                srcs = np.random.choice(other_nodes, size=size, replace=True)
-                dests = np.random.choice(com_nodes, size=size, replace=True)
-                new_edges.update(set(filter(lambda (s, d): net.edge(s, d) is None, set(zip(srcs, dests)))))
-                remain_edges = num_links - len(new_edges)
-            new_edges = random.sample(new_edges, num_links)
+        srcs = np.random.choice(other_nodes, size=num_links, replace=True)
+        dests = np.random.choice(com_nodes, size=num_links, replace=True)
+        new_edges = list(zip(srcs, dests))
 
     elif method == 'top':
         if top_measure is None:
@@ -115,17 +114,10 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
         else:
             nodes_measure = top_measure
 
-        try:
-            sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
-            sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-            for src, dest in ((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes if
-                              net.edge(src, dest) is None):
-                new_edges.add((src, dest))
-                if len(new_edges) >= num_links:
-                    raise GetOutOfLoops
-            print('could not insert all links:', len(new_edges), 'of', num_links)
-        except GetOutOfLoops:
-            pass
+        sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
+        sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
+        new_edges = list(itertools.islice(((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes),num_links))
+
     elif method == 'top_block':
         max_links = int(num_links / orig_num_com_nodes) + 5
         # print 'max links:', max_links
@@ -141,8 +133,9 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
             max_links += 1
             sorted_other_nodes_block = sorted_other_nodes[:max_links]
             # sorted_com_nodes_block = sorted_com_nodes
-            new_edges = filter(lambda l_e: net.edge(*l_e) is None, ((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes_block))[:num_links]
-            new_edges = set(list(new_edges))
+            new_edges = list(
+                itertools.islice(((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes_block),
+                                 num_links))
             if len(new_edges) >= num_links:
                 break
             else:
@@ -151,18 +144,19 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
             print('could not insert all links:', len(new_edges), 'of', num_links)
 
     assert len(new_edges) == num_links
-    net.add_edge_list(new_edges)
-    _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+    tmp_net = net.copy()
+    tmp_net.add_edge_list(new_edges)
+    adj = adjacency(tmp_net)
+    orig_adj = adjacency(net)
+    print(' | added parallel edges:', int((adj - adj.astype('bool').astype('int')).sum()) - int(
+        (orig_adj - orig_adj.astype('bool').astype('int')).sum()), end='')
+    sys.stdout.flush()
+    _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                             smooth_bias=False,
                                                                             calc_entropy_rate=False, verbose=False)
     assert orig_num_com_nodes == len(com_nodes)
     relinked_stat_dist_sum = relinked_stat_dist[com_nodes].sum()
-    for src, dest in new_edges:
-        e = net.edge(src, dest)
-        net.remove_edge(e)
     assert net.num_edges() == orig_num_edges
-    print('\r', add_links_and_calc.ss_string, add_links_and_calc.calc_counter, end='')
-    sys.stdout.flush()
     return relinked_stat_dist_sum
 
 
@@ -501,8 +495,10 @@ def preprocess_df(df, net):
     col_label = 'add_rnd_links_fair'
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted random links')
+        adj = adjacency(net)
+        print('def parallel links:',  int((adj - adj.astype('bool').astype('int')).sum()))
         if orig_stat_dist is None:
-            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
         df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'rnd', 'fair',))
@@ -514,8 +510,10 @@ def preprocess_df(df, net):
     col_label = 'add_top_links_fair'
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links')
+        adj = adjacency(net)
+        print('def parallel links:',  int((adj - adj.astype('bool').astype('int')).sum()))
         if orig_stat_dist is None:
-            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
         df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'top', 'fair', orig_stat_dist))
@@ -527,8 +525,10 @@ def preprocess_df(df, net):
     col_label = 'add_top_block_links_fair'
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top block links')
+        adj = adjacency(net)
+        print('def parallel links:',  int((adj - adj.astype('bool').astype('int')).sum()))
         if orig_stat_dist is None:
-            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adjacency(net), method='EV',
+            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
         df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'top_block', 'fair', orig_stat_dist))
@@ -612,7 +612,7 @@ def main():
                     key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
         current_net_name = i.rsplit('_bs', 1)[0]
         bias_strength = int(i.split('_bs')[-1].split('.')[0])
-        if bias_strength > 30:
+        if bias_strength > 3:
             print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):
