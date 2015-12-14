@@ -73,7 +73,8 @@ class GetOutOfLoops(Exception):
     pass
 
 
-def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_links=1, top_measure=None):
+def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, method='rnd', num_links=1,
+                       top_measure=None):
     if sample_size > 0.21:
         # print 'skip sample-size:', sample_size
         return np.nan
@@ -88,7 +89,7 @@ def add_links_and_calc((sample_size, com_nodes), net=None, method='rnd', num_lin
             bias_m = np.zeros(net.num_vertices()).astype('int')
             bias_m[com_nodes] = 1
             bias_m = diags(bias_m, 0)
-            num_links = int(bias_m.dot(adjacency(net)).sum())
+            num_links = int(bias_m.dot(adjacency(net)).sum()) * (bias_strength - 1)
             # print 'fair links:', num_links
     print('\r', add_links_and_calc.ss_string, add_links_and_calc.calc_counter, '#links:', int(num_links / 1000), 'k',
           end='')
@@ -433,7 +434,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     matplotlib.rcParams.update({'font.size': default_font_size})
 
 
-def preprocess_df(df, net):
+def preprocess_df(df, net, bias_strength):
     add_links_and_calc.sample_size = -1.
     df_cols = set(df.columns)
     dirty = False
@@ -490,8 +491,8 @@ def preprocess_df(df, net):
         df['orig_stat_dist_sum'] = df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
         dirty = True
     links_range = [1, 5, 10, 20, 100]
-    force_recalc = False
 
+    force_recalc = True
     col_label = 'add_rnd_links_fair'
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted random links')
@@ -501,12 +502,12 @@ def preprocess_df(df, net):
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
-        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'rnd', 'fair',))
+        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'rnd', 'fair',))
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
 
-    force_recalc = False
+    force_recalc = True
     col_label = 'add_top_links_fair'
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links')
@@ -516,12 +517,12 @@ def preprocess_df(df, net):
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
-        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'top', 'fair', orig_stat_dist))
+        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'top', 'fair', orig_stat_dist))
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
 
-    force_recalc = False
+    force_recalc = True
     col_label = 'add_top_block_links_fair'
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top block links')
@@ -531,7 +532,7 @@ def preprocess_df(df, net):
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
-        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, 'top_block', 'fair', orig_stat_dist))
+        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'top_block', 'fair', orig_stat_dist))
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
@@ -612,7 +613,7 @@ def main():
                     key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
         current_net_name = i.rsplit('_bs', 1)[0]
         bias_strength = int(i.split('_bs')[-1].split('.')[0])
-        if bias_strength > 3:
+        if bias_strength > 200:
             print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):
@@ -636,7 +637,7 @@ def main():
         else:
             print('read:', i.rsplit('/', 1)[-1])
             df = pd.read_pickle(i)
-        df, is_df_dirty = preprocess_df(df, net)
+        df, is_df_dirty = preprocess_df(df, net, bias_strength)
         if is_df_dirty:
             print('store preprocessed df')
             while True:
