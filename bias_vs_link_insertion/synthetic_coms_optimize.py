@@ -55,7 +55,6 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), bias_strength=2, mixture
             # print 'fair links:', num_links
     print_num_links = (str(num_links / 1000) + 'k') if num_links > 1000 else num_links
 
-
     bias_links = int(np.round(num_links * mixture))
     top_new_links = num_links - bias_links
     if verbose:
@@ -76,8 +75,6 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), bias_strength=2, mixture
 
     if top_new_links > 0:
         # create top-measure links
-        max_links = int(num_links / orig_num_com_nodes) + 5
-        # print 'max links:', max_links
         if top_measure is None:
             nodes_measure = np.array(net.degree_property_map('in').a)
         else:
@@ -85,25 +82,39 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), bias_strength=2, mixture
 
         sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
         sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        max_links -= 1
-        for max_links_add in range(3):
-            max_links += 1
-            sorted_other_nodes_block = sorted_other_nodes[:max_links]
+        new_edges = list()
+        while True:
+            block_size = int(np.sqrt(top_new_links-len(new_edges))) + 1
+            all_com_nodes = False
+            if block_size > len(com_nodes):
+                all_com_nodes = True
+                block_size = int((top_new_links-len(new_edges))/len(com_nodes)) + 1
+
+            if all_com_nodes:
+                sorted_com_nodes_block = sorted_com_nodes
+            else:
+                sorted_com_nodes_block = sorted_com_nodes[:block_size]
+            sorted_other_nodes_block = sorted_other_nodes[:block_size]
+            # if verbose:
+            # print('\n')
+            # print('all com nodes:', all_com_nodes)
+            # print('needed links:', top_new_links - len(new_edges))
+            # print('max link for block-size:', len(sorted_other_nodes_block) * len(sorted_com_nodes_block))
+            # print('block-size:', block_size)
             # sorted_com_nodes_block = sorted_com_nodes
-            new_edges = list(
-                itertools.islice(((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes_block),
-                                 top_new_links))
+            new_edges.extend(list(
+                    itertools.islice(
+                            ((src, dest) for dest in sorted_com_nodes_block for src in sorted_other_nodes_block),
+                            (top_new_links - len(new_edges)))))
             if len(new_edges) >= top_new_links:
                 break
-            else:
-                print('retry with bigger block')
-        if len(new_edges) < top_new_links:
-            print('could not insert all links:', len(new_edges), 'of', num_links)
+            elif verbose:
+                print('could not insert all links:', len(new_edges), 'of', top_new_links, 'add parallel')
         assert len(new_edges) == top_new_links
         edge_counter = Counter(new_edges)
-        indizes, num_e = zip(*edge_counter.iteritems())
-        rows, cols = zip(*indizes)
-        top_edge_matrix = csr_matrix(([1] * len(new_edges), (rows, cols)), shape=orig_adj.shape).T
+        indizes, num_e = map(list, zip(*edge_counter.iteritems()))
+        rows, cols = map(list, zip(*indizes))
+        top_edge_matrix = csr_matrix((list(num_e), (rows, cols)), shape=orig_adj.shape).T
         if verbose:
             print('new links')
             print(top_edge_matrix.todense())
@@ -113,16 +124,18 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), bias_strength=2, mixture
     # insert biased links
     if bias_links > 0:
         deg_map = net.degree_property_map('total')
-        e_p_f = lambda e: min(deg_map[e.source()], deg_map[e.target()])
+        e_p_f = lambda e: (deg_map[e.source()] + deg_map[e.target()]) / 2.
         e_w = net.new_edge_property('int')
         e_w.a = map(e_p_f, net.edges())
         prob_mat = adjacency(net, weight=e_w).astype('float')
         prob_mat /= prob_mat.sum()
         prob_mat_idx = prob_mat.nonzero()
         prob_mat_prob = prob_mat.data
-        bias_edges_idx = np.random.choice(range(len(prob_mat_prob)), size=bias_links, replace=False, p=prob_mat_prob)
+        bias_edges_idx = np.random.choice(range(len(prob_mat_prob)), size=min(bias_links, len(prob_mat_prob)),
+                                          replace=False,
+                                          p=prob_mat_prob)
         row_idx, col_idx = prob_mat_idx[0][bias_edges_idx], prob_mat_idx[1][bias_edges_idx]
-        bias_cum_sum_links = np.array(orig_adj[row_idx, col_idx]).flatten().cumsum()
+        bias_cum_sum_links = (np.array(orig_adj[row_idx, col_idx]).flatten() * (bias_strength - 1)).cumsum()
         last_idx = np.searchsorted(bias_cum_sum_links, bias_links, side='right')
         if last_idx > 0:
             last_idx = min(last_idx, len(bias_cum_sum_links) - 1)
@@ -159,7 +172,7 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), bias_strength=2, mixture
     assert net.num_edges() == orig_num_edges
     print('\r', mix_bias_linkins_and_calc.ss_string, mix_bias_linkins_and_calc.calc_counter, '#links:', print_num_links,
           ' || mod. #links:', int(combined_mat.sum()), '|| bias strength:', bias_strength, '|| mixture:', mixture,
-          end='')
+          '|| stat sum:', relinked_stat_dist_sum, end='')
     sys.stdout.flush()
     return relinked_stat_dist_sum
 
@@ -186,7 +199,7 @@ def main():
         out_dir = base_dir + 'plots/'
         create_folder_structure(out_dir)
         mixture_range = np.linspace(0, 1, num=11)
-        bias_strength_range = [2]
+        bias_strength_range = [2, 3, 5, 10, 20, 50, 100, 200]
         result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
         print(result_files)
         cors = list()
@@ -217,6 +230,8 @@ def main():
             df = pd.read_pickle(preprocessed_filename)
             result = list()
             mix_bias_linkins_and_calc.sample_size = 0.
+            df = df[df['sample-size'] < 2.1]
+            df = df.reindex(np.random.permutation(df.index))
             for idx, data in df[['sample-size', 'node-ids']].iterrows():
                 ss, node_ids = list(data)
                 for bs in bias_strength_range:
@@ -225,12 +240,10 @@ def main():
                                                               num_links='fair')
                         result.append((ss, mix, bs, stat_dist))
                 mix_bias_linkins_and_calc.calc_counter += 1
-            result_df = pd.DataFrame(data=result,
-                                     columns=['sample-size', 'mixture', 'bias_strength', 'sample_stat_dist'])
-            result_df.to_pickle(
-                os.path.dirname(preprocessed_filename) + '/' + current_net_name.rsplit('/', 1)[-1] + '_mixture_res.df')
-
-
+                result_df = pd.DataFrame(data=result,
+                                         columns=['sample-size', 'mixture', 'bias_strength', 'sample_stat_dist'])
+                result_df.to_pickle(os.path.dirname(preprocessed_filename) + '/' + current_net_name.rsplit('/', 1)[
+                    -1] + '_mixture_res.df')
 
 
 if __name__ == '__main__':

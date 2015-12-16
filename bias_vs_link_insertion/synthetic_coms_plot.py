@@ -117,11 +117,10 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
 
         sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
         sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        new_edges = list(itertools.islice(((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes),num_links))
+        new_edges = list(
+            itertools.islice(((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes), num_links))
 
     elif method == 'top_block':
-        max_links = int(num_links / orig_num_com_nodes) + 5
-        # print 'max links:', max_links
         if top_measure is None:
             nodes_measure = np.array(net.degree_property_map('in').a)
         else:
@@ -129,28 +128,33 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
 
         sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
         sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        max_links -= 1
-        for max_links_add in range(3):
-            max_links += 1
-            sorted_other_nodes_block = sorted_other_nodes[:max_links]
-            # sorted_com_nodes_block = sorted_com_nodes
-            new_edges = list(
-                itertools.islice(((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes_block),
-                                 num_links))
+        new_edges = list()
+        while True:
+            block_size = int(np.sqrt(num_links-len(new_edges))) + 1
+            all_com_nodes = False
+            if block_size > len(com_nodes):
+                all_com_nodes = True
+                block_size = int((num_links-len(new_edges))/len(com_nodes)) + 1
+
+            if all_com_nodes:
+                sorted_com_nodes_block = sorted_com_nodes
+            else:
+                sorted_com_nodes_block = sorted_com_nodes[:block_size]
+            sorted_other_nodes_block = sorted_other_nodes[:block_size]
+            new_edges.extend(list(
+                    itertools.islice(
+                            ((src, dest) for dest in sorted_com_nodes_block for src in sorted_other_nodes_block),
+                            (num_links - len(new_edges)))))
             if len(new_edges) >= num_links:
                 break
-            else:
-                print('retry with bigger block')
-        if len(new_edges) < num_links:
-            print('could not insert all links:', len(new_edges), 'of', num_links)
 
     assert len(new_edges) == num_links
     tmp_net = net.copy()
     tmp_net.add_edge_list(new_edges)
     adj = adjacency(tmp_net)
     orig_adj = adjacency(net)
-    print(' | added parallel edges:', int((adj - adj.astype('bool').astype('int')).sum()) - int(
-        (orig_adj - orig_adj.astype('bool').astype('int')).sum()), end='')
+    print(' | added parallel edges:', int((int((adj - adj.astype('bool').astype('int')).sum()) - int(
+            (orig_adj - orig_adj.astype('bool').astype('int')).sum())) / 1000), 'k', end='')
     sys.stdout.flush()
     _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                             smooth_bias=False,
@@ -497,7 +501,7 @@ def preprocess_df(df, net, bias_strength):
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted random links')
         adj = adjacency(net)
-        print('def parallel links:',  int((adj - adj.astype('bool').astype('int')).sum()))
+        print('init # parallel links:',  int((adj - adj.astype('bool').astype('int')).sum()))
         if orig_stat_dist is None:
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
@@ -509,6 +513,10 @@ def preprocess_df(df, net, bias_strength):
 
     force_recalc = True
     col_label = 'add_top_links_fair'
+    if col_label in df_cols:
+        df.drop(col_label, axis=1, inplace=True)
+        dirty = True
+    '''
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links')
         adj = adjacency(net)
@@ -521,6 +529,7 @@ def preprocess_df(df, net, bias_strength):
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
+    '''
 
     force_recalc = True
     col_label = 'add_top_block_links_fair'
@@ -554,6 +563,7 @@ def plot_inserted_links(df, columns, filename):
     grp_df.columns = ['unbiased', 'biased'] + used_columns[2:]
 
     grp_mean = grp_df.mean()
+    grp_std = grp_df.std()
     grp_mean.to_excel(filename + '_inserted_links.xls')
     fig, ax = plt.subplots()
     print(grp_df.columns)
@@ -583,6 +593,9 @@ def plot_inserted_links(df, columns, filename):
         label = label_dict[label]
         ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=12, lw=3, color=c,
                 alpha=0.9, solid_capstyle="round")
+        ax.fill_between(np.array(grp_mean.index), np.array(grp_mean[i]) - np.array(grp_std[i]),
+                        np.array(grp_mean[i]) + np.array(grp_std[i]), color=c, alpha=0.25, label=None,
+                        interpolate=True)
     ax.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     plt.xlabel('sample size')
     plt.ylabel(r'stationary prob. ($\pi_G^b$)')
