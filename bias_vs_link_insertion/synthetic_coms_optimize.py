@@ -85,6 +85,10 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
         else:
             nodes_measure = top_measure
 
+        com_internal_links = True
+        if com_internal_links:
+            other_nodes |= com_nodes_set
+
         sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
         sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
         new_edges = list()
@@ -118,8 +122,8 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
         assert len(new_edges) == top_new_links
         edge_counter = Counter(new_edges)
         indizes, num_e = map(list, zip(*edge_counter.iteritems()))
-        rows, cols = map(list, zip(*indizes))
-        top_edge_matrix = csr_matrix((list(num_e), (rows, cols)), shape=orig_adj.shape).T
+        srcs, tars = map(list, zip(*indizes))
+        top_edge_matrix = csr_matrix((list(num_e), (tars, srcs)), shape=orig_adj.shape).T
         if verbose:
             print('new links')
             print(top_edge_matrix.todense())
@@ -128,8 +132,6 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
 
     # insert biased links
     if bias_links > 0:
-        if bias_links == num_links:
-            print('bias ALL')
 
         # mix in and out degree to get prob.
         out_d = csr_matrix(diags(np.array(orig_adj.sum(axis=0)).flatten(), 0))
@@ -137,7 +139,7 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
         prob_mat = out_d.dot(orig_adj).dot(in_d)
         row_idx, col_idx = prob_mat.nonzero()
         unbiased_row_idx, unbiased_col_idx = zip(
-            *filter(lambda (r, c): not(r in com_nodes_set and c not in com_nodes_set), zip(row_idx, col_idx)))
+                *filter(lambda (tar, src): tar not in com_nodes_set, zip(row_idx, col_idx)))
         prob_mat[unbiased_row_idx, unbiased_col_idx] = 0.
         prob_mat.eliminate_zeros()
         prob_mat.data /= prob_mat.data.sum()
@@ -151,8 +153,6 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
             last_idx = min(last_idx, len(bias_cum_sum_links))
             last_idx = last_idx if abs(bias_links - bias_cum_sum_links[last_idx - 1]) < abs(
                     bias_links - bias_cum_sum_links[last_idx - 2]) else (last_idx - 1)
-        if last_idx == len(row_idx):
-            print('biased all available links')
         row_idx, col_idx = row_idx[:last_idx], col_idx[:last_idx]
 
         if verbose:
@@ -164,6 +164,15 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
             print(bias_mat.todense())
 
         biased_mat = orig_adj.multiply(bias_mat)
+        '''if bias_links == num_links:
+            bias_v = np.ones(bias_mat.shape[0])
+            bias_v[com_nodes] = bias_strength
+            bias_d = csr_matrix(diags(bias_v, 0))
+            if not biased_mat.sum() == bias_d.dot(orig_adj).sum():
+                print('biased mat sum:', biased_mat.sum())
+                print('orig biased mat sum:', bias_d.dot(orig_adj).sum())
+                sys.exit(0)
+        '''
         if verbose:
             print('biased')
             print(biased_mat.todense())
@@ -203,11 +212,12 @@ def worker_helper(sample_size, node_ids, adj, mixture, bias_strength, num_links,
 
 
 def optimize_net(net_fn, df_fn, num_samples, bias_strength_range, mixture_range, num_processes=1):
+    print('optimize', net_fn.rsplit('/', 1)[-1], 'for', num_samples, 'samples using', num_processes, 'cpus')
     try:
         print('*' * 120)
         print('load network:', net_fn.rsplit('/', 1)[-1])
         adj = adjacency(load_graph(net_fn))
-        top_measure = np.array(adj.sum(axis=1)).flatten()
+        top_measure = np.array(adj.sum(axis=1)).flatten() + 1.
         preprocessed_filename = df_fn.rsplit('.df', 1)[0] + '_preprocessed.df'
         try:
             df = pd.read_pickle(preprocessed_filename)
@@ -215,28 +225,32 @@ def optimize_net(net_fn, df_fn, num_samples, bias_strength_range, mixture_range,
             df = pd.read_pickle(df_fn)
         result = list()
         mix_bias_linkins_and_calc.sample_size = -1.
-        df = df[df['sample-size'] < 2.1]
-        df_g = df.groupby('sample-size')
+        df.drop(df.index[df['sample-size'] > .21], inplace=True)
+        df.sort_values('sample-size', ascending=False, inplace=True)
+        df_g = df.groupby('sample-size', sort=False)
+
+        sample_sizes = set(df['sample-size'])
+        quick_calc = True
+        if quick_calc:
+            sample_sizes = sorted(sample_sizes)
+            sample_sizes = set([sample_sizes[0]] + [sample_sizes[-1]] + [sample_sizes[int(len(sample_sizes) / 2)]])
 
         for key, g_df in df_g:
+            if key not in sample_sizes:
+                print('skip sample-size:', key)
+                continue
             g_df = g_df.iloc[:num_samples]
             for idx, data in g_df[['sample-size', 'node-ids']].iterrows():
                 ss, node_ids = list(data)
+                my_worker_pool = mp.Pool(processes=num_processes)
                 for bs in bias_strength_range:
-                    my_worker_pool = mp.Pool(processes=num_processes)
                     for mix in mixture_range:
                         my_worker_pool.apply_async(worker_helper, args=(
-                        ss, node_ids, adj, mix, bs, 'fair', top_measure, net_fn.rsplit('/', 1)[-1]),
+                            ss, node_ids, adj, mix, bs, 'fair', top_measure, net_fn.rsplit('/', 1)[-1]),
                                                    callback=result.append)
-                        # stat_dist = mix_bias_linkins_and_calc((ss, node_ids), adj=adj, mixture=mix, bias_strength=bs,
-                        #                                     num_links='fair', top_measure=top_measure,
-                        #                                      print_prefix=net_fn.rsplit('/', 1)[-1])
-                        # result.append((ss, mix, bs, stat_dist))
-                    my_worker_pool.close()
-                    my_worker_pool.join()
-                    # print('')
+                my_worker_pool.close()
+                my_worker_pool.join()
                 print('')
-                # mix_bias_linkins_and_calc.calc_counter += 1
                 result_df = pd.DataFrame(data=result,
                                          columns=['sample-size', 'mixture', 'bias_strength', 'sample_stat_dist'])
                 result_df.to_pickle(os.path.dirname(preprocessed_filename) + '/' + net_fn.rsplit('/', 1)[
@@ -270,19 +284,14 @@ def main():
         out_dir = base_dir + 'plots/'
         create_folder_structure(out_dir)
         mixture_range = np.linspace(0, 1, num=11)
-        num_samples = 10
+        num_samples = 5
         bias_strength_range = [2, 3, 5, 10, 15]
         result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
         print(result_files)
-        cors = list()
-        all_dfs = list()
-        net_name = ''
-        net = None
         skipped_ds = set()
         # skipped_ds.add('daserste')
         # skipped_ds.add('wiki4schools')
         # skipped_ds.add('tvthek_orf')
-        #my_worker_pool = mp.Pool(processes=3)
         for df_fn in sorted(filter(lambda x: 'preprocessed' not in x, result_files), reverse=True):
             current_net_name = df_fn.rsplit('_bs', 1)[0]
             bias_strength = int(df_fn.split('_bs')[-1].split('.')[0])
@@ -292,11 +301,9 @@ def main():
             elif any((i in current_net_name for i in skipped_ds)):
                 print('skip ds:', current_net_name)
                 continue
-#            my_worker_pool.apply_async(worker_helper,
-#                                       args=())
-            optimize_net(current_net_name, df_fn, num_samples, bias_strength_range, mixture_range, num_processes=4)
-#        my_worker_pool.close()
-#        my_worker_pool.join()
+            optimize_net(current_net_name, df_fn, num_samples, bias_strength_range, mixture_range,
+                         num_processes=15 if 'wiki' in current_net_name else (4 if 'erste' in current_net_name else 10))
+
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
