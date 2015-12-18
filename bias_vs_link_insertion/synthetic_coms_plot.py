@@ -448,6 +448,7 @@ def preprocess_df(df, net, bias_strength):
         df['sample-size'] = df['node-ids'].apply(lambda x: len(x) / num_vertices)
     if 'stat_dist_com' not in df_cols:
         print('[preprocess]: filter com stat-dist')
+        assert np.allclose(np.array(df['stat_dist_com'].apply(np.sum)), 1.)
         df['stat_dist_com'] = df[['node-ids', 'stat_dist']].apply(
             lambda (node_ids, stat_dist): list(stat_dist[node_ids]), axis=1).apply(np.array)
         dirty = True
@@ -494,7 +495,6 @@ def preprocess_df(df, net, bias_strength):
                                                                                 calc_entropy_rate=False, verbose=False)
         df['orig_stat_dist_sum'] = df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
         dirty = True
-    links_range = [1, 5, 10, 20, 100]
 
     force_recalc = True
     col_label = 'add_rnd_links_fair'

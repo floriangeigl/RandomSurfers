@@ -192,10 +192,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             if bias.shape != adjacency_matrix.shape:
                 if verbose:
                     print print_prefix + 'inconsistent shape:', bias.shape, adjacency_matrix.shape
-            # mask bias (filter out relevant values)
             bias = csr_matrix(bias)
-            bias.eliminate_zeros()
-            bias = bias.multiply(adjacency_matrix.astype('bool'))
             # created weighted trans mat
             weighted_trans = adjacency_matrix.multiply(bias)
         else:
