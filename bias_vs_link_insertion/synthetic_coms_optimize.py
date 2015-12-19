@@ -123,7 +123,7 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
         edge_counter = Counter(new_edges)
         indizes, num_e = map(list, zip(*edge_counter.iteritems()))
         srcs, tars = map(list, zip(*indizes))
-        top_edge_matrix = csr_matrix((list(num_e), (tars, srcs)), shape=orig_adj.shape).T
+        top_edge_matrix = csr_matrix((list(num_e), (tars, srcs)), shape=orig_adj.shape)
         if verbose:
             print('new links')
             print(top_edge_matrix.todense())
