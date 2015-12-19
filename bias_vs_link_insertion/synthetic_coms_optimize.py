@@ -284,7 +284,7 @@ def main():
         out_dir = base_dir + 'plots/'
         create_folder_structure(out_dir)
         mixture_range = np.linspace(0, 1, num=11)
-        num_samples = 5
+        num_samples = 100
         bias_strength_range = [2, 3, 5, 10, 15]
         result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
         print(result_files)
