@@ -100,7 +100,6 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
                 all_com_nodes = True
                 block_size = int(remaining_links/len(com_nodes)) + 1
 
-
             sorted_com_nodes_block = sorted_com_nodes if all_com_nodes else sorted_com_nodes[:block_size]
             sorted_other_nodes_block = sorted_other_nodes[:block_size]
 
