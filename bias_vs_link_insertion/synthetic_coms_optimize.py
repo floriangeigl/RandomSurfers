@@ -233,6 +233,9 @@ def optimize_net(net_fn, df_fn, num_samples, bias_strength_range, mixture_range,
             sample_sizes = sorted(sample_sizes)
             sample_sizes = set([sample_sizes[0]] + [sample_sizes[-1]] + [sample_sizes[int(len(sample_sizes) / 2)]])
 
+        _, unbiased_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV', smooth_bias=False,
+                                                                                calc_entropy_rate=False, verbose=False)
+
         for key, g_df in df_g:
             if key not in sample_sizes:
                 print('skip sample-size:', key)
@@ -241,11 +244,14 @@ def optimize_net(net_fn, df_fn, num_samples, bias_strength_range, mixture_range,
             for idx, data in g_df[['sample-size', 'node-ids']].iterrows():
                 ss, node_ids = list(data)
                 my_worker_pool = mp.Pool(processes=num_processes)
-                for bs in bias_strength_range:
+                for bs_idx, bs in enumerate(bias_strength_range):
                     for mix in mixture_range:
                         my_worker_pool.apply_async(worker_helper, args=(
                             ss, node_ids, adj, mix, bs, 'fair', top_measure, net_fn.rsplit('/', 1)[-1]),
                                                    callback=result.append)
+                        if bs_idx == 0:
+                            # sample_size, mixture, bias_strength, stat_dist
+                            result.append((ss, mix, 1., unbiased_stat_dist[node_ids].sum()))
                 my_worker_pool.close()
                 my_worker_pool.join()
                 print('')
