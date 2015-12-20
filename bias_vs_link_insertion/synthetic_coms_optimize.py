@@ -93,17 +93,15 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
         sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
         new_edges = list()
         while True:
-            block_size = int(np.sqrt(top_new_links-len(new_edges))) + 1
+            remaining_links = top_new_links - len(new_edges)
+            block_size = int(np.sqrt(remaining_links)) + 1
             all_com_nodes = False
             if block_size > len(com_nodes):
                 all_com_nodes = True
-                block_size = int((top_new_links-len(new_edges))/len(com_nodes)) + 1
+                block_size = int(remaining_links/len(com_nodes)) + 1
 
-            if all_com_nodes:
-                sorted_com_nodes_block = sorted_com_nodes
-            else:
-                sorted_com_nodes_block = sorted_com_nodes[:block_size]
-            sorted_other_nodes_block = sorted_other_nodes[:block_size]
+            sorted_com_nodes_block = sorted_com_nodes if all_com_nodes else sorted_com_nodes[:block_size]
+
             # if verbose:
             # print('\n')
             # print('all com nodes:', all_com_nodes)
@@ -111,10 +109,9 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
             # print('max link for block-size:', len(sorted_other_nodes_block) * len(sorted_com_nodes_block))
             # print('block-size:', block_size)
             # sorted_com_nodes_block = sorted_com_nodes
-            new_edges.extend(list(
-                    itertools.islice(
-                            ((src, dest) for dest in sorted_com_nodes_block for src in sorted_other_nodes_block),
-                            (top_new_links - len(new_edges)))))
+            new_edges.extend(itertools.islice(
+                            ((src, dest) for dest in sorted_com_nodes_block for src in sorted_other_nodes_block if src != dest),
+                            remaining_links))
             if len(new_edges) >= top_new_links:
                 break
             elif verbose:
