@@ -100,7 +100,9 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
                 all_com_nodes = True
                 block_size = int(remaining_links/len(com_nodes)) + 1
 
+
             sorted_com_nodes_block = sorted_com_nodes if all_com_nodes else sorted_com_nodes[:block_size]
+            sorted_other_nodes_block = sorted_other_nodes[:block_size]
 
             # if verbose:
             # print('\n')
@@ -289,17 +291,16 @@ def main():
         # skipped_ds.add('daserste')
         # skipped_ds.add('wiki4schools')
         # skipped_ds.add('tvthek_orf')
+        already_optimized = set()
         for df_fn in sorted(filter(lambda x: 'preprocessed' not in x, result_files), reverse=True):
             current_net_name = df_fn.rsplit('_bs', 1)[0]
-            bias_strength = int(df_fn.split('_bs')[-1].split('.')[0])
-            if bias_strength > 2:
-                print('skip bs:', bias_strength)
-                continue
-            elif any((i in current_net_name for i in skipped_ds)):
-                print('skip ds:', current_net_name)
-                continue
-            optimize_net(current_net_name, df_fn, num_samples, bias_strength_range, mixture_range,
-                         num_processes=15 if 'wiki' in current_net_name else (4 if 'erste' in current_net_name else 10))
+            if current_net_name not in already_optimized and not any((i in current_net_name for i in skipped_ds)):
+                optimize_net(current_net_name, df_fn, num_samples, bias_strength_range, mixture_range,
+                             num_processes=15 if 'wiki' in current_net_name else (
+                             4 if 'erste' in current_net_name else 10))
+                already_optimized.add(current_net_name)
+            else:
+                print('skip:', df_fn.rsplit('/', 1)[-1])
 
 
 if __name__ == '__main__':
