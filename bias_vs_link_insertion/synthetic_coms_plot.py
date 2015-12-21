@@ -20,6 +20,7 @@ import tools.mpl_tools as plt_tools
 from scipy.sparse import diags
 import sys
 import itertools
+import link_insertion_strategies
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -100,53 +101,17 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
     orig_num_com_nodes = len(com_nodes)
     if orig_num_com_nodes >= net.num_vertices():
         return None
-    other_nodes = set(range(0, net.num_vertices())) - set(com_nodes)
+    com_nodes_set = set(com_nodes)
+    other_nodes = set(range(0, net.num_vertices())) - com_nodes_set
+
+    com_internal_links = True
+    if com_internal_links:
+        other_nodes |= com_nodes_set
 
     if method == 'rnd':
-        other_nodes = np.array(list(other_nodes))
-        com_nodes = np.array(list(com_nodes))
-        srcs = np.random.choice(other_nodes, size=num_links, replace=True)
-        dests = np.random.choice(com_nodes, size=num_links, replace=True)
-        new_edges = list(zip(srcs, dests))
-
-    elif method == 'top':
-        if top_measure is None:
-            nodes_measure = np.array(net.degree_property_map('in').a)
-        else:
-            nodes_measure = top_measure
-
-        sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        new_edges = list(
-            itertools.islice(((src, dest) for dest in sorted_com_nodes for src in sorted_other_nodes), num_links))
-
+        new_edges = link_insertion_strategies.get_random_links(com_nodes_set, other_nodes, num_links)
     elif method == 'top_block':
-        if top_measure is None:
-            nodes_measure = np.array(net.degree_property_map('in').a)
-        else:
-            nodes_measure = top_measure
-
-        sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        new_edges = list()
-        while True:
-            block_size = int(np.sqrt(num_links-len(new_edges))) + 1
-            all_com_nodes = False
-            if block_size > len(com_nodes):
-                all_com_nodes = True
-                block_size = int((num_links-len(new_edges))/len(com_nodes)) + 1
-
-            if all_com_nodes:
-                sorted_com_nodes_block = sorted_com_nodes
-            else:
-                sorted_com_nodes_block = sorted_com_nodes[:block_size]
-            sorted_other_nodes_block = sorted_other_nodes[:block_size]
-            new_edges.extend(list(
-                    itertools.islice(
-                            ((src, dest) for dest in sorted_com_nodes_block for src in sorted_other_nodes_block),
-                            (num_links - len(new_edges)))))
-            if len(new_edges) >= num_links:
-                break
+        new_edges = link_insertion_strategies.get_top_block_links(com_nodes_set, other_nodes, num_links, top_measure)
 
     assert len(new_edges) == num_links
     tmp_net = net.copy()
@@ -161,7 +126,6 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
                                                                             calc_entropy_rate=False, verbose=False)
     assert orig_num_com_nodes == len(com_nodes)
     relinked_stat_dist_sum = relinked_stat_dist[com_nodes].sum()
-    assert net.num_edges() == orig_num_edges
     return relinked_stat_dist_sum
 
 
@@ -357,7 +321,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
             last_x, last_y = tmp_grp.iloc[max(0, annotate_idx - 1)][['bin_center', y_col_name]]
 
         ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.95,
-                              label='  ' + key_str, marker=m, markersize=12)
+                              label='  ' + key_str, marker=m, markersize=12, markeredgewidth=2,
+                              markeredgecolor=(.99, .99, .99, .9))
         annotate_bbox = dict(boxstyle='round4,pad=0.2', fc='white', ec=c, alpha=0.7)
         annotate_kwargs = dict(ha='center', va='center', bbox=annotate_bbox, fontsize=annotate_font_size)
         annotate_arrow = dict(arrowstyle="->, head_width=1.", facecolor='black',
@@ -515,26 +480,6 @@ def preprocess_df(df, net, bias_strength):
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
-
-    force_recalc = False
-    col_label = 'add_top_links_fair'
-    if col_label in df_cols:
-        df.drop(col_label, axis=1, inplace=True)
-        dirty = True
-    '''
-    if col_label not in df_cols or force_recalc:
-        print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top links')
-        adj = adjacency(net)
-        print('def parallel links:',  int((adj - adj.astype('bool').astype('int')).sum()))
-        if orig_stat_dist is None:
-            _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
-                                                                                smooth_bias=False,
-                                                                                calc_entropy_rate=False, verbose=False)
-        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'top', 'fair', orig_stat_dist))
-        dirty = True
-        print('')
-        print(datetime.datetime.now().replace(microsecond=0), '[OK]')
-    '''
 
     force_recalc = False
     col_label = 'add_top_block_links_fair'

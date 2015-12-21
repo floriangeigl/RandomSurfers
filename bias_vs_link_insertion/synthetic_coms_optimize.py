@@ -22,6 +22,7 @@ import sys
 import itertools
 from collections import Counter
 import multiprocessing as mp
+import link_insertion_strategies
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -76,48 +77,7 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
 
     if top_new_links > 0:
         # create top-measure links
-        if top_measure is None:
-            if net is not None:
-                nodes_measure = np.array(net.degree_property_map('in').a)
-            else:
-                print('no top measure defined.')
-                raise Exception()
-        else:
-            nodes_measure = top_measure
-
-        com_internal_links = True
-        if com_internal_links:
-            other_nodes |= com_nodes_set
-
-        sorted_other_nodes = sorted(other_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        sorted_com_nodes = sorted(com_nodes, key=lambda x: nodes_measure[x], reverse=True)
-        new_edges = list()
-        while True:
-            remaining_links = top_new_links - len(new_edges)
-            block_size = int(np.sqrt(remaining_links)) + 1
-            all_com_nodes = False
-            if block_size > len(com_nodes):
-                all_com_nodes = True
-                block_size = int(remaining_links/len(com_nodes)) + 1
-
-            sorted_com_nodes_block = sorted_com_nodes if all_com_nodes else sorted_com_nodes[:block_size]
-            sorted_other_nodes_block = sorted_other_nodes[:block_size]
-
-            # if verbose:
-            # print('\n')
-            # print('all com nodes:', all_com_nodes)
-            # print('needed links:', top_new_links - len(new_edges))
-            # print('max link for block-size:', len(sorted_other_nodes_block) * len(sorted_com_nodes_block))
-            # print('block-size:', block_size)
-            # sorted_com_nodes_block = sorted_com_nodes
-            new_edges.extend(itertools.islice(
-                            ((src, dest) for dest in sorted_com_nodes_block for src in sorted_other_nodes_block if src != dest),
-                            remaining_links))
-            if len(new_edges) >= top_new_links:
-                break
-            elif verbose:
-                print('could not insert all links:', len(new_edges), 'of', top_new_links, 'add parallel')
-        assert len(new_edges) == top_new_links
+        new_edges = link_insertion_strategies.get_top_block_links(com_nodes_set, other_nodes, top_new_links, top_measure)
         edge_counter = Counter(new_edges)
         indizes, num_e = map(list, zip(*edge_counter.iteritems()))
         srcs, tars = map(list, zip(*indizes))
@@ -131,10 +91,9 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
     # insert biased links
     if bias_links > 0:
 
-        # mix in and out degree to get prob.
-        out_d = csr_matrix(diags(np.array(orig_adj.sum(axis=0)).flatten(), 0))
-        in_d = csr_matrix(diags(np.array(orig_adj.sum(axis=1)).flatten(), 0))
-        prob_mat = out_d.dot(orig_adj).dot(in_d)
+        # use top measure to create link prob.
+        top_m_mat = csr_matrix(diags(top_measure, 0))
+        prob_mat = top_m_mat.dot(orig_adj).dot(top_m_mat)
         row_idx, col_idx = prob_mat.nonzero()
         unbiased_row_idx, unbiased_col_idx = zip(
                 *filter(lambda (tar, src): tar not in com_nodes_set, zip(row_idx, col_idx)))
@@ -162,15 +121,7 @@ def mix_bias_linkins_and_calc((sample_size, com_nodes), adj, bias_strength=2, mi
             print(bias_mat.todense())
 
         biased_mat = orig_adj.multiply(bias_mat)
-        '''if bias_links == num_links:
-            bias_v = np.ones(bias_mat.shape[0])
-            bias_v[com_nodes] = bias_strength
-            bias_d = csr_matrix(diags(bias_v, 0))
-            if not biased_mat.sum() == bias_d.dot(orig_adj).sum():
-                print('biased mat sum:', biased_mat.sum())
-                print('orig biased mat sum:', bias_d.dot(orig_adj).sum())
-                sys.exit(0)
-        '''
+
         if verbose:
             print('biased')
             print(biased_mat.todense())
@@ -215,7 +166,9 @@ def optimize_net(net_fn, df_fn, num_samples, bias_strength_range, mixture_range,
         print('*' * 120)
         print('load network:', net_fn.rsplit('/', 1)[-1])
         adj = adjacency(load_graph(net_fn))
-        top_measure = np.array(adj.sum(axis=1)).flatten() + 1.
+        _, top_measure = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV', smooth_bias=False,
+                                                                         calc_entropy_rate=False, verbose=False)
+        top_measure += 1.
         preprocessed_filename = df_fn.rsplit('.df', 1)[0] + '_preprocessed.df'
         try:
             df = pd.read_pickle(preprocessed_filename)
