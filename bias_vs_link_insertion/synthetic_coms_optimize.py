@@ -291,7 +291,7 @@ def main():
         num_samples = 100
         bias_strength_range = [2, 3, 5, 10, 15]
         result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
-        print(result_files)
+        # print(result_files)
         skipped_ds = set()
         # skipped_ds.add('daserste')
         # skipped_ds.add('wiki4schools')

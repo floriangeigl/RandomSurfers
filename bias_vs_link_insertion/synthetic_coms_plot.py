@@ -299,7 +299,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     plt_y_range = [min_y_val - y_offset, max_y_val + y_offset]
 
     plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
-    colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999']
+    colors = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
     markers = "ov^<>8sp*+x"
     print(x_col_name, y_col_name, sorted(set(df['sample-size'])))
     for style_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
@@ -496,7 +496,7 @@ def preprocess_df(df, net, bias_strength):
         df['orig_stat_dist_sum'] = df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
         dirty = True
 
-    force_recalc = True
+    force_recalc = False
     col_label = 'add_rnd_links_fair'
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted random links')
@@ -511,7 +511,7 @@ def preprocess_df(df, net, bias_strength):
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
 
-    force_recalc = True
+    force_recalc = False
     col_label = 'add_top_links_fair'
     if col_label in df_cols:
         df.drop(col_label, axis=1, inplace=True)
@@ -531,7 +531,7 @@ def preprocess_df(df, net, bias_strength):
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
     '''
 
-    force_recalc = True
+    force_recalc = False
     col_label = 'add_top_block_links_fair'
     if col_label not in df_cols or force_recalc:
         print(datetime.datetime.now().replace(microsecond=0), 'calc stat dist with fair inserted top block links')
@@ -564,7 +564,7 @@ def plot_inserted_links(df, columns, filename):
 
     grp_mean = grp_df.mean()
     grp_std = grp_df.std()
-    grp_mean.to_excel(filename + '_inserted_links.xls')
+    # grp_mean.to_excel(filename + '_inserted_links.xls')
     fig, ax = plt.subplots()
     print(grp_df.columns)
     label_dict = dict()
@@ -572,34 +572,23 @@ def plot_inserted_links(df, columns, filename):
     label_dict['biased'] = 'biased'
     label_dict['rnd fair'] = 'random'
     label_dict['top_block fair'] = 'informed'
-    for i, label in zip(grp_mean.columns, grp_df.columns):
+    colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c']
+    markers = "ov^<>sp*+x"
+    for idx, (i, label) in enumerate(zip(grp_mean.columns, grp_df.columns)):
         if label not in label_dict:
             continue
-        if 'top' in label:
-            c = '#e41a1c'
-            marker = '^'
-            if 'block' in label:
-                marker = 'v'
-                c = '#377eb8'
-        elif 'rnd' in label:
-            c = '#4daf4a'
-            marker = '*'
-        elif label == 'biased':
-            c = '#984ea3'
-            marker = 'D'
-        elif label == 'unbiased':
-            c = '#ff7f00'
-            marker = 'd'
+        c = colors[idx]
+        marker = markers[idx]
         label = label_dict[label]
         ax.plot(np.array(grp_mean.index), np.array(grp_mean[i]), label=label, marker=marker, ms=12, lw=3, color=c,
-                alpha=0.9, solid_capstyle="round")
+                alpha=0.9, solid_capstyle="round", markeredgewidth = 2, markeredgecolor = (.99, .99, .99, .9))
         ax.fill_between(np.array(grp_mean.index), np.array(grp_mean[i]) - np.array(grp_std[i]),
                         np.array(grp_mean[i]) + np.array(grp_std[i]), color=c, alpha=0.25, label=None,
                         interpolate=True)
     ax.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     plt.xlabel('sample size')
     plt.ylabel(r'stationary prob. ($\pi_G^b$)')
-    plt.xlim([0, 0.21])
+    ax.set_xlim([grp_mean.index.min(), grp_mean.index.max()])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
     plt_tools.save_n_crop(out_fn)
