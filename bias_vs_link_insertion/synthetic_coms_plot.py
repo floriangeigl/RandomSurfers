@@ -270,7 +270,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     if not one_subplot:
         ax1.plot([np.nan], [np.nan], label='sample-size', c='white')
     ax2.plot([np.nan], [np.nan], label='sample-size', c='white')
-    lw_func = lambda x: 1. + ((x - .01) / (.2 - .01)) * 3
+    # lw_func = lambda x: 1. + ((x - .01) / (.2 - .01)) * 3
+    lw_func = lambda x: 2
     legend_plot = True
     all_sample_sizes = set(df['sample-size'])
     if 'ratio' in x_col_name:
@@ -299,7 +300,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     plt_y_range = [min_y_val - y_offset, max_y_val + y_offset]
 
     plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
-    colors = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
+    colors = ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'][
+             -len(set(df['sample-size'])):]
     markers = "ov^<>8sp*+x"
     print(x_col_name, y_col_name, sorted(set(df['sample-size'])))
     for style_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
@@ -405,6 +407,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
         ax1.set_xlim(plt_x_range)
         ax1.set_ylim(plt_y_range)
         ax1.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
+        ax1.set_axisbelow(True)
         plt.title(ds_name)
     else:
         ax2.legend_.remove()
@@ -416,6 +419,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
             ax1.set_xticks([])
             ax1.set_ylabel('N')
             ax1.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
+            ax1.set_axisbelow(True)
     ax2.set_xlim(plt_x_range)
     ax2.set_ylim(plt_y_range)
     ax2.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
@@ -424,6 +428,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     else:
         plt.xticks()
         ax2.ticklabel_format(style='sci', axis='x', useOffset=True, useMathText=True, scilimits=(0, 0))
+    ax2.set_axisbelow(True)
 
     plt.tight_layout(h_pad=0.001)
     plt_fn = out_fn_base + out_fn_ext
@@ -589,6 +594,7 @@ def plot_inserted_links(df, columns, filename):
     plt.xlabel('sample size')
     plt.ylabel(r'stationary prob. ($\pi_G^b$)')
     ax.set_xlim([grp_mean.index.min(), grp_mean.index.max()])
+    ax.set_axisbelow(True)
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
     plt_tools.save_n_crop(out_fn)
