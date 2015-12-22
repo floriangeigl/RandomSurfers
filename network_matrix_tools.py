@@ -188,6 +188,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             try:
                 bias_max_min_r = (bias.max()) / (bias.min())
             except:
+                # TODO: try if bug has been fixed in scipy
                 bias_max_min_r = (bias.max()) / (bias.min())
             if bias.shape != adjacency_matrix.shape:
                 if verbose:
