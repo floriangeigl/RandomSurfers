@@ -1,3 +1,4 @@
+from __future__ import division, print_function
 import numpy as np
 import scipy
 import linalg as la
@@ -54,7 +55,7 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
                 sigma *= scipy.sparse.spdiags(norm, 0, sigma.shape[0], sigma.shape[0])
             else:
                 sigma *= norm
-        print 'mask'
+        print('mask')
         if mask_adj:
             # memory efficient way
             sigma = sigma[adjacency_matrix.nonzero()]  # get relevant data and delete dense matrix
@@ -63,16 +64,16 @@ def katz_sim_network(adjacency_matrix, largest_eigenvalue, gamma=0.99, norm=None
             sigma = csr_matrix((sigma, adjacency_matrix.nonzero()),
                                shape=adjacency_matrix.shape)  # create csr matrix using indices and shape of sparse matrix
             sigma.eliminate_zeros()  # delete remaining zeros
-        print 'done'
+        print('done')
         return sigma
     except Exception as e:
-        print traceback.format_exc()
+        print(traceback.format_exc())
 
         if norm is None:
-            print 'use iterative katz'
+            print('use iterative katz')
             return la.calc_katz_iterative(adjacency_matrix, alpha, plot=False)
         else:
-            print 'could not calc katz'.center(120, '!')
+            print('could not calc katz'.center(120, '!'))
             raise Exception(e)
 
 
@@ -92,17 +93,17 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
     components = connected_components(P, connection='strong', return_labels=False)
     if components > 1:
         if verbose:
-            print print_prefix, 'more than 1 component. eigenvector will not converge.'
-            print print_prefix, 'try using pagerank instead!'
+            print(print_prefix, 'more than 1 component. eigenvector will not converge.')
+            print(print_prefix, 'try using pagerank instead!')
         raise scipy.sparse.linalg.ArpackNoConvergence
     if verbose:
-        print print_prefix, 'P values near zero: #', zeros_near_z
+        print(print_prefix, 'P values near zero: #', zeros_near_z)
     try:
         eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix, verbose=verbose)  # , init_v=np.array(P.sum(axis=1)).flatten())
     except scipy.sparse.linalg.ArpackNoConvergence:
         if verbose:
-            print print_prefix, 'eigenvector did not converge!'
-            print print_prefix, 'try using pagerank instead!'
+            print(print_prefix, 'eigenvector did not converge!')
+            print(print_prefix, 'try using pagerank instead!')
         raise
         #raise scipy.sparse.linalg.ArpackNoConvergence
 
@@ -113,18 +114,18 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
         # eigval, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix)
         components = connected_components(P, connection='strong', return_labels=False)
         if verbose:
-            print print_prefix + 'pi = P * pi:', np.allclose(pi, normed_P * pi, atol=atol, rtol=rtol)
-            print print_prefix + 'eigval == 1:', np.isclose(eigval, scaling_factor, atol=atol*scaling_factor, rtol=rtol)
-            print print_prefix, '=' * 80
+            print(print_prefix + 'pi = P * pi:', np.allclose(pi, normed_P * pi, atol=atol, rtol=rtol))
+            print(print_prefix + 'eigval == 1:', np.isclose(eigval, scaling_factor, atol=atol*scaling_factor, rtol=rtol))
+            print(print_prefix, '=' * 80)
         if components > 1:
             if verbose:
-                print print_prefix, utils.color_string('# components: ' + str(components), utils.bcolors.RED)
+                print(print_prefix, utils.color_string('# components: ' + str(components), utils.bcolors.RED))
         else:
             if verbose:
-                print '# components: ', components
+                print('# components: ', components)
         if verbose:
-            print print_prefix, "eigval: %.10f" % eigval.real[0]
-            print print_prefix, '=' * 80
+            print(print_prefix, "eigval: %.10f" % eigval.real[0])
+            print(print_prefix, '=' * 80)
         exit()
     close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
     neg_stat_dist = pi < 0
@@ -134,18 +135,18 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
         components = connected_components(P, connection='strong', return_labels=False)
         eigval, _ = la.leading_eigenvector(P, k=10, print_prefix=print_prefix, verbose=verbose)
         if verbose:
-            print print_prefix + 'negative stat values:', list(map(lambda i: "%.10f" % i, pi[pi < 0]))[:10], '...'
-        # print print_prefix + 'negative stat sum:', "%.10f" % pi[pi < 0].sum()
-        # print print_prefix + 'negative stat max:', "%.10f" % pi[pi < 0].min()
+            print(print_prefix + 'negative stat values:', list(map(lambda i: "%.10f" % i, pi[pi < 0]))[:10], '...')
+        # print(print_prefix + 'negative stat sum:', "%.10f" % pi[pi < 0].sum())
+        # print(print_prefix + 'negative stat max:', "%.10f" % pi[pi < 0].min())
         if verbose:
-            print print_prefix, '=' * 80
-            print '# components: ', components
-            print print_prefix, 'eigval:', eigval
-            print print_prefix, '=' * 80
+            print(print_prefix, '=' * 80)
+            print('# components: ', components)
+            print(print_prefix, 'eigval:', eigval)
+            print(print_prefix, '=' * 80)
         raise scipy.sparse.linalg.ArpackNoConvergence
     while not np.isclose(pi.sum(), 1, atol=atol, rtol=rtol):
         if verbose:
-            print print_prefix, utils.color_string('re-normalize stat. dist.'.center(100, '!'), utils.bcolors.RED)
+            print(print_prefix, utils.color_string('re-normalize stat. dist.'.center(100, '!'), utils.bcolors.RED))
         pi /= pi.sum()
         close_zero = np.isclose(pi, 0, atol=atol, rtol=rtol)
         neg_stat_dist = pi < 0
@@ -177,7 +178,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
     if bias is not None:
         if np.count_nonzero(bias) == 0:
             if verbose:
-                print print_prefix + '\tall zero matrix as weights -> use ones-matrix'
+                print(print_prefix + '\tall zero matrix as weights -> use ones-matrix')
             bias = lil_matrix(np.ones(bias.shape))
             bias_max_min_r = 1.
         if len(bias.shape) == 1:
@@ -192,14 +193,14 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
                 bias_max_min_r = (bias.max()) / (bias.min())
             if bias.shape != adjacency_matrix.shape:
                 if verbose:
-                    print print_prefix + 'inconsistent shape:', bias.shape, adjacency_matrix.shape
+                    print(print_prefix + 'inconsistent shape:', bias.shape, adjacency_matrix.shape)
             if not isinstance(bias, csr_matrix):
                 bias = csr_matrix(bias)
             # created weighted trans mat
             weighted_trans = adjacency_matrix.multiply(bias)
         else:
             if verbose:
-                print print_prefix + '\tunknown bias shape'
+                print(print_prefix + '\tunknown bias shape')
     else:
         weighted_trans = adjacency_matrix.copy()
     # weighted_trans.eliminate_zeros()
@@ -210,12 +211,12 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
             stat_dist = stationary_dist(weighted_trans, print_prefix=print_prefix, verbose=verbose)
             if orig_ma_mi_r is not None:
                 if verbose:
-                    print 'orig bias max/min:', orig_ma_mi_r
-                    print 'normalized max/min:', bias_max_min_r
+                    print('orig bias max/min:', orig_ma_mi_r)
+                    print('normalized max/min:', bias_max_min_r)
         except scipy.sparse.linalg.ArpackNoConvergence as e:
             if smooth_bias:
                 if verbose:
-                    print print_prefix, 'no converge. add epsilon to bias', eps
+                    print(print_prefix, 'no converge. add epsilon to bias', eps)
                 if bias is None:
                     raise e
                 b_zeros = 0
@@ -223,26 +224,26 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
                     bias_o = np.float(10 ** int(np.ceil(np.log10(bias.shape[0]))))
                     add_eps = eps/bias_o
                     if verbose:
-                        print print_prefix, 'absolute eps:', utils.color_string(str(add_eps), utils.bcolors.RED)
+                        print(print_prefix, 'absolute eps:', utils.color_string(str(add_eps), utils.bcolors.RED))
                     if len(bias.shape) == 1:
-                        # print print_prefix, 'vector bias'
+                        # print(print_prefix, 'vector bias')
                         bias /= bias.sum()
                         b_zeros = np.isclose(bias, 0., rtol=0., atol=1e-15).sum() / len(bias)
                         bias += add_eps
                     else:
                         if scipy.sparse.issparse(bias):
-                            # print print_prefix, 'sparse matrix bias'
+                            # print(print_prefix, 'sparse matrix bias')
                             bias = normalize(bias, 'l1', axis=0, copy=False)
                             b_zeros = np.isclose(bias.data, 0., rtol=0., atol=1e-15).sum() / len(bias.data)
                             bias.data += add_eps
                         else:
-                            # print print_prefix, 'dense matrix bias'
+                            # print(print_prefix, 'dense matrix bias')
                             bias /= bias.sum(axis=0)
                             b_zeros = np.isclose(np.array(bias).flatten(), 0., rtol=0., atol=1e-15).sum() / (
                             bias.shape[0] * bias.shape[1])
                             bias += add_eps
                 if verbose:
-                    print print_prefix, b_zeros * 100, '% of all values in bias near zero. '  # eps:', 1e-15
+                    print(print_prefix, b_zeros * 100, '% of all values in bias near zero. ')  # eps:', 1e-15
                 eps *= 10
                 return calc_entropy_and_stat_dist(adjacency_matrix, bias=bias, print_prefix=print_prefix, eps=eps,
                                                   orig_ma_mi_r=bias_max_min_r if orig_ma_mi_r is None else orig_ma_mi_r,
@@ -253,7 +254,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
         stat_dist = pagerank_from_transmat(weighted_trans, print_prefix=print_prefix, damping=damping)
     else:
         if verbose:
-            print print_prefix, 'unknown method:', method
+            print(print_prefix, 'unknown method:', method)
     assert stat_dist is not None
     if calc_entropy_rate:
         return entropy_rate(weighted_trans, stat_dist=stat_dist, print_prefix=print_prefix), stat_dist
@@ -262,7 +263,7 @@ def calc_entropy_and_stat_dist(adjacency_matrix, bias=None, print_prefix='', eps
 
 
 def entropy_rate(weighted_adj_matrix, stat_dist=None, base=2, print_prefix=''):
-    print print_prefix + 'calc entropy rate'
+    print(print_prefix + 'calc entropy rate')
     if stat_dist is None:
         stat_dist = stationary_dist(weighted_adj_matrix)
     assert not np.any(stat_dist < 0)
@@ -281,9 +282,9 @@ def entropy_rate(weighted_adj_matrix, stat_dist=None, base=2, print_prefix=''):
     col_entropy *= stat_dist
     finite_elements = np.isfinite(col_entropy)
     if not all(finite_elements):
-        print print_prefix + 'WARN: entropy rate contains not finite elements. (inf, nan)'
+        print(print_prefix + 'WARN: entropy rate contains not finite elements. (inf, nan)')
     rate = np.sum(col_entropy[finite_elements])
     if not np.isfinite(rate):
-        print print_prefix + 'entropy rate not finite'
+        print(print_prefix + 'entropy rate not finite')
         exit()
     return rate
