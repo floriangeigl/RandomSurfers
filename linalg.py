@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from sys import platform as _platform
 import matplotlib
 
@@ -55,30 +55,30 @@ def transition_matrix(M):
 def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1,
                         print_prefix='', dense_fallback=False, verbose=True):
     if verbose:
-        print print_prefix + 'largest eigenvec',
+        print(print_prefix + 'largest eigenvec', end='')
     k = min(k, M.shape[0] - 2)
     if scipy.sparse.issparse(M):
         if verbose:
-            print 'sparse',
+            print('sparse', end='')
         if symmetric:
             if verbose:
-                print 'symmetric'
+                print('symmetric')
             l, v = linalg.eigsh(M, k=k, which="LA")
         else:
             try:
                 if verbose:
-                    print 'asymmetric'
-                #print datetime.datetime.now(), 'normal calc'
+                    print('asymmetric')
+                #print(datetime.datetime.now(), 'normal calc'
                 l, v = linalg.eigs(M, k=k, which="LR", v0=init_v, maxiter=max(M.shape[0], 1000))
-                #print datetime.datetime.now(), 'sigma calc'
+                #print(datetime.datetime.now(), 'sigma calc'
                 #ls, vs = linalg.eigs(M, k=k, which="SM", OPpart='r', v0=init_v, maxiter=max(M.shape[0], 1000), sigma=1.)
-                #print l, ls
-                #print v, vs
+                #print(l, ls
+                #print(v, vs
                 #exit()
             except scipy.sparse.linalg.ArpackNoConvergence as e:
                 if dense_fallback:
                     if verbose:
-                        print print_prefix, 'sparse eigvec failed. retry dense.'
+                        print(print_prefix, 'sparse eigvec failed. retry dense.')
                     return leading_eigenvector(M.todense(), init_v=init_v, overwrite_a=overwrite_a, tol=tol,
                         max_inc_tol_fac=max_inc_tol_fac, k=k)
                 else:
@@ -88,14 +88,14 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
         return l1, u / u.sum()
     else:
         if verbose:
-            print 'dense',
+            print('dense', end='')
         if symmetric:
             if verbose:
-                print 'symmetric'
+                print('symmetric')
             l, v = lalg.eigh(M, overwrite_a=overwrite_a)
         else:
             if verbose:
-                print 'asymmetric'
+                print('asymmetric')
             l, v = lalg.eig(M, overwrite_a=overwrite_a)
         l1index = largest_eigenvalue_index(l)
         u = np.array(v[:, l1index].real)
@@ -117,9 +117,9 @@ def rwalk_matrix(A, D):
 
 def katz_alpha(A):
     lm = lmax(A)
-    print "lmax%f"%lm
-    alpha = (1/lm) * 0.15
-    print "alpha%f"%alpha
+    print("lmax%f" % lm)
+    alpha = (1 / lm) * 0.15
+    print("alpha%f" % alpha)
     return alpha
 
 
@@ -133,7 +133,7 @@ def katz_matrix(A, alpha, norm=None):
         # norm = norm
         pass
     else:
-        print 'katz norm unknown shape'.center(120, '!')
+        print('katz norm unknown shape'.center(120, '!'))
         exit()
     return norm - (alpha * A)
 
@@ -146,15 +146,15 @@ def largest_eigenvalue_index(l):
 
 def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir='output/', plot=True, verbose=0):
     if verbose > 0:
-        print 'calc katz iterative'
-        print 'alpha:', alpha
+        print('calc katz iterative')
+        print('alpha:', alpha)
     sigma = np.identity(A.shape[0])
     A_max, alphas = list(), list()
     orig_A = A.copy()
     orig_alpha = alpha
     for i in range(1, max_iter):
         if verbose > 1:
-            print 'iter:', i
+            print('iter:', i)
         if i > 1:
             A *= orig_A
             alpha *= orig_alpha
@@ -164,7 +164,7 @@ def calc_katz_iterative(A, alpha, max_iter=2000, filename='katz_range', out_dir=
         alphas.append(alpha)
         if np.allclose(A_max[-1], 0):
             if verbose > 0:
-                print '\tbreak after length:', i
+                print('\tbreak after length:', i)
             break
     if plot:
         df = pd.DataFrame(columns=['max matrix value'], data=A_max)
