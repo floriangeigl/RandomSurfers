@@ -522,7 +522,7 @@ def plot_inserted_links(df, columns, filename):
     label_dict['biased'] = 'biased'
     label_dict['rnd fair'] = 'random'
     label_dict['top_block fair'] = 'informed'
-    colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c']
+    colors = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
     markers = "ov^<>sp*+x"
     for idx, (i, label) in enumerate(zip(grp_mean.columns, grp_df.columns)):
         if label not in label_dict:
