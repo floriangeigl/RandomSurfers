@@ -264,9 +264,11 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     plt_y_range = [min_y_val - y_offset, max_y_val + y_offset]
 
     plt_x_center = plt_x_range[0] + ((plt_x_range[1] - plt_x_range[0]) / 2)
-    colors = ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'][
-             -len(set(df['sample-size'])):]
-    markers = "ov^<>8sp*+x"
+    df['sample-size'] = np.round(df['sample-size'], decimals=3)
+    sample_sizes = {0.01, 0.1, 0.2}
+    df = df[map(lambda x: x in sample_sizes, df['sample-size'])]
+    colors = ['#e41a1c','#377eb8','#4daf4a']
+    markers = "o^s"
     print(x_col_name, y_col_name, sorted(set(df['sample-size'])))
     for style_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
         use_arrows = False
@@ -274,6 +276,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
         annotate = False
 
         key = np.round(key, decimals=3)
+        if key not in sample_sizes:
+            continue
         key_str = ('%.3f' % key).rstrip('0')
         # print(ds_name, key_str, 'corr:\n', grp[[x_col_name, y_col_name]].corr().iloc[0])
 
