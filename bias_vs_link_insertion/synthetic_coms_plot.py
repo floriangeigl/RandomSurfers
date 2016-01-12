@@ -316,7 +316,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
         # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort_values(by='bin_center')
-        if key_str == '0.125' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' not in y_col_name:
+        if key_str == '0.1' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' not in y_col_name and 'orf' in ds_name.lower():
             y1 = tmp_grp.iloc[1][y_col_name]
             y0 = tmp_grp.iloc[0][y_col_name]
             ax2.axhline(y=(y0 + y1) / 2, color='black', lw=2)
