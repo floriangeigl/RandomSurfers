@@ -21,6 +21,7 @@ from scipy.sparse import diags
 import sys
 import itertools
 import link_insertion_strategies
+import multiprocessing as mp
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -129,7 +130,8 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
     return relinked_stat_dist_sum
 
 
-def plot_dataframe(df, net, bias_strength, filename):
+def plot_dataframe(df_fn, net, bias_strength, filename):
+    df = pd.read_pickle(df_fn)
     label_dict = dict()
     label_dict['ratio_com_out_deg_in_deg'] = r'degree ratio ($d_G^r$)'
     label_dict['com_in_deg'] = r'$d_G^-$'
@@ -200,21 +202,31 @@ def plot_dataframe(df, net, bias_strength, filename):
         df_plot.sort_values(by=col_name, inplace=True)
 
         label_dict['stat_dist_com_sum'] = r'stationary prob. ($\pi_G^b$)'
-        label_dict['stat_dist_sum_fac'] = r'bias potential ($\tau$)'
+        label_dict['add_top_block_links_fair'] = r'stationary prob. ($\pi_G^b$)'
+        label_dict['stat_dist_sum_fac'] = r'modification potential ($\tau$)'
+        label_dict['add_top_block_links_fair_fac'] = r'modification potential ($\tau$)'
         label_dict['stat_dist_diff'] = r'$\pi_G^b - \pi_G^u$'
         plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
                         ds_name=ds_name)
-        #plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
+        # plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
         #                ds_name=ds_name)
         plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict,
-                        ds_name=ds_name, plot_histo=False)
+                        ds_name=ds_name, plot_histo=True)
+
+        plot_lines_plot(df_plot, col_name, 'add_top_block_links_fair', current_filename, '_lines_link_ins',
+                        label_dict=label_dict,
+                        ds_name=ds_name, plot_histo=True)
+        df_plot['add_top_block_links_fair_fac'] = df_plot['add_top_block_links_fair'] / df_plot['stat_dist_com_sum']
+        plot_lines_plot(df_plot, col_name, 'add_top_block_links_fair_fac', current_filename, '_lines_link_ins_fac',
+                        label_dict=label_dict,
+                        ds_name=ds_name, plot_histo=True)
         # exit()
     return 0
 
 
 def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_subplot=True, plt_font_size=25,
                     fig_size=(16, 10), label_dict=None, ds_name='', plt_std=True, plot_histo=True):
-    if x_col_name not in ['ratio_com_out_deg_in_deg', 'com_in_deg', 'com_out_deg']:
+    if x_col_name not in {'ratio_com_out_deg_in_deg', 'com_in_deg', 'com_out_deg'}:
         return
     default_font_size = matplotlib.rcParams['font.size']
     matplotlib.rcParams.update({'font.size': plt_font_size})
@@ -238,15 +250,18 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     lw_func = lambda x: 2
     legend_plot = True
     all_sample_sizes = set(df['sample-size'])
-    if 'ratio' in x_col_name:
-        min_x_val, max_x_val = 0.4, 2.
-        df = df[(df[x_col_name] <= max_x_val) & (df[x_col_name] >= min_x_val)]
+    if False:
+        if 'ratio' in x_col_name:
+            min_x_val, max_x_val = 0.4, 2.
+            df = df[(df[x_col_name] <= max_x_val) & (df[x_col_name] >= min_x_val)]
+        else:
+            filtered_sample_size = set(sorted(all_sample_sizes)[::2])
+            legend_plot = False
+            df = df[df['sample-size'].apply(lambda x: x in filtered_sample_size)]
+            min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
+            # print 'sample-sizes:', sorted(set(df['sample-size']))
     else:
-        filtered_sample_size = set(sorted(all_sample_sizes)[::2])
-        legend_plot = False
-        df = df[df['sample-size'].apply(lambda x: x in filtered_sample_size)]
         min_x_val, max_x_val = df[x_col_name].min(), df[x_col_name].max()
-        # print 'sample-sizes:', sorted(set(df['sample-size']))
     min_y_val, max_y_val = df[y_col_name].min(), df[y_col_name].max()
     num_bins = 6
     x_val_range = max_x_val - min_x_val
@@ -405,7 +420,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
         plt.savefig(plt_fn + '.png', dpi=150)
     else:
         plt_tools.save_n_crop(plt_fn + '.pdf')
-        if legend_plot and set(df['sample-size']) == all_sample_sizes:
+        if legend_plot and set(df['sample-size']) == sample_sizes:
             plt_tools.plot_legend(ax2, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + '_legend.pdf',
                                   font_size=12, nrows=1, legend_name_idx=0)
     plt.close('all')
@@ -544,6 +559,7 @@ def plot_inserted_links(df, columns, filename):
     plt.ylabel(r'stationary prob. ($\pi_G^b$)')
     ax.set_xlim([grp_mean.index.min(), grp_mean.index.max()])
     ax.set_axisbelow(True)
+    ax.set_ylim([0., 0.7])
     plt.tight_layout()
     out_fn = filename + '_inserted_links.pdf'
     plt_tools.save_n_crop(out_fn)
@@ -563,6 +579,7 @@ def main():
     net_name = ''
     net = None
     skipped_ds = set()
+    worker_pool = mp.Pool(processes=4)
     # skipped_ds.add('daserste')
     # skipped_ds.add('wiki4schools')
     # skipped_ds.add('tvthek_orf')
@@ -570,7 +587,7 @@ def main():
                     key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
         current_net_name = i.rsplit('_bs', 1)[0]
         bias_strength = int(i.split('_bs')[-1].split('.')[0])
-        if bias_strength > 200:
+        if bias_strength > 200 or not np.isclose(bias_strength, 5.):
             print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):
@@ -618,12 +635,14 @@ def main():
         plot_inserted_links(df, insert_links_labels, out_fn)
 
         out_fn += '.png'
-        cors.append(plot_dataframe(df, net, bias_strength, out_fn))
-        df['bias_strength'] = bias_strength
+        worker_pool.apply_async(func=plot_dataframe, args=(preprocessed_filename, net, bias_strength, out_fn))
+        # df['bias_strength'] = bias_strength
         # exit()
-        #all_dfs.append(df.copy())
-    cors = np.array(cors)
-    print('average corr:', cors.mean())
+        # all_dfs.append(df.copy())
+    worker_pool.close()
+    worker_pool.join()
+    #cors = np.array(cors)
+    #print('average corr:', cors.mean())
     print('collect and sort results')
     #all_dfs = pd.concat(all_dfs)
     #plot_df_fac(all_dfs, out_dir + '/all_dfs.png')
@@ -633,5 +652,7 @@ if __name__ == '__main__':
     start = datetime.datetime.now()
     print('START:', start)
     main()
+    print('sort and manage results')
+    import results_sorter
     print('ALL DONE. Time:', datetime.datetime.now() - start)
 

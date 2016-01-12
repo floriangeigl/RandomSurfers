@@ -22,12 +22,12 @@ create_folder_structure(exp4_dir)
 
 exp1_files = find_files(base_dir,
                         ('_com_in_deg_lines.pdf', '_com_out_deg_lines.pdf', '_ratio_com_out_deg_in_deg_lines.pdf',
-                         'lines_legend.pdf'))
+                         'lines_legend.pdf', '_lines_link_ins.pdf'))
 cp_all_files(exp1_files, exp1_dir)
 
 exp2_files = find_files(base_dir,
                         ('_com_in_deg_lines_fac.pdf', '_com_out_deg_lines_fac.pdf',
-                         '_ratio_com_out_deg_in_deg_lines_fac.pdf', 'lines_fac_legend.pdf'))
+                         '_ratio_com_out_deg_in_deg_lines_fac.pdf', 'lines_fac_legend.pdf', '_lines_link_ins_fac.pdf',))
 cp_all_files(exp2_files, exp2_dir)
 
 exp3_files = find_files(base_dir, ('_inserted_links.pdf', 'inserted_links_legend.pdf'))
