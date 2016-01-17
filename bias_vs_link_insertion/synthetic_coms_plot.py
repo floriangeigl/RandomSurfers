@@ -568,7 +568,7 @@ def plot_inserted_links(df, columns, filename):
 
 
 def main():
-    base_dir = '/home/fgeigl/navigability_of_networks/output/bias_link_ins/'
+    base_dir = '/home/fgeigl/navigability_of_networks/output/opt_link_man/'
     out_dir = base_dir + 'plots/'
     create_folder_structure(out_dir)
 
@@ -579,7 +579,7 @@ def main():
     net_name = ''
     net = None
     skipped_ds = set()
-    worker_pool = mp.Pool(processes=4)
+    worker_pool = mp.Pool(processes=2)
     # skipped_ds.add('daserste')
     # skipped_ds.add('wiki4schools')
     # skipped_ds.add('tvthek_orf')
@@ -587,7 +587,7 @@ def main():
                     key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
         current_net_name = i.rsplit('_bs', 1)[0]
         bias_strength = int(i.split('_bs')[-1].split('.')[0])
-        if bias_strength > 200 or not np.isclose(bias_strength, 5.):
+        if bias_strength > 200: # or not np.isclose(bias_strength, 5.):
             print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):
