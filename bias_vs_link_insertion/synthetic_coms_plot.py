@@ -432,12 +432,13 @@ def preprocess_df(df, net, bias_strength):
     df_cols = set(df.columns)
     dirty = False
     print(' preprocessing '.center(120, '='))
+    assert 'stat_dist' in df.columns and 'node-ids' in df.columns
     if 'sample-size' not in df_cols:
         num_vertices = net.num_vertices()
-        df['sample-size'] = df['node-ids'].apply(lambda x: len(x) / num_vertices)
+        df['sample-size'] = df['node-ids'].apply(lambda x: np.round(len(x) / num_vertices, decimals=3))
     if 'stat_dist_com' not in df_cols:
         print('[preprocess]: filter com stat-dist')
-        assert np.allclose(np.array(df['stat_dist_com'].apply(np.sum)), 1.)
+        assert np.allclose(np.array(df['stat_dist'].apply(np.sum)), 1.)
         df['stat_dist_com'] = df[['node-ids', 'stat_dist']].apply(
             lambda (node_ids, stat_dist): list(stat_dist[node_ids]), axis=1).apply(np.array)
         dirty = True
@@ -600,7 +601,8 @@ def main():
             net_name = current_net_name
         assert net is not None
         preprocessed_filename = i.rsplit('.df', 1)[0] + '_preprocessed.df'
-        if os.path.isfile(preprocessed_filename): # and time.ctime(os.path.getmtime(preprocessed_filename)) > time.ctime(os.path.getmtime(i)):
+        if os.path.isfile(
+                preprocessed_filename):  # and time.ctime(os.path.getmtime(preprocessed_filename)) > time.ctime(os.path.getmtime(i)):
             print('read preprocessed file:', preprocessed_filename.rsplit('/', 1)[-1])
             try:
                 df = pd.read_pickle(preprocessed_filename)
@@ -611,6 +613,7 @@ def main():
         else:
             print('read:', i.rsplit('/', 1)[-1])
             df = pd.read_pickle(i)
+
         df, is_df_dirty = preprocess_df(df, net, bias_strength)
         if is_df_dirty:
             print('store preprocessed df')

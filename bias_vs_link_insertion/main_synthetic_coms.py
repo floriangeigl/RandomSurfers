@@ -52,10 +52,10 @@ def get_stat_dist_sum(net, ds_name, bias_strength, coms_dict, num_samples, out_d
                 except scipy.sparse.linalg.ArpackNoConvergence as e:
                     stat_dist = np.nan
                 results.append((c_node_ids, stat_dist))
-        df = pd.DataFrame(columns=['node-ids', 'stat_dist'], data=results)
+        df = pd.DataFrame(columns=['node-ids', 'stat_dist_com'], data=results)
         out_fn_base = out_dir + ds_name + '/' + ds_name + '_bs' + ('%.0f' % float(bias_strength)).zfill(4)
         df.to_pickle(out_fn_base + '.df')
-        plot_dataframe(df, bias_strength, out_fn_base + '.png')
+        # plot_dataframe(df, bias_strength, out_fn_base + '.png')
         return df
     except Exception as e:
         print(traceback.format_exc())

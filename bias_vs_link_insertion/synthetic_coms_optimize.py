@@ -237,7 +237,7 @@ def main():
         print(df)
     else:
 
-        base_dir = '/home/fgeigl/navigability_of_networks/output/bias_link_ins/'
+        base_dir = '/home/fgeigl/navigability_of_networks/output/opt_link_man/'
         out_dir = base_dir + 'plots/'
         create_folder_structure(out_dir)
         mixture_range = np.linspace(0, 1, num=11)
