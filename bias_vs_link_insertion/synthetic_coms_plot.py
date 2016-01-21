@@ -133,9 +133,9 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
 def plot_dataframe(df_fn, net, bias_strength, filename):
     df = pd.read_pickle(df_fn)
     label_dict = dict()
-    label_dict['ratio_com_out_deg_in_deg'] = r'degree ratio ($d_G^r$)'
-    label_dict['com_in_deg'] = r'$d_G^-$'
-    label_dict['com_out_deg'] = r'$d_G^+$'
+    label_dict['ratio_com_out_deg_in_deg'] = r'degree ratio ($d_t^r$)'
+    label_dict['com_in_deg'] = r'$d_t^-$'
+    label_dict['com_out_deg'] = r'$d_t^+$'
     gb = df[['sample-size', 'stat_dist_com_sum']].groupby('sample-size')
     trans_lambda = lambda x: (x-x.mean()) / x.std()
     gb = gb.transform(trans_lambda)
@@ -201,11 +201,11 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
 
         df_plot.sort_values(by=col_name, inplace=True)
 
-        label_dict['stat_dist_com_sum'] = r'stationary prob. ($\pi_G^b$)'
-        label_dict['add_top_block_links_fair'] = r'stationary prob. ($\pi_G^b$)'
-        label_dict['stat_dist_sum_fac'] = r'modification potential ($\tau$)'
-        label_dict['add_top_block_links_fair_fac'] = r'modification potential ($\tau$)'
-        label_dict['stat_dist_diff'] = r'$\pi_G^b - \pi_G^u$'
+        label_dict['stat_dist_com_sum'] = r'stationary prob. ($\pi_t^m$)'
+        label_dict['add_top_block_links_fair'] = r'stationary prob. ($\pi_t^m$)'
+        label_dict['stat_dist_sum_fac'] = r'navigational potential ($\tau$)'
+        label_dict['add_top_block_links_fair_fac'] = r'navigational potential ($\tau$)'
+        label_dict['stat_dist_diff'] = r'$\pi_t^m - \pi_t^u$'
         plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
                         ds_name=ds_name)
         # plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
@@ -568,6 +568,48 @@ def plot_inserted_links(df, columns, filename):
     plt_tools.plot_legend(ax, legend_fname, font_size=12)
 
 
+def worker_func(df_filename, net, bias_strength, out_dir):
+    preprocessed_filename = df_filename.rsplit('.df', 1)[0] + '_preprocessed.df'
+    if os.path.isfile(
+            preprocessed_filename):  # and time.ctime(os.path.getmtime(preprocessed_filename)) > time.ctime(os.path.getmtime(i)):
+        print('read preprocessed file:', preprocessed_filename.rsplit('/', 1)[-1])
+        try:
+            df = pd.read_pickle(preprocessed_filename)
+        except:
+            print(traceback.format_exc())
+            print('fallback: read orig file:', df_filename.rsplit('/', 1)[-1])
+            df = pd.read_pickle(df_filename)
+    else:
+        print('read:', df_filename.rsplit('/', 1)[-1])
+        df = pd.read_pickle(df_filename)
+
+    df, is_df_dirty = preprocess_df(df, net, bias_strength)
+    if is_df_dirty:
+        print('store preprocessed df')
+        while True:
+            # in case of str+c
+            try:
+                cache_fname = preprocessed_filename + '.cache'
+                df.to_pickle(cache_fname)
+                shutil.move(cache_fname, preprocessed_filename)
+                break
+            except:
+                print(traceback.format_exc())
+                print('Warning currently writing file: retry')
+    print('plot:', df_filename.rsplit('/', 1)[-1])
+    print('all cols:', df.columns)
+    print('=' * 80)
+
+    out_fn = out_dir + df_filename.rsplit('/', 1)[-1][:-3]
+    insert_links_labels = sorted(
+            filter(lambda x: x.startswith(('add_top_links_fair', 'add_rnd_links_fair', 'add_top_block_links_fair')),
+                   df.columns))
+    plot_inserted_links(df, insert_links_labels, out_fn)
+
+    out_fn += '.png'
+    plot_dataframe(preprocessed_filename, net, bias_strength, out_fn)
+
+
 def main():
     base_dir = '/home/fgeigl/navigability_of_networks/output/opt_link_man/'
     out_dir = base_dir + 'plots/'
@@ -584,11 +626,12 @@ def main():
     # skipped_ds.add('daserste')
     # skipped_ds.add('wiki4schools')
     # skipped_ds.add('tvthek_orf')
-    for i in sorted(filter(lambda x: 'preprocessed' not in x, result_files),
-                    key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
-        current_net_name = i.rsplit('_bs', 1)[0]
-        bias_strength = int(i.split('_bs')[-1].split('.')[0])
-        if bias_strength > 200: # or not np.isclose(bias_strength, 5.):
+    apply_results = list()
+    for df_filename in sorted(filter(lambda x: 'preprocessed' not in x, result_files),
+                              key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
+        current_net_name = df_filename.rsplit('_bs', 1)[0]
+        bias_strength = int(df_filename.split('_bs')[-1].split('.')[0])
+        if bias_strength > 200:  # or not np.isclose(bias_strength, 5.):
             print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):
@@ -600,50 +643,13 @@ def main():
             net = load_graph(current_net_name)
             net_name = current_net_name
         assert net is not None
-        preprocessed_filename = i.rsplit('.df', 1)[0] + '_preprocessed.df'
-        if os.path.isfile(
-                preprocessed_filename):  # and time.ctime(os.path.getmtime(preprocessed_filename)) > time.ctime(os.path.getmtime(i)):
-            print('read preprocessed file:', preprocessed_filename.rsplit('/', 1)[-1])
-            try:
-                df = pd.read_pickle(preprocessed_filename)
-            except:
-                print(traceback.format_exc())
-                print('fallback: read orig file:', i.rsplit('/', 1)[-1])
-                df = pd.read_pickle(i)
-        else:
-            print('read:', i.rsplit('/', 1)[-1])
-            df = pd.read_pickle(i)
-
-        df, is_df_dirty = preprocess_df(df, net, bias_strength)
-        if is_df_dirty:
-            print('store preprocessed df')
-            while True:
-                # in case of str+c
-                try:
-                    cache_fname = preprocessed_filename + '.cache'
-                    df.to_pickle(cache_fname)
-                    shutil.move(cache_fname, preprocessed_filename)
-                    break
-                except:
-                    print(traceback.format_exc())
-                    print('Warning currently writing file: retry')
-        print('plot:', i.rsplit('/', 1)[-1])
-        print('all cols:', df.columns)
-        print('=' * 80)
-
-        out_fn = out_dir + i.rsplit('/', 1)[-1][:-3]
-        insert_links_labels = sorted(
-            filter(lambda x: x.startswith(('add_top_links_fair', 'add_rnd_links_fair', 'add_top_block_links_fair')),
-                   df.columns))
-        plot_inserted_links(df, insert_links_labels, out_fn)
-
-        out_fn += '.png'
-        worker_pool.apply_async(func=plot_dataframe, args=(preprocessed_filename, net, bias_strength, out_fn))
+        apply_results.append(worker_pool.apply_async(func=worker_func, args=(df_filename, net, bias_strength, out_dir)))
         # df['bias_strength'] = bias_strength
         # exit()
         # all_dfs.append(df.copy())
     worker_pool.close()
     worker_pool.join()
+    assert all(i.successful() for i in apply_results)
     #cors = np.array(cors)
     #print('average corr:', cors.mean())
     print('collect and sort results')
