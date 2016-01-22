@@ -622,7 +622,7 @@ def main():
     net_name = ''
     net = None
     skipped_ds = set()
-    worker_pool = mp.Pool(processes=2)
+    worker_pool = mp.Pool(processes=6)
     # skipped_ds.add('daserste')
     # skipped_ds.add('wiki4schools')
     # skipped_ds.add('tvthek_orf')
