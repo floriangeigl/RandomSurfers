@@ -154,7 +154,7 @@ def worker_helper(sample_size, node_ids, adj, mixture, bias_strength, num_links,
                                               num_links=num_links, top_measure=top_measure,
                                               print_prefix=print_prefix)
     except:
-        print('WARN! worker worker helper failed')
+        print('WARN! worker helper failed')
         print(traceback.format_exc())
         raise Exception()
     return sample_size, mixture, bias_strength, stat_dist

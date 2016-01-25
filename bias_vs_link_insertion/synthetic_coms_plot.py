@@ -119,15 +119,16 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
     tmp_net.add_edge_list(new_edges)
     adj = adjacency(tmp_net)
     orig_adj = adjacency(net)
-    print(' | added parallel edges:', int((int((adj - adj.astype('bool').astype('int')).sum()) - int(
-            (orig_adj - orig_adj.astype('bool').astype('int')).sum())) / 1000), 'k', end='')
+    parallel_edges_perc = (int((adj - adj.astype('bool').astype('int')).sum()) - int(
+            (orig_adj - orig_adj.astype('bool').astype('int')).sum())) / num_links * 100
+    print(' | added parallel edges:', int(parallel_edges_perc), '%', end='')
     sys.stdout.flush()
     _, relinked_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                             smooth_bias=False,
                                                                             calc_entropy_rate=False, verbose=False)
     assert orig_num_com_nodes == len(com_nodes)
     relinked_stat_dist_sum = relinked_stat_dist[com_nodes].sum()
-    return relinked_stat_dist_sum
+    return [relinked_stat_dist_sum, parallel_edges_perc]
 
 
 def plot_dataframe(df_fn, net, bias_strength, filename):
@@ -438,6 +439,14 @@ def preprocess_df(df, net, bias_strength):
         df['sample-size'] = df['node-ids'].apply(lambda x: np.round(len(x) / num_vertices, decimals=3))
     if 'stat_dist_com' not in df_cols:
         print('[preprocess]: filter com stat-dist')
+        not_one_idx = df.index[np.invert(np.isclose(df['stat_dist'].apply(np.sum), 1.))]
+        if len(not_one_idx) > 0:
+            sys.stdout.flush()
+            print('\n')
+            sys.stdout.flush()
+            print('!!! filter out nans...', not_one_idx, '\n')
+            sys.stdout.flush()
+            df = df.drop(not_one_idx)
         assert np.allclose(np.array(df['stat_dist'].apply(np.sum)), 1.)
         df['stat_dist_com'] = df[['node-ids', 'stat_dist']].apply(
             lambda (node_ids, stat_dist): list(stat_dist[node_ids]), axis=1).apply(np.array)
@@ -497,6 +506,8 @@ def preprocess_df(df, net, bias_strength):
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
         df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'rnd', 'fair',))
+        df[col_label + '_parallel_perc'] = df[col_label].apply(lambda x: x[1]).astype('float')
+        df[col_label] = df[col_label].apply(lambda x: x[0]).astype('float')
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
@@ -512,6 +523,8 @@ def preprocess_df(df, net, bias_strength):
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
         df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'top_block', 'fair', orig_stat_dist))
+        df[col_label + '_parallel_perc'] = df[col_label].apply(lambda x: x[1])
+        df[col_label] = df[col_label].apply(lambda x: x[0])
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
@@ -600,14 +613,16 @@ def worker_func(df_filename, net, bias_strength, out_dir):
     print('all cols:', df.columns)
     print('=' * 80)
 
-    out_fn = out_dir + df_filename.rsplit('/', 1)[-1][:-3]
-    insert_links_labels = sorted(
-            filter(lambda x: x.startswith(('add_top_links_fair', 'add_rnd_links_fair', 'add_top_block_links_fair')),
-                   df.columns))
-    plot_inserted_links(df, insert_links_labels, out_fn)
+    # use to skip plotting
+    if False:
+        out_fn = out_dir + df_filename.rsplit('/', 1)[-1][:-3]
+        insert_links_labels = sorted(
+                filter(lambda x: x.startswith(('add_top_links_fair', 'add_rnd_links_fair', 'add_top_block_links_fair')),
+                       df.columns))
+        plot_inserted_links(df, insert_links_labels, out_fn)
 
-    out_fn += '.png'
-    plot_dataframe(preprocessed_filename, net, bias_strength, out_fn)
+        out_fn += '.png'
+        plot_dataframe(preprocessed_filename, net, bias_strength, out_fn)
 
 
 def main():
