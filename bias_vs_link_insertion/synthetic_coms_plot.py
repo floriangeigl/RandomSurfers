@@ -79,7 +79,7 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
                        top_measure=None):
     if sample_size > 0.21:
         # print 'skip sample-size:', sample_size
-        return np.nan
+        return [np.nan, np.nan]
     if not np.isclose(sample_size, add_links_and_calc.sample_size):
         add_links_and_calc.sample_size = sample_size
         add_links_and_calc.calc_counter = 0
