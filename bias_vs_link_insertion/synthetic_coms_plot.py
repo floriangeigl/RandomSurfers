@@ -22,6 +22,7 @@ import sys
 import itertools
 import link_insertion_strategies
 import multiprocessing as mp
+from joblib import Parallel, delayed
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
@@ -75,17 +76,16 @@ class GetOutOfLoops(Exception):
     pass
 
 
-def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, method='rnd', num_links=1,
+def add_links_and_calc(row_id, (sample_size, com_nodes), net=None, bias_strength=2, method='rnd', num_links=1,
                        top_measure=None):
     if sample_size > 0.21:
-        # print 'skip sample-size:', sample_size
-        return np.nan
-    if not np.isclose(sample_size, add_links_and_calc.sample_size):
-        add_links_and_calc.sample_size = sample_size
-        add_links_and_calc.calc_counter = 0
-        add_links_and_calc.ss_string = "%.3f" % sample_size
-        print('')
-    add_links_and_calc.calc_counter += 1
+        return [np.nan, np.nan]
+    # if not np.isclose(sample_size, add_links_and_calc.sample_size):
+    #    add_links_and_calc.sample_size = sample_size
+    #    add_links_and_calc.calc_counter = 0
+    #    add_links_and_calc.ss_string = "%.3f" % sample_size
+    #    print('')
+    # add_links_and_calc.calc_counter += 1
     if isinstance(num_links, str):
         if num_links == 'fair':
             bias_m = np.zeros(net.num_vertices()).astype('int')
@@ -93,12 +93,12 @@ def add_links_and_calc((sample_size, com_nodes), net=None, bias_strength=2, meth
             bias_m = diags(bias_m, 0)
             num_links = int(bias_m.dot(adjacency(net)).sum()) * (bias_strength - 1)
             # print 'fair links:', num_links
-    print('\r', add_links_and_calc.ss_string, add_links_and_calc.calc_counter, '#links:', int(num_links / 1000), 'k',
+    print('\r', "%.3f" % sample_size, row_id, '#links:', int(num_links / 1000), 'k',
           end='')
     sys.stdout.flush()
 
     new_edges = list()
-    orig_num_edges = net.num_edges()
+    # orig_num_edges = net.num_edges()
     orig_num_com_nodes = len(com_nodes)
     if orig_num_com_nodes >= net.num_vertices():
         return None
@@ -428,8 +428,19 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     matplotlib.rcParams.update({'font.size': default_font_size})
 
 
+def job_lib_test_func(*args, **kwargs):
+    print('got args:', args)
+    print('got kwargs', kwargs)
+
+
+def apply_add_links_parallel(df, func, args, n_jobs=10):
+    assert not isinstance(args, str) and isinstance(args, (list, tuple))
+    retlst = Parallel(n_jobs=n_jobs)(delayed(func)(*list([row_id] + [tuple(row_data)] + list(args))) for row_id, row_data in df.iterrows())
+    return list(retlst)
+
+
 def preprocess_df(df, net, bias_strength):
-    add_links_and_calc.sample_size = -1.
+    # add_links_and_calc.sample_size = -1.
     df_cols = set(df.columns)
     dirty = False
     print(' preprocessing '.center(120, '='))
@@ -495,6 +506,7 @@ def preprocess_df(df, net, bias_strength):
         df['orig_stat_dist_sum'] = df['node-ids'].apply(lambda x: orig_stat_dist[x].sum())
         dirty = True
 
+    n_jobs = 32
     force_recalc = False
     col_label = 'add_rnd_links_fair'
     if col_label not in df_cols or force_recalc:
@@ -505,7 +517,11 @@ def preprocess_df(df, net, bias_strength):
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
-        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'rnd', 'fair',))
+        # df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'rnd', 'fair',))
+        # df[col_label] = apply_add_links_parallel(df[['sample-size', 'node-ids']], func=job_lib_test_func, args=[net, bias_strength, 'rnd', 'fair', None], n_jobs=10)
+        df[col_label] = apply_add_links_parallel(df[['sample-size', 'node-ids']], func=add_links_and_calc, args=(net, bias_strength, 'rnd', 'fair', None), n_jobs=n_jobs)
+        print('job lib ok')
+        exit()
         df[col_label + '_parallel_perc'] = df[col_label].apply(lambda x: x[1]).astype('float')
         df[col_label] = df[col_label].apply(lambda x: x[0]).astype('float')
         dirty = True
@@ -522,7 +538,8 @@ def preprocess_df(df, net, bias_strength):
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
-        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'top_block', 'fair', orig_stat_dist))
+        # df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'top_block', 'fair', orig_stat_dist))
+        df[col_label] = apply_add_links_parallel(df[['sample-size', 'node-ids']], func=add_links_and_calc, args=(net, bias_strength, 'top_block', 'fair', orig_stat_dist), n_jobs=n_jobs)
         df[col_label + '_parallel_perc'] = df[col_label].apply(lambda x: x[1])
         df[col_label] = df[col_label].apply(lambda x: x[0])
         dirty = True
@@ -637,13 +654,13 @@ def main():
     net_name = ''
     net = None
     skipped_ds = set()
-    worker_pool = mp.Pool(processes=6)
+    # worker_pool = mp.Pool(processes=6)
     # skipped_ds.add('daserste')
     # skipped_ds.add('wiki4schools')
     # skipped_ds.add('tvthek_orf')
     apply_results = list()
-    for df_filename in sorted(filter(lambda x: 'preprocessed' not in x, result_files),
-                              key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
+    for df_filename in reversed(sorted(filter(lambda x: 'preprocessed' not in x, result_files),
+                              key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0])))):
         current_net_name = df_filename.rsplit('_bs', 1)[0]
         bias_strength = int(df_filename.split('_bs')[-1].split('.')[0])
         if bias_strength > 200:  # or not np.isclose(bias_strength, 5.):
@@ -658,13 +675,14 @@ def main():
             net = load_graph(current_net_name)
             net_name = current_net_name
         assert net is not None
-        apply_results.append(worker_pool.apply_async(func=worker_func, args=(df_filename, net, bias_strength, out_dir)))
+        # apply_results.append(worker_pool.apply_async(func=worker_func, args=(df_filename, net, bias_strength, out_dir)))
+        worker_func(df_filename, net, bias_strength, out_dir)
         # df['bias_strength'] = bias_strength
         # exit()
         # all_dfs.append(df.copy())
-    worker_pool.close()
-    worker_pool.join()
-    assert all(i.successful() for i in apply_results)
+    # worker_pool.close()
+    # worker_pool.join()
+    # assert all(i.successful() for i in apply_results)
     #cors = np.array(cors)
     #print('average corr:', cors.mean())
     print('collect and sort results')
