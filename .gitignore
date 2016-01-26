@@ -54,6 +54,8 @@ docs/_build/
 target/
 .idea/
 output/
+*.pdf
+*.df
 
 # OS X Indexing
 .DS_Store
