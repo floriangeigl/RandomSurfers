@@ -9,7 +9,7 @@ if _platform == "linux" or _platform == "linux2":
 from matplotlib import gridspec
 from post_processing.plotting import *
 import os
-from tools.basics import create_folder_structure, find_files
+from tools.basics import create_folder_structure, find_files, try_catch_traceback_wrapper
 import traceback
 import numpy as np
 from graph_tool.all import *
@@ -505,9 +505,7 @@ def preprocess_df(df, net, bias_strength):
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
-        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'rnd', 'fair',))
-        df[col_label + '_parallel_perc'] = df[col_label].apply(lambda x: x[1]).astype('float')
-        df[col_label] = df[col_label].apply(lambda x: x[0]).astype('float')
+        df[[col_label, col_label + '_parallel_perc']] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'rnd', 'fair', None))
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
@@ -522,9 +520,7 @@ def preprocess_df(df, net, bias_strength):
             _, orig_stat_dist = network_matrix_tools.calc_entropy_and_stat_dist(adj, method='EV',
                                                                                 smooth_bias=False,
                                                                                 calc_entropy_rate=False, verbose=False)
-        df[col_label] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'top_block', 'fair', orig_stat_dist))
-        df[col_label + '_parallel_perc'] = df[col_label].apply(lambda x: x[1])
-        df[col_label] = df[col_label].apply(lambda x: x[0])
+        df[[col_label, col_label + '_parallel_perc']] = df[['sample-size', 'node-ids']].apply(add_links_and_calc, axis=1, args=(net, bias_strength, 'top_block', 'fair', orig_stat_dist))
         dirty = True
         print('')
         print(datetime.datetime.now().replace(microsecond=0), '[OK]')
@@ -582,47 +578,53 @@ def plot_inserted_links(df, columns, filename):
 
 
 def worker_func(df_filename, net, bias_strength, out_dir):
-    preprocessed_filename = df_filename.rsplit('.df', 1)[0] + '_preprocessed.df'
-    if os.path.isfile(
-            preprocessed_filename):  # and time.ctime(os.path.getmtime(preprocessed_filename)) > time.ctime(os.path.getmtime(i)):
-        print('read preprocessed file:', preprocessed_filename.rsplit('/', 1)[-1])
-        try:
-            df = pd.read_pickle(preprocessed_filename)
-        except:
-            print(traceback.format_exc())
-            print('fallback: read orig file:', df_filename.rsplit('/', 1)[-1])
-            df = pd.read_pickle(df_filename)
-    else:
-        print('read:', df_filename.rsplit('/', 1)[-1])
-        df = pd.read_pickle(df_filename)
-
-    df, is_df_dirty = preprocess_df(df, net, bias_strength)
-    if is_df_dirty:
-        print('store preprocessed df')
-        while True:
-            # in case of str+c
+    try:
+        preprocessed_filename = df_filename.rsplit('.df', 1)[0] + '_preprocessed.df'
+        if os.path.isfile(
+                preprocessed_filename):  # and time.ctime(os.path.getmtime(preprocessed_filename)) > time.ctime(os.path.getmtime(i)):
+            print('read preprocessed file:', preprocessed_filename.rsplit('/', 1)[-1])
             try:
-                cache_fname = preprocessed_filename + '.cache'
-                df.to_pickle(cache_fname)
-                shutil.move(cache_fname, preprocessed_filename)
-                break
+                df = pd.read_pickle(preprocessed_filename)
             except:
                 print(traceback.format_exc())
-                print('Warning currently writing file: retry')
-    print('plot:', df_filename.rsplit('/', 1)[-1])
-    print('all cols:', df.columns)
-    print('=' * 80)
+                print('fallback: read orig file:', df_filename.rsplit('/', 1)[-1])
+                df = pd.read_pickle(df_filename)
+        else:
+            print('read:', df_filename.rsplit('/', 1)[-1])
+            df = pd.read_pickle(df_filename)
 
-    # use to skip plotting
-    if False:
-        out_fn = out_dir + df_filename.rsplit('/', 1)[-1][:-3]
-        insert_links_labels = sorted(
-                filter(lambda x: x.startswith(('add_top_links_fair', 'add_rnd_links_fair', 'add_top_block_links_fair')),
-                       df.columns))
-        plot_inserted_links(df, insert_links_labels, out_fn)
+        df, is_df_dirty = preprocess_df(df, net, bias_strength)
+        if is_df_dirty:
+            print('store preprocessed df')
+            while True:
+                # in case of str+c
+                try:
+                    cache_fname = preprocessed_filename + '.cache'
+                    df.to_pickle(cache_fname)
+                    shutil.move(cache_fname, preprocessed_filename)
+                    break
+                except:
+                    print(traceback.format_exc())
+                    print('Warning currently writing file: retry')
+        print('plot:', df_filename.rsplit('/', 1)[-1])
+        print('all cols:', df.columns)
+        print('=' * 80)
 
-        out_fn += '.png'
-        plot_dataframe(preprocessed_filename, net, bias_strength, out_fn)
+        # use to skip plotting
+        if False:
+            out_fn = out_dir + df_filename.rsplit('/', 1)[-1][:-3]
+            insert_links_labels = sorted(
+                    filter(lambda x: x.startswith(('add_top_links_fair', 'add_rnd_links_fair', 'add_top_block_links_fair')),
+                           df.columns))
+            plot_inserted_links(df, insert_links_labels, out_fn)
+
+            out_fn += '.png'
+            plot_dataframe(preprocessed_filename, net, bias_strength, out_fn)
+    except Exception as e:
+        sys.stdout.flush()
+        print('\n#######ERROR:\n', traceback.format_exc(), '\n')
+        sys.stdout.flush()
+        exit()
 
 
 def main():
@@ -637,13 +639,15 @@ def main():
     net_name = ''
     net = None
     skipped_ds = set()
-    worker_pool = mp.Pool(processes=6)
+    worker_pool = mp.Pool(processes=1)
     # skipped_ds.add('daserste')
     # skipped_ds.add('wiki4schools')
     # skipped_ds.add('tvthek_orf')
     apply_results = list()
     for df_filename in sorted(filter(lambda x: 'preprocessed' not in x, result_files),
-                              key=lambda x: (x, int(x.split('_bs')[-1].split('.')[0]))):
+                              key=lambda x: (
+                              x.rsplit('_bs', 1)[0], 1000 - int(x.rsplit('_bs', 1)[-1].rsplit('.', 1)[0])),
+                              reverse=True):
         current_net_name = df_filename.rsplit('_bs', 1)[0]
         bias_strength = int(df_filename.split('_bs')[-1].split('.')[0])
         if bias_strength > 200:  # or not np.isclose(bias_strength, 5.):
@@ -652,6 +656,8 @@ def main():
         elif any((i in current_net_name for i in skipped_ds)):
             print('skip ds:', current_net_name)
             continue
+        else:
+            print('add bs:', current_net_name, bias_strength)
         if current_net_name != net_name:
             print('*' * 120)
             print('load network:', current_net_name.rsplit('/', 1)[-1])
