@@ -611,7 +611,7 @@ def worker_func(df_filename, net, bias_strength, out_dir):
         print('=' * 80)
 
         # use to skip plotting
-        if False:
+        if True:
             out_fn = out_dir + df_filename.rsplit('/', 1)[-1][:-3]
             insert_links_labels = sorted(
                     filter(lambda x: x.startswith(('add_top_links_fair', 'add_rnd_links_fair', 'add_top_block_links_fair')),

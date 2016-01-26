@@ -193,7 +193,7 @@ def optimize_net(net_fn, df_fn, num_samples, bias_strength_range, mixture_range,
             if key not in sample_sizes:
                 print('skip sample-size:', key)
                 continue
-            g_df = g_df.iloc[:num_samples]
+            g_df = g_df.iloc[:min(num_samples, len(g_df))]
             for idx, data in g_df[['sample-size', 'node-ids']].iterrows():
                 ss, node_ids = list(data)
                 my_worker_pool = mp.Pool(processes=num_processes)
