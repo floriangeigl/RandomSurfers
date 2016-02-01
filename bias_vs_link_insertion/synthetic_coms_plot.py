@@ -202,11 +202,11 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
 
         df_plot.sort_values(by=col_name, inplace=True)
 
-        label_dict['stat_dist_com_sum'] = r'stationary prob. ($\pi_t^m$)'
-        label_dict['add_top_block_links_fair'] = r'stationary prob. ($\pi_t^m$)'
+        label_dict['stat_dist_com_sum'] = r"stationary prob. ($\pi'_t$)"
+        label_dict['add_top_block_links_fair'] = r"stationary prob. ($\pi'_t$)"
         label_dict['stat_dist_sum_fac'] = r'navigational potential ($\tau$)'
         label_dict['add_top_block_links_fair_fac'] = r'navigational potential ($\tau$)'
-        label_dict['stat_dist_diff'] = r'$\pi_t^m - \pi_t^u$'
+        label_dict['stat_dist_diff'] = r"$\pi'_t - \pi_t$"
         plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
                         ds_name=ds_name)
         # plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
@@ -321,6 +321,9 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
             y1 = tmp_grp.iloc[1][y_col_name]
             y0 = tmp_grp.iloc[0][y_col_name]
             ax2.axhline(y=(y0 + y1) / 2, color='black', lw=2)
+        # if key_str == '0.1' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' in y_col_name:
+            # ax2.set_yscale('log')
+            # plt_y_range = lambda x:
         # print ds_name, x_col_name, key, '\n', tmp_grp
         label_on_line = False
         if len(tmp_grp) > 5 and rnd_label_pos:
@@ -553,9 +556,7 @@ def plot_inserted_links(df, columns, filename):
     label_dict['top_block fair'] = 'informed'
     colors = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
     markers = "ov^<>sp*+x"
-    for idx, (i, label) in enumerate(zip(grp_mean.columns, grp_df.columns)):
-        if label not in label_dict:
-            continue
+    for idx, (i, label) in enumerate(filter(lambda x: x[1] in label_dict, zip(grp_mean.columns, grp_df.columns))):
         c = colors[idx]
         marker = markers[idx]
         label = label_dict[label]
@@ -566,7 +567,7 @@ def plot_inserted_links(df, columns, filename):
                         interpolate=True)
     ax.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     plt.xlabel('sample size')
-    plt.ylabel(r'stationary prob. ($\pi_G^b$)')
+    plt.ylabel(r"stationary prob. ($\pi'_t$)")
     ax.set_xlim([grp_mean.index.min(), grp_mean.index.max()])
     ax.set_axisbelow(True)
     ax.set_ylim([0., 0.7])
@@ -639,7 +640,7 @@ def main():
     net_name = ''
     net = None
     skipped_ds = set()
-    worker_pool = mp.Pool(processes=6)
+    worker_pool = mp.Pool(processes=2)
     # skipped_ds.add('daserste')
     # skipped_ds.add('wiki4schools')
     # skipped_ds.add('tvthek_orf')
