@@ -216,7 +216,7 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
         plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict)
 
         plot_lines_plot(df_plot, col_name, 'add_top_block_links_fair', current_filename, '_lines_link_ins',
-                        label_dict=label_dict, ylim1=[0, 0.8], ylim2=[0.4, 1.], ylim3=[0.25, 0.9])
+                        label_dict=label_dict, ylim1=[0, 80], ylim2=[0.4, 1.], ylim3=[0.25, 0.9])
         df_plot['add_top_block_links_fair_fac'] = df_plot['add_top_block_links_fair'] / df_plot['stat_dist_com_sum']
         plot_lines_plot(df_plot, col_name, 'add_top_block_links_fair_fac', current_filename, '_lines_link_ins_fac',
                         label_dict=label_dict)
@@ -331,7 +331,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
     ax1.legend_.remove()
     ax1.set_xlim(plt_x_range)
     ax1.get_xaxis().set_visible(False)
-    ax1.set_yticks(np.linspace(*ax1.get_ylim(), num=3).astype('int'))
+    # ax1.set_yticks(np.linspace(*ax1.get_ylim(), num=3).astype('int'))
     # ax1.set_xticks([])
     ax1.set_ylabel('N')
     ax1.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
@@ -342,8 +342,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
     ax3.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
 
     if ylim1: ax1.set_ylim(ylim1)
-    if ylim2: ax2.set_ylim(ylim2)
-    if ylim3: ax3.set_ylim(ylim3)
+    if ylim2: ax3.set_ylim(ylim2)
+    if ylim3: ax2.set_ylim(ylim3)
 
     if 'ratio' in x_col_name:
         plt.xticks()
@@ -357,6 +357,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
     from matplotlib.ticker import MaxNLocator, AutoLocator
 
     ax1.xaxis.set_major_locator(MaxNLocator(nbins=5, prune='both'))
+    ax1.yaxis.set_major_locator(MaxNLocator(nbins=3, prune='both'))
     ax2.yaxis.set_major_locator(MaxNLocator(nbins=5, prune='both'))
     ax3.yaxis.set_major_locator(MaxNLocator(nbins=5, prune='both'))
 
@@ -375,7 +376,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
     plt_tools.save_n_crop(plt_fn + '.pdf')
     if legend_plot and set(df['sample-size']) == sample_sizes:
         plt_tools.plot_legend(ax3, out_fn_base.rsplit('/', 2)[0] + '/' + out_fn_ext.strip('_') + '_legend.pdf',
-                              font_size=12, nrows=1, legend_name_idx=0)
+                          font_size=12, nrows=1, legend_name_idx=0, legend_name_style='it')
     plt.close('all')
     matplotlib.rcParams.update({'font.size': default_font_size})
 
@@ -497,6 +498,7 @@ def plot_inserted_links(df, columns, filename):
     grp_std = grp_df.std()
     # grp_mean.to_excel(filename + '_inserted_links.xls')
     fig, ax = plt.subplots()
+    ax.plot([np.nan], [np.nan], label=r'manipulation', c='white', alpha=0.)
     print(grp_df.columns)
     label_dict = dict()
     label_dict['unbiased'] = 'unmodified network'
@@ -524,7 +526,7 @@ def plot_inserted_links(df, columns, filename):
     out_fn = filename + '_inserted_links.pdf'
     plt_tools.save_n_crop(out_fn)
     legend_fname = filename.rsplit('/', 1)[0] + '/inserted_links_legend.pdf'
-    plt_tools.plot_legend(ax, legend_fname, font_size=12)
+    plt_tools.plot_legend(ax, legend_fname, font_size=12, legend_name_idx=0, legend_name_style='it')
 
 
 def worker_func(df_filename, net, bias_strength, out_dir):
