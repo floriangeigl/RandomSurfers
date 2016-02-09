@@ -161,11 +161,13 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
     df_plot['com_in_deg'] = df_plot['node-ids'].apply(lambda x: in_deg[list(x)].sum()) - df_plot['intra_com_links']
     df_plot['com_out_deg'] = df_plot['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - df_plot['intra_com_links']
     df_plot['ratio_com_out_deg_in_deg'] = df_plot['com_out_deg'] / df_plot['com_in_deg']
+    orig_columns.remove('orig_stat_dist_sum')
 
     df_plot['stat_dist_sum_fac'] = df_plot['stat_dist_com_sum'] / df_plot['orig_stat_dist_sum']
     df_plot['stat_dist_diff'] = df_plot['stat_dist_com_sum'] - df_plot['orig_stat_dist_sum']
     orig_columns.add('stat_dist_sum_fac')
     orig_columns.add('stat_dist_diff')
+
 
     ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt',1)[0]
     # print df_plot[['com_in_deg','com_out_deg']].corr()
@@ -176,29 +178,30 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
         current_filename = current_filename[0] + '/' + ds_name + '/' + current_filename[1].replace('.gt', '')
         create_folder_structure(current_filename)
         print('plot:', col_name)
-        for normed_stat_dist in [True, False]:
-            y = df_plot[col_name]
-            x = df_plot['sample-size']
-            c = df_plot['stat_dist_normed'] if normed_stat_dist else df_plot['stat_dist_com_sum']
-            fix, ax = plt.subplots()
-            ac = ax.scatter(x, y, c=c, lw=0, alpha=0.7, cmap='coolwarm')
-            ax.set_xticks(sorted(set(x)), minor=True)
-            cbar = plt.colorbar(ac)
-            plt.xlabel(r'$\phi$')
-            plt.xlim([0, df_plot['sample-size'].max() + 0.01])
-            y_range_one_perc = (df_plot[col_name].max() - df_plot[col_name].min()) * 0.01
-            plt.ylim([df_plot[col_name].min() - y_range_one_perc, df_plot[col_name].max() + y_range_one_perc])
-            plt.ylabel(col_name.replace('_', ' '))
-            cbar.set_label(r'\phi standardized $\sum \pi$' if normed_stat_dist else r'$\pi_G$')
-            # cbar.set_label('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
+        if False:
+            for normed_stat_dist in [True, False]:
+                y = df_plot[col_name]
+                x = df_plot['sample-size']
+                c = df_plot['stat_dist_normed'] if normed_stat_dist else df_plot['stat_dist_com_sum']
+                fix, ax = plt.subplots()
+                ac = ax.scatter(x, y, c=c, lw=0, alpha=0.7, cmap='coolwarm')
+                ax.set_xticks(sorted(set(x)), minor=True)
+                cbar = plt.colorbar(ac)
+                plt.xlabel(r'$\phi$')
+                plt.xlim([0, df_plot['sample-size'].max() + 0.01])
+                y_range_one_perc = (df_plot[col_name].max() - df_plot[col_name].min()) * 0.01
+                plt.ylim([df_plot[col_name].min() - y_range_one_perc, df_plot[col_name].max() + y_range_one_perc])
+                plt.ylabel(col_name.replace('_', ' '))
+                cbar.set_label(r'\phi standardized $\sum \pi$' if normed_stat_dist else r'$\pi_G$')
+                # cbar.set_label('$\\frac{\\sum \\pi_b}{\\sum \\pi_{ub}}$')
 
-            plt.title(ds_name + '\nBias Strength: ' + str(int(bias_strength)))
-            plt.tight_layout()
-            out_f = (current_filename + '_normed.png') if normed_stat_dist else (current_filename + '.png')
+                plt.title(ds_name + '\nBias Strength: ' + str(int(bias_strength)))
+                plt.tight_layout()
+                out_f = (current_filename + '_normed.png') if normed_stat_dist else (current_filename + '.png')
 
-            plt.grid(which='minor', axis='x')
-            plt.savefig(out_f, dpi=150)
-            plt.close('all')
+                plt.grid(which='minor', axis='x')
+                plt.savefig(out_f, dpi=150)
+                plt.close('all')
 
         df_plot.sort_values(by=col_name, inplace=True)
 
@@ -207,26 +210,22 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
         label_dict['stat_dist_sum_fac'] = r'navigational potential ($\tau$)'
         label_dict['add_top_block_links_fair_fac'] = r'navigational potential ($\tau$)'
         label_dict['stat_dist_diff'] = r"$\pi'_t - \pi_t$"
-        plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,
-                        ds_name=ds_name)
+        plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,)
         # plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
         #                ds_name=ds_name)
-        plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict,
-                        ds_name=ds_name, plot_histo=True)
+        plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict)
 
         plot_lines_plot(df_plot, col_name, 'add_top_block_links_fair', current_filename, '_lines_link_ins',
-                        label_dict=label_dict,
-                        ds_name=ds_name, plot_histo=True)
+                        label_dict=label_dict, ylim1=[0, 0.8], ylim2=[0.4, 1.], ylim3=[0.25, 0.9])
         df_plot['add_top_block_links_fair_fac'] = df_plot['add_top_block_links_fair'] / df_plot['stat_dist_com_sum']
         plot_lines_plot(df_plot, col_name, 'add_top_block_links_fair_fac', current_filename, '_lines_link_ins_fac',
-                        label_dict=label_dict,
-                        ds_name=ds_name, plot_histo=True)
+                        label_dict=label_dict)
         # exit()
     return 0
 
 
-def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_subplot=True, plt_font_size=25,
-                    fig_size=(16, 10), label_dict=None, ds_name='', plt_std=True, plot_histo=True):
+def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_font_size=25,
+                    label_dict=None, plt_std=True, ylim1=None, ylim2=None, ylim3=None):
     if x_col_name not in {'ratio_com_out_deg_in_deg', 'com_in_deg', 'com_out_deg'}:
         return
     if 'ratio' not in x_col_name:
@@ -238,9 +237,9 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     fig = plt.figure()
     gs = gridspec.GridSpec(3, 1, height_ratios=[1, 2, 2])
     ax1 = fig.add_subplot(gs[0])
-    ax2 = fig.add_subplot(gs[1], sharex=ax1)
-    ax3 = fig.add_subplot(gs[2], sharex=ax2)
-    ax3.plot([np.nan], [np.nan], label=r'\phi', c='white', alpha=0.)
+    ax3 = fig.add_subplot(gs[1], sharex=ax1)
+    ax2 = fig.add_subplot(gs[2], sharex=ax3)
+    ax3.plot([np.nan], [np.nan], label=r'fraction of target nodes ($\phi$)', c='white', alpha=0.)
 
     lw_func = lambda x: 2
     legend_plot = True
@@ -294,10 +293,10 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
         # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort_values(by='bin_center')
-        if key_str == '0.1' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' not in y_col_name and 'orf' in ds_name.lower():
-            y1 = tmp_grp.iloc[1][y_col_name]
-            y0 = tmp_grp.iloc[0][y_col_name]
-            ax3.axhline(y=(y0 + y1) / 2, color='black', lw=2)
+        #if key_str == '0.1' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' not in y_col_name and 'orf' in ds_name.lower():
+        #    y1 = tmp_grp.iloc[1][y_col_name]
+        #    y0 = tmp_grp.iloc[0][y_col_name]
+        #    ax3.axhline(y=(y0 + y1) / 2, color='black', lw=2)
 
         ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.95,
                               label='  ' + key_str, marker=m, markersize=12, markeredgewidth=2,
@@ -341,6 +340,11 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     # ax2.set_ylim(plt_y_range)
     ax2.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     ax3.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
+
+    if ylim1: ax1.set_ylim(ylim1)
+    if ylim2: ax2.set_ylim(ylim2)
+    if ylim3: ax3.set_ylim(ylim3)
+
     if 'ratio' in x_col_name:
         plt.xticks()
     else:
@@ -350,27 +354,22 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, one_sub
     ax2.set_axisbelow(True)
     ax3.set_axisbelow(True)
 
-    #ax2.set_yticks(np.linspace(*ax2.get_ylim(), num=5))
-    #ax3.set_yticks(np.linspace(*ax3.get_ylim(), num=5))
-
-    #ax1.set_xticks(np.linspace(*ax1.get_xlim(), num=5))
     from matplotlib.ticker import MaxNLocator, AutoLocator
 
     ax1.xaxis.set_major_locator(MaxNLocator(nbins=5, prune='both'))
     ax2.yaxis.set_major_locator(MaxNLocator(nbins=5, prune='both'))
     ax3.yaxis.set_major_locator(MaxNLocator(nbins=5, prune='both'))
 
-    #ax2.tick_params(axis='y', colors='red')
-    #ax3.tick_params(axis='y', colors='red')
-    #ax2.yaxis.label.set_color('red')
-    #ax3.yaxis.label.set_color('red')
+    sample_dist_plot_color = 'gray'
+    ax1.tick_params(axis='y', colors=sample_dist_plot_color)
+    ax1.yaxis.label.set_color(sample_dist_plot_color)
+    ax1.spines['bottom'].set_color(sample_dist_plot_color)
+    ax1.spines['top'].set_color(sample_dist_plot_color)
+    ax1.spines['left'].set_color(sample_dist_plot_color)
+    ax1.spines['right'].set_color(sample_dist_plot_color)
 
-    ax1.tick_params(axis='y', colors='gray')
-    ax1.yaxis.label.set_color('gray')
-
-    ax2.set_ylabel(y_label + '      ', labelpad=30)
+    ax3.set_ylabel(y_label, labelpad=30)
     plt.tight_layout(h_pad=0.001)
-    #gs.tight_layout(fig, h_pad=0.001)
     gs.update(wspace=0.025, hspace=0.2)
     plt_fn = out_fn_base + out_fn_ext
     plt_tools.save_n_crop(plt_fn + '.pdf')
@@ -500,10 +499,10 @@ def plot_inserted_links(df, columns, filename):
     fig, ax = plt.subplots()
     print(grp_df.columns)
     label_dict = dict()
-    label_dict['unbiased'] = 'unbiased'
-    label_dict['biased'] = 'biased'
-    label_dict['rnd fair'] = 'random'
-    label_dict['top_block fair'] = 'informed'
+    label_dict['unbiased'] = 'unmodified network'
+    label_dict['biased'] = 'navigational bias'
+    # label_dict['rnd fair'] = 'random'
+    label_dict['top_block fair'] = 'link insertion'
     colors = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
     markers = "ov^<>sp*+x"
     for idx, (i, label) in enumerate(filter(lambda x: x[1] in label_dict, zip(grp_mean.columns, grp_df.columns))):
@@ -516,7 +515,7 @@ def plot_inserted_links(df, columns, filename):
                         np.array(grp_mean[i]) + np.array(grp_std[i]), color=c, alpha=0.25, label=None,
                         interpolate=True)
     ax.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
-    plt.xlabel(r'$\phi$')
+    plt.xlabel(r'fraction of target nodes ($\phi$)')
     plt.ylabel(r"stationary prob. ($\pi'_t$)")
     ax.set_xlim([grp_mean.index.min(), grp_mean.index.max()])
     ax.set_axisbelow(True)
@@ -592,8 +591,8 @@ def main():
     skipped_ds = set()
     worker_pool = mp.Pool(processes=1)
     # skipped_ds.add('daserste')
-    # skipped_ds.add('wiki4schools')
-    # skipped_ds.add('tvthek_orf')
+    #skipped_ds.add('wiki4schools')
+    #skipped_ds.add('tvthek_orf')
     apply_results = list()
     for df_filename in sorted(filter(lambda x: 'preprocessed' not in x, result_files),
                               key=lambda x: (
@@ -601,7 +600,7 @@ def main():
                               reverse=True):
         current_net_name = df_filename.rsplit('_bs', 1)[0]
         bias_strength = int(df_filename.split('_bs')[-1].split('.')[0])
-        if bias_strength > 200:  # or not np.isclose(bias_strength, 5.):
+        if not(149 < bias_strength < 200) and not np.isclose(bias_strength, 5.):  # or not np.isclose(bias_strength, 5.):
             print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):
