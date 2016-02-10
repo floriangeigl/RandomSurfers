@@ -168,10 +168,8 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
     orig_columns.add('stat_dist_sum_fac')
     orig_columns.add('stat_dist_diff')
 
-
-    ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt',1)[0]
-    # print df_plot[['com_in_deg','com_out_deg']].corr()
-    # return
+    ds_name = filename.rsplit('/', 1)[-1].rsplit('.gt', 1)[0]
+    results = dict()
     for col_name in sorted(set(df_plot.columns) - orig_columns):
         current_filename = filename[:-4] + '_' + col_name.replace(' ', '_')
         current_filename = current_filename.rsplit('/', 1)
@@ -210,7 +208,7 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
         label_dict['stat_dist_sum_fac'] = r'navigational potential ($\tau$)'
         label_dict['add_top_block_links_fair_fac'] = r'navigational potential ($\tau$)'
         label_dict['stat_dist_diff'] = r"$\pi'_t - \pi_t$"
-        plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,)
+        results[col_name] = plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,)
         # plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
         #                ds_name=ds_name)
         plot_lines_plot(df_plot, col_name, 'stat_dist_sum_fac', current_filename, '_lines_fac', label_dict=label_dict)
@@ -220,8 +218,7 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
         df_plot['add_top_block_links_fair_fac'] = df_plot['add_top_block_links_fair'] / df_plot['stat_dist_com_sum']
         plot_lines_plot(df_plot, col_name, 'add_top_block_links_fair_fac', current_filename, '_lines_link_ins_fac',
                         label_dict=label_dict)
-        # exit()
-    return 0
+    return results
 
 
 def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_font_size=25,
@@ -229,7 +226,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
     if x_col_name not in {'ratio_com_out_deg_in_deg', 'com_in_deg', 'com_out_deg'}:
         return
     if 'ratio' not in x_col_name:
-        return
+        pass
     default_font_size = matplotlib.rcParams['font.size']
     matplotlib.rcParams.update({'font.size': plt_font_size})
     if label_dict is None:
@@ -266,21 +263,20 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
     colors = ['#e41a1c','#377eb8','#4daf4a']
     markers = "o^s"
     print(x_col_name, y_col_name, sorted(set(df['sample-size'])))
+    avg_measure = dict()
     for style_idx, (key, grp) in enumerate(df[['sample-size', x_col_name, y_col_name]].groupby('sample-size')):
         key = np.round(key, decimals=3)
         if key not in sample_sizes:
             continue
         key_str = ('%.3f' % key).rstrip('0')
-        # print(ds_name, key_str, 'corr:\n', grp[[x_col_name, y_col_name]].corr().iloc[0])
 
         grp_x_min = grp[x_col_name].min()
         grp_x_max = grp[x_col_name].max()
+        avg_measure[key] = grp[x_col_name].mean()
         bins_step_size = (grp_x_max - grp_x_min) / num_bins
         start_point = grp_x_min + bins_step_size / 2
         bin_points = np.array([start_point + i * bins_step_size for i in range(num_bins)])
 
-        #if not one_subplot:
-        #    ax1 = grp.plot(x=x_col_name, y=y_col_name, ax=ax1, label='  ' + key_str)
         c = colors[style_idx % len(colors)]
         m = markers[style_idx % len(markers)]
         grp['bin'] = grp[x_col_name].apply(lambda x: min(int((x - grp_x_min) / bins_step_size), num_bins - 1))
@@ -290,13 +286,8 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
         tmp_grp['count'] = grp_obj.count()
 
         tmp_grp['bin_center'] = tmp_grp.index
-        # tmp_grp = tmp_grp[tmp_grp['bin_center'] < tmp_grp['bin_center'].max()]
         tmp_grp['bin_center'] = tmp_grp['bin_center'].apply(lambda x: bin_points[x])
         tmp_grp = tmp_grp.sort_values(by='bin_center')
-        #if key_str == '0.1' and x_col_name == 'ratio_com_out_deg_in_deg' and 'fac' not in y_col_name and 'orf' in ds_name.lower():
-        #    y1 = tmp_grp.iloc[1][y_col_name]
-        #    y0 = tmp_grp.iloc[0][y_col_name]
-        #    ax3.axhline(y=(y0 + y1) / 2, color='black', lw=2)
 
         ax2_plt_kwargs = dict(x='bin_center', y=y_col_name, color=c, lw=lw_func(key), solid_capstyle="round", alpha=.95,
                               label='  ' + key_str, marker=m, markersize=12, markeredgewidth=2,
@@ -320,8 +311,6 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
 
         ax1 = tmp_grp.plot(x='bin_center', y='count', ax=ax1, lw=lw_func(key), color=c, solid_capstyle="round",
                            alpha=.95, marker=m, markersize=12)
-    # time.sleep(10)
-    # grp_df.plot(x=x_col_name, legend=False)
     x_label = label_dict[x_col_name] if x_col_name in label_dict else x_col_name.replace('_', ' ')
     plt.xlabel(x_label)
     y_label = label_dict[y_col_name] if y_col_name in label_dict else y_col_name.replace('_', ' ')
@@ -331,8 +320,6 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
     ax1.legend_.remove()
     ax1.set_xlim(plt_x_range)
     ax1.get_xaxis().set_visible(False)
-    # ax1.set_yticks(np.linspace(*ax1.get_ylim(), num=3).astype('int'))
-    # ax1.set_xticks([])
     ax1.set_ylabel('N')
     ax1.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     ax1.set_axisbelow(True)
@@ -379,6 +366,7 @@ def plot_lines_plot(df, x_col_name, y_col_name, out_fn_base, out_fn_ext, plt_fon
                           font_size=12, nrows=1, legend_name_idx=0, legend_name_style='it')
     plt.close('all')
     matplotlib.rcParams.update({'font.size': default_font_size})
+    return avg_measure
 
 
 def preprocess_df(df, net, bias_strength):
@@ -571,7 +559,7 @@ def worker_func(df_filename, net, bias_strength, out_dir):
             plot_inserted_links(df, insert_links_labels, out_fn)
 
             out_fn += '.png'
-            plot_dataframe(preprocessed_filename, net, bias_strength, out_fn)
+            return out_fn, bias_strength, plot_dataframe(preprocessed_filename, net, bias_strength, out_fn)
     except Exception as e:
         sys.stdout.flush()
         print('\n#######ERROR:\n', traceback.format_exc(), '\n')
@@ -586,23 +574,22 @@ def main():
 
     result_files = filter(lambda x: '_bs' in x, find_files(base_dir, '.df'))
     print(result_files)
-    cors = list()
-    all_dfs = list()
     net_name = ''
     net = None
     skipped_ds = set()
     worker_pool = mp.Pool(processes=1)
-    # skipped_ds.add('daserste')
+    #skipped_ds.add('daserste')
     #skipped_ds.add('wiki4schools')
     #skipped_ds.add('tvthek_orf')
     apply_results = list()
+    results_list = list()
     for df_filename in sorted(filter(lambda x: 'preprocessed' not in x, result_files),
                               key=lambda x: (
-                              x.rsplit('_bs', 1)[0], 1000 - int(x.rsplit('_bs', 1)[-1].rsplit('.', 1)[0])),
+                                      x.rsplit('_bs', 1)[0], 1000 - int(x.rsplit('_bs', 1)[-1].rsplit('.', 1)[0])),
                               reverse=True):
         current_net_name = df_filename.rsplit('_bs', 1)[0]
         bias_strength = int(df_filename.split('_bs')[-1].split('.')[0])
-        if not(149 < bias_strength < 200) and not np.isclose(bias_strength, 5.):  # or not np.isclose(bias_strength, 5.):
+        if False and not (149 < bias_strength < 200) and not np.isclose(bias_strength, 5.):
             print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):
@@ -616,18 +603,31 @@ def main():
             net = load_graph(current_net_name)
             net_name = current_net_name
         assert net is not None
-        apply_results.append(worker_pool.apply_async(func=worker_func, args=(df_filename, net, bias_strength, out_dir)))
-        # df['bias_strength'] = bias_strength
-        # exit()
-        # all_dfs.append(df.copy())
+        apply_results.append(worker_pool.apply_async(func=worker_func, args=(df_filename, net, bias_strength, out_dir),
+                                                     callback=results_list.append))
     worker_pool.close()
     worker_pool.join()
     assert all(i.successful() for i in apply_results)
-    #cors = np.array(cors)
-    #print('average corr:', cors.mean())
-    print('collect and sort results')
-    #all_dfs = pd.concat(all_dfs)
-    #plot_df_fac(all_dfs, out_dir + '/all_dfs.png')
+    reduced_results = dict()
+    for name, bs, data in results_list:
+        reduced_results[name.rsplit('/', 1)[-1].split('.gt', 1)[0]] = data
+    print(reduced_results)
+
+    df = pd.DataFrame(columns=reduced_results[reduced_results.keys()[0]].keys())
+    for c in df.columns:
+        df[c] = df[c].astype('object')
+    for name, data in reduced_results.iteritems():
+        for d_name, val in data.iteritems():
+            try:
+                df[d_name] = df[d_name].astype('object')
+                df.at[str(name), str(d_name)] = [val]
+                df[d_name] = df[d_name].astype('object')
+            except:
+                print(traceback.format_exc())
+                print('ERROR:', name, d_name, val)
+                print(type(name), type(d_name), type(val))
+    print(df.head(2))
+    df.to_pickle(base_dir + 'avg_measures.df')
 
 
 if __name__ == '__main__':
