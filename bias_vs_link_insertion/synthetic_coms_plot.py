@@ -150,10 +150,10 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
 
     df_plot = df[df['sample-size'] < .21]
 
-    # in_deg = np.array(net.degree_property_map('in').a)
+    in_deg = np.array(net.degree_property_map('in').a)
     # df_plot['in_neighbours_in_deg'] = df_plot['com_in_neighbours'].apply(lambda x: in_deg[list(x)].sum())
 
-    # out_deg = np.array(net.degree_property_map('out').a)
+    out_deg = np.array(net.degree_property_map('out').a)
     # df_plot['out_neighbours_out_deg'] = df_plot['com_out_neighbours'].apply(lambda x: out_deg[list(x)].sum())
 
     # df_plot['ratio_out_out_deg_in_in_deg'] = df_plot['out_neighbours_out_deg'] / df_plot['in_neighbours_in_deg']
@@ -203,8 +203,8 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
 
         df_plot.sort_values(by=col_name, inplace=True)
 
-        label_dict['stat_dist_com_sum'] = r"stationary prob. ($\pi'_t$)"
-        label_dict['add_top_block_links_fair'] = r"stationary prob. ($\pi'_t$)"
+        label_dict['stat_dist_com_sum'] = r"target nodes' energy ($\pi'_t$)"
+        label_dict['add_top_block_links_fair'] = r"target nodes' energy ($\pi'_t$)"
         label_dict['stat_dist_sum_fac'] = r'navigational potential ($\tau$)'
         label_dict['add_top_block_links_fair_fac'] = r'navigational potential ($\tau$)'
         label_dict['stat_dist_diff'] = r"$\pi'_t - \pi_t$"
@@ -506,7 +506,7 @@ def plot_inserted_links(df, columns, filename):
                         interpolate=True)
     ax.grid(b=True, which='major', axis='y', linewidth=3, alpha=0.2, ls='--')
     plt.xlabel(r'fraction of target nodes ($\phi$)')
-    plt.ylabel(r"stationary prob. ($\pi'_t$)")
+    plt.ylabel(r"target nodes' energy ($\pi'_t$)")
     ax.set_xlim([grp_mean.index.min(), grp_mean.index.max()])
     ax.set_axisbelow(True)
     ax.set_ylim([0., 0.7])
