@@ -150,13 +150,13 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
 
     df_plot = df[df['sample-size'] < .21]
 
-    in_deg = np.array(net.degree_property_map('in').a)
-    df_plot['in_neighbours_in_deg'] = df_plot['com_in_neighbours'].apply(lambda x: in_deg[list(x)].sum())
+    # in_deg = np.array(net.degree_property_map('in').a)
+    # df_plot['in_neighbours_in_deg'] = df_plot['com_in_neighbours'].apply(lambda x: in_deg[list(x)].sum())
 
-    out_deg = np.array(net.degree_property_map('out').a)
-    df_plot['out_neighbours_out_deg'] = df_plot['com_out_neighbours'].apply(lambda x: out_deg[list(x)].sum())
+    # out_deg = np.array(net.degree_property_map('out').a)
+    # df_plot['out_neighbours_out_deg'] = df_plot['com_out_neighbours'].apply(lambda x: out_deg[list(x)].sum())
 
-    df_plot['ratio_out_out_deg_in_in_deg'] = df_plot['out_neighbours_out_deg'] / df_plot['in_neighbours_in_deg']
+    # df_plot['ratio_out_out_deg_in_in_deg'] = df_plot['out_neighbours_out_deg'] / df_plot['in_neighbours_in_deg']
 
     df_plot['com_in_deg'] = df_plot['node-ids'].apply(lambda x: in_deg[list(x)].sum()) - df_plot['intra_com_links']
     df_plot['com_out_deg'] = df_plot['node-ids'].apply(lambda x: out_deg[list(x)].sum()) - df_plot['intra_com_links']
