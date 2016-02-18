@@ -68,13 +68,7 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
             try:
                 if verbose:
                     print('asymmetric')
-                #print(datetime.datetime.now(), 'normal calc'
                 l, v = linalg.eigs(M, k=k, which="LR", v0=init_v, maxiter=max(M.shape[0], 1000), tol=tol)
-                #print(datetime.datetime.now(), 'sigma calc'
-                #ls, vs = linalg.eigs(M, k=k, which="SM", OPpart='r', v0=init_v, maxiter=max(M.shape[0], 1000), sigma=1.)
-                #print(l, ls
-                #print(v, vs
-                #exit()
             except scipy.sparse.linalg.ArpackNoConvergence as e:
                 if dense_fallback:
                     if verbose:
