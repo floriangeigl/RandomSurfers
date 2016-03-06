@@ -198,13 +198,16 @@ def calc_bias(filename, biasname, data_dict, dump=True, verbose=1):
         return np.array(data_dict['net'].degree_property_map('total').a, dtype=np.float)
     #################################
     elif biasname == 'inv_deg':
-        return 1. / (calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 1)
+        return 1. / (calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1))
     #################################
     elif biasname == 'inv_log_deg':
-        return 1. / np.log(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 2)
+        return 1. / np.log10(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 1)
     #################################
     elif biasname == 'inv_sqrt_deg':
         return 1. / np.sqrt(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1))
+    #################################
+    elif biasname == 'log_deg':
+        return np.log10(calc_bias(filename, 'deg', data_dict, dump=dump, verbose=verbose - 1) + 1)
     #################################
     else:
         try:

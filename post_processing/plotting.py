@@ -116,7 +116,9 @@ def create_bf_scatters_from_df(df, baseline, columns, output_folder='./', filter
     return bias_factors_df
 
 
-def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=None, filter_zeros=True, legend=True, categories=None, **kwargs):
+def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=None, filter_zeros=True,
+                      legend=True, categories=None, **kwargs):
+    plt.close('all')
     font_size = 22
     matplotlib.rcParams.update({'font.size': font_size})
     assert isinstance(x, tuple)
@@ -137,7 +139,7 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     print 'biasfactor dataset len:', len(y_data), '(', len(y_data) / orig_len * 100, '%)'
     alpha = min(1., 1 / np.log10(len(y_data)))
     f, ax = plt.subplots()
-    plt.axhline(1., color='red', alpha=1., lw=3, ls='--')
+    # plt.axhline(1., color='red', alpha=1., lw=3, ls='--')
     if categories is None:
         for i in reversed(range(3)):
             if i == 0:
@@ -189,25 +191,31 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     ax.set_yscale('log')
     plt.grid()
     plt.tight_layout()
-    plt.savefig(fname, dpi=150)
-    plt.show()
-    plt.close('all')
+    try:
+        plt.savefig(fname, dpi=150)
+    except:
+        pass
+    # plt.show()
 
     if legend:
         print 'plot legend'
         legend_fname = fname.rsplit('/', 1)[0] + '/bf_scatter_legend.pdf'
         mpl_tools.plot_legend(ax=ax, filename=legend_fname, font_size=12, figsize=(16, 3), ncols=4)
+    plt.close('all')
 
     plot_scatter_heatmap(x_data, y_data, logy=True, logx=True, logbins=True, bins=100,
                          axis_range=[[min_x, max_x], [min_y, max_y]])
     plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
     plt.ylabel(y_label + (' (shifted)' if y_data_mod else ''))
-    plt.axhline(np.log10(1.), color='white', alpha=1., lw=3, ls='--')
+    # plt.axhline(np.log10(1.), color='white', alpha=1., lw=3, ls='--')
+    plt.plot(np.log10(np.array([min_x, max_x])), np.log10(np.array([min_x, max_x])), color='white', alpha=6., lw=1,
+             ls='-')
     plt.tight_layout()
     fname = fname.rsplit('.', 1)[0] + '_heatmap.pdf'
     mpl_tools.save_n_crop(fname)
-    plt.show()
     plt.close('all')
+    # plt.show()
+
 
 
 def create_scatters_from_df(df, columns, output_folder='./', filter_zeros=True, file_ending='.png', **kwargs):
@@ -365,13 +373,14 @@ def create_ginis_from_df(df, columns=None, output_folder='./', zoom=None, filter
     plt.close('all')
 
 
-def plot_entropy_rates(entropy_rates, filename):
-    entropy_rates = entropy_rates.T
+def plot_bar_plot(entropy_rates, filename, y_label):
+    def_font_size = matplotlib.rcParams['font.size']
+    matplotlib.rcParams.update({'font.size': 25})
+    # entropy_rates = entropy_rates.T
     f, ax = plt.subplots(figsize=(20, 8))
-    #matplotlib.rcParams.update({'font.size': 22})
     hatch = ['-', 'x', '\\', '*', 'o', 'O', '.', '/'] * 2
     #symbols = ['$\\clubsuit$', '$\\bigstar$', '$\\diamondsuit$', '$\\heartsuit', '$\\spadesuit$', '$\\blacksquare$']
-    symbols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']
+    symbols = ['O', 'E', 'D', 'I', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']
     colors = ['blue', 'green', 'red', 'black', 'magenta', 'orange', 'gray'] * 2
     num_ds = len(entropy_rates.columns)
     num_ticks = len(entropy_rates)
@@ -393,24 +402,25 @@ def plot_entropy_rates(entropy_rates, filename):
         # ax = entropy_rates[i].plot(position=pos,width=0.8, kind='bar',rot=20,ax=ax, alpha=1,lw=0.4,hatch=h,color=c)
 
     ax.set_position([0.1, 0.2, .8, 0.6])
-    plt.xticks(np.array(range(len(entropy_rates))), entropy_rates.index, rotation=-15)
+    plt.xticks(np.array(range(len(entropy_rates))), entropy_rates.index, rotation=0)
     ax.set_axisbelow(True)
     ax.xaxis.grid(False)
-    ax.yaxis.grid(True)
+    ax.yaxis.grid(True, linewidth=3, alpha=0.2, ls='--')
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
     plt.tick_params(labelright=True)
-    plt.legend(ncol=4, loc='upper center', bbox_to_anchor=(0.5, 1.25))
+    plt.legend(ncol=2, loc='upper center', bbox_to_anchor=(0.5, 1.35))
     plt.ylim([min(list(entropy_rates.min())) * .95, max(list(entropy_rates.max())) * 1.05])
-    plt.ylabel('entropy rate')
+    plt.ylabel(y_label)
     # plt.subplots_adjust(top=0.7)
     # plt.tight_layout()
     plt.savefig(filename, bbox_tight=True)
-    os.system('pdfcrop ' + filename + ' ' + filename)
-    plt.show()
     plt.close('all')
+    os.system('pdfcrop ' + filename + ' ' + filename)
+    # plt.show()
+    matplotlib.rcParams.update({'font.size': def_font_size})
 
 
 def autolabel(symbol, x_pos, heights, ax):

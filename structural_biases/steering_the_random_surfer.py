@@ -14,24 +14,24 @@ from structural_biases.process_network import process_network
 def main():
     multip = True  # multiprocessing flag (warning: suppresses exceptions)
     fast_test = False
-    rewires = 0
-    base_outdir = 'output/steering_rnd_surfer/'
+    rewires = 1
+    base_outdir = '../output/steering_rnd_surfer/'
     empiric_data_dir = '/opt/datasets/'
     method = 'EV'  # EV: Eigenvector, PR: PageRank
-    biases = ['adjacency', 'eigenvector', 'deg', 'inv_sqrt_deg', 'sigma', 'sigma_sqrt_deg_corrected']
+    biases = ['adjacency', 'eigenvector', 'deg', 'inv_deg'] #, 'sigma', 'sigma_sqrt_deg_corrected']
     # biases = ['adjacency', 'topic_1', 'topic_2', 'topic_3']
     datasets = list()
     # datasets.append({'name': 'toy_example', 'directed': False})
     # datasets.append({'name': 'karate'})
     # datasets.append({'name': empiric_data_dir + 'karate/karate.edgelist', 'directed': False})
     if not fast_test:
-        # datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
-        datasets.append({'name': empiric_data_dir + 'getdigital_eu/getdigital_eu_resolved_cleaned.gt', 'directed': True})
-        # datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
-        # datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
-        # datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
-        # datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
-        # datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'milan_spiele/milan_spiele', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'getdigital_eu/getdigital_eu', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'thinkgeek/thinkgeek', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'new_w4s/wiki4schools', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'bar_wiki/bar_wiki', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'orf_tvthek/tvthek_orf', 'directed': True})
+        datasets.append({'name': empiric_data_dir + 'daserste/daserste', 'directed': True})
         # pass
         # datasets.append({'name': '/opt/datasets/facebook/facebook', 'directed': False})
     basics.create_folder_structure(base_outdir)
@@ -68,7 +68,7 @@ def main():
         else:
             results.append(process_network(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
                                            method=method))
-        write_network_properties(net, network_name, network_prop_file)
+        # write_network_properties(net, network_name, network_prop_file)
         for r in xrange(rewires):
             store_fn = file_name + '_rewired_' + str(r).rjust(3, '0') + '.gt'
             if os.path.isfile(store_fn):
@@ -88,7 +88,7 @@ def main():
                 results.append(
                     process_network(net, name=network_name, out_dir=out_dir, biases=biases, error_q=error_q,
                                     method=method))
-            write_network_properties(net, network_name, network_prop_file)
+            # write_network_properties(net, network_name, network_prop_file)
 
     if multip:
         worker_pool.close()

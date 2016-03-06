@@ -205,8 +205,8 @@ def plot_dataframe(df_fn, net, bias_strength, filename):
 
         label_dict['stat_dist_com_sum'] = r"energy ($\pi'_t$)"
         label_dict['add_top_block_links_fair'] = r"energy ($\pi'_t$)"
-        label_dict['stat_dist_sum_fac'] = r'navigational potential ($\tau$)'
-        label_dict['add_top_block_links_fair_fac'] = r'navigational potential ($\tau$)'
+        label_dict['stat_dist_sum_fac'] = r'influence potential ($\tau$)'
+        label_dict['add_top_block_links_fair_fac'] = r'influence potential ($\tau$)'
         label_dict['stat_dist_diff'] = r"$\pi'_t - \pi_t$"
         results[col_name] = plot_lines_plot(df_plot, col_name, 'stat_dist_com_sum', current_filename, '_lines', label_dict=label_dict,)
         # plot_lines_plot(df_plot, col_name, 'stat_dist_diff', current_filename, '_lines_diff', label_dict=label_dict,
@@ -490,7 +490,7 @@ def plot_inserted_links(df, columns, filename):
     print(grp_df.columns)
     label_dict = dict()
     label_dict['unbiased'] = 'unmodified network'
-    label_dict['biased'] = 'navigational bias'
+    label_dict['biased'] = 'click bias'
     # label_dict['rnd fair'] = 'random'
     label_dict['top_block fair'] = 'link insertion'
     colors = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
@@ -589,7 +589,7 @@ def main():
                               reverse=True):
         current_net_name = df_filename.rsplit('_bs', 1)[0]
         bias_strength = int(df_filename.split('_bs')[-1].split('.')[0])
-        if False and not (149 < bias_strength < 200) and not np.isclose(bias_strength, 5.):
+        if False and not np.isclose(bias_strength, 5.): # and not (149 < bias_strength < 200):
             print('skip bs:', bias_strength)
             continue
         elif any((i in current_net_name for i in skipped_ds)):

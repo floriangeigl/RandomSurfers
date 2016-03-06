@@ -55,11 +55,11 @@ def transition_matrix(M):
 def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1,
                         print_prefix='', dense_fallback=False, verbose=True):
     if verbose:
-        print(print_prefix + 'largest eigenvec', end='')
+        print(print_prefix + 'largest eigenvec', end=' ')
     k = min(k, M.shape[0] - 2)
     if scipy.sparse.issparse(M):
         if verbose:
-            print('sparse', end='')
+            print('sparse', end=' ')
         if symmetric:
             if verbose:
                 print('symmetric')

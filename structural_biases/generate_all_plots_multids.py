@@ -16,6 +16,8 @@ import string
 
 pd.set_option('display.width', 600)
 pd.set_option('display.max_colwidth', 600)
+matplotlib.rcParams['xtick.major.pad'] *= 2
+matplotlib.rcParams['ytick.major.pad'] *= 2
 
 
 def create_plots(fn, colored_categories=None):
@@ -27,8 +29,8 @@ def create_plots(fn, colored_categories=None):
         print stat_dist_df.head()
         gini_df = stat_dist_df.copy()
         gini_df.columns = [i.split('Bias')[0].strip() for i in gini_df.columns]
-        create_ginis_from_df(gini_df, output_folder=out_dir + 'gini/', out_fn=ds_name + '.pdf', lw=3, ms=15, font_size=15,
-                             zoom=80)
+        # create_ginis_from_df(gini_df, output_folder=out_dir + 'gini/', out_fn=ds_name + '.pdf', lw=3, ms=15, font_size=15,
+        #                             zoom=80)
         if colored_categories is None:
             colored_categories = dict()
         colored_categories[None] = None
@@ -50,21 +52,37 @@ def create_plots(fn, colored_categories=None):
             stat_dist_orig_columns = list(stat_dist_tmp_df.columns)
 
             stat_dist_tmp_df.columns = [name_mapping[i] if i in name_mapping else i for i in stat_dist_orig_columns]
-            not_baseline_cols = list(filter(lambda x: x != base_line, stat_dist_df.columns))
-            print(stat_dist_tmp_df.head(2))
-            create_scatters_from_df(stat_dist_tmp_df, not_baseline_cols,
-                                    output_folder=out_dir + 'scatter/' + current_ds_name + '/')
+            # not_baseline_cols = list(filter(lambda x: x != base_line, stat_dist_df.columns))
+            # print(stat_dist_tmp_df.head(2))
+            # create_scatters_from_df(stat_dist_tmp_df, not_baseline_cols,
+            #                         output_folder=out_dir + 'scatter/' + current_ds_name + '/')
 
-            stat_dist_tmp_df.columns = [bf_name_mapping[i] if i in bf_name_mapping else i for i in stat_dist_orig_columns]
-            not_baseline_cols = list(filter(lambda x: x != base_line, stat_dist_df.columns))
+            stat_dist_tmp_df.columns = [bf_name_mapping[i] if i in bf_name_mapping else i for i in
+                                        stat_dist_orig_columns]
+            not_baseline_cols = list(filter(lambda x: x != base_line and x != 'category', stat_dist_df.columns))
             print(stat_dist_tmp_df.head(2))
-            bias_factors_df = create_bf_scatters_from_df(stat_dist_tmp_df, base_line, not_baseline_cols,
-                                                         output_folder=out_dir + 'bf_scatter/' + current_ds_name + '/')
-            min_y, max_y = bias_factors_df[bias_factors_df > 0].min().min(), bias_factors_df.max().max()
+            cor_out_dir = out_dir + 'bf_cor/' + current_ds_name + '/'
+            if not os.path.isdir(cor_out_dir):
+                os.makedirs(cor_out_dir)
 
-            bias_factors_df = create_bf_scatters_from_df(stat_dist_tmp_df, base_line, not_baseline_cols,
-                                                         output_folder=out_dir + 'bf_scatter/' + current_ds_name + '/',
-                                                         y_range=[min_y, max_y])
+            for col in not_baseline_cols:
+                x = stat_dist_tmp_df[base_line]
+                y = stat_dist_tmp_df[col]
+                assert np.allclose(1., np.array([x.sum(), y.sum()]))
+                create_bf_scatter((base_line, x), (col, y),
+                                  cor_out_dir + col.replace(' ', '_') + '.pdf')
+                stat_dist_tmp_df.plot(x=base_line, y=col, loglog=True, kind='scatter', lw=0, alpha=.6)
+#                plt.tight_layout()
+#                plt.savefig(cor_out_dir + col.replace(' ', '_') + '_simple.png')
+#                plt.close('all')
+            if False:
+                bias_factors_df = create_bf_scatters_from_df(stat_dist_tmp_df, base_line, not_baseline_cols,
+                                                             output_folder=out_dir + 'bf_scatter/' + current_ds_name + '/')
+                min_y, max_y = bias_factors_df[bias_factors_df > 0].min().min(), bias_factors_df.max().max()
+
+                bias_factors_df = create_bf_scatters_from_df(stat_dist_tmp_df, base_line, not_baseline_cols,
+                                                             output_folder=out_dir + 'bf_scatter/' + current_ds_name + '/',
+                                                             y_range=[min_y, max_y])
 
     except:
         print traceback.format_exc()
@@ -76,15 +94,19 @@ base_line = 'adjacency'
 out_dir = base_dir + 'plots/'
 create_folder_structure(out_dir)
 
-
 name_mapping = dict()
-name_mapping['adjacency'] = 'Unbiased'
+name_mapping['adjacency'] = 'Original'
 name_mapping['deg'] = 'Degree'
+name_mapping['inv_deg'] = 'Inverse Degree'
+name_mapping['log_deg'] = 'Degree'
 name_mapping['eigenvector'] = 'Eigenvector Centrality'
 name_mapping['inv_sqrt_deg'] = 'Inverse Degree'
+name_mapping['inv_log_deg'] = 'Inverse Degree'
 name_mapping['sigma'] = 'Sigma'
 name_mapping['sigma_sqrt_deg_corrected'] = 'Degree Corrected Sigma'
 name_mapping['getdigital'] = 'GD'
+name_mapping['getdigital_eu_resolved_cleaned.gt'] = 'GD'
+name_mapping['getdigital_eu'] = 'GD'
 name_mapping['karate.edgelist'] = 'Toy Example'
 name_mapping['milan_spiele'] = 'MS'
 name_mapping['thinkgeek'] = 'TG'
@@ -123,38 +145,62 @@ special_cats = defaultdict(lambda: None)
 base_line = name_mapping[base_line] if base_line in name_mapping else base_line
 
 stat_dist_files = find_files(base_dir, 'stat_dists.df')
-entropy_files = find_files(base_dir, 'entropy.df')
+entropy_rate_files = find_files(base_dir, 'entropy_rate.df')
+stat_entropy_files = find_files(base_dir, '_stat_entropy.df')
 gini_files = find_files(base_dir, 'gini.df')
 network_files = filter(lambda x: 'rewire' not in x, find_files(base_dir, '.gt'))
-plot_degree_distributions(network_files, out_dir + 'deg_distributions/')
+# plot_degree_distributions(network_files, out_dir + 'deg_distributions/')
 
 #for n_fn in network_files:
 #    check_aperiodic(n_fn)
 
-entropy_rates = None
-for idx, fn in enumerate(entropy_files):
-    entropy_rate_df = pd.read_pickle(fn)
-    if entropy_rates is None:
-        entropy_rates = pd.DataFrame(columns=list(entropy_rate_df.columns))
-    entropy_rates.loc[fn.rsplit('/', 1)[-1].replace('_entropy.df', '')] = entropy_rate_df.loc[0]
-try:
-    entropy_rates.drop('karate.edgelist', inplace=True)
-except ValueError:
-    pass
-print entropy_rates.columns
-entropy_rates = entropy_rates[sorted(entropy_rates.columns, key=lambda x: sorting[x] if x in sorting else 1000)].copy()
-entropy_rates.columns = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.columns]
-entropy_rates.columns = [i.split('Bias')[0].strip() for i in entropy_rates.columns]
-entropy_rates.index = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.index]
-rewired_idx = filter(lambda x: 'rewired' in x, entropy_rates.index)
-entropy_rates.drop(rewired_idx, inplace=True)
-sorting = {name_mapping[key]: val for key, val in sorting.iteritems()}
-entropy_rates = entropy_rates.loc[sorted(entropy_rates.index, key=lambda x: sorting[x] if x in sorting else 1000)].copy()
-plot_entropy_rates(entropy_rates, out_dir + 'entropy.pdf')
+if True:
+    entropy_rates = None
+    for idx, fn in enumerate(entropy_rate_files):
+        entropy_rate_df = pd.read_pickle(fn)
+        if entropy_rates is None:
+            entropy_rates = pd.DataFrame(columns=list(entropy_rate_df.columns))
+        entropy_rates.loc[fn.rsplit('/', 1)[-1].replace('_entropy_rate.df', '')] = entropy_rate_df.loc[0]
+    try:
+        entropy_rates.drop('karate.edgelist', inplace=True)
+    except ValueError:
+        pass
+    print entropy_rates.columns
+    entropy_rates = entropy_rates[sorted(entropy_rates.columns, key=lambda x: sorting[x] if x in sorting else 1000)].copy()
+    entropy_rates.columns = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.columns]
+    entropy_rates.columns = [i.split('Bias')[0].strip() for i in entropy_rates.columns]
+    entropy_rates.index = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.index]
+    rewired_idx = filter(lambda x: 'rewired' in x, entropy_rates.index)
+    entropy_rates.drop(rewired_idx, inplace=True)
+    sorting_conv = {name_mapping[key]: val for key, val in sorting.iteritems()}
+    entropy_rates = entropy_rates.loc[sorted(entropy_rates.index, key=lambda x: sorting_conv[x] if x in sorting_conv else 1000)].copy()
+    plot_bar_plot(entropy_rates, out_dir + 'entropy_rate.pdf', 'entropy rate')
+
+if True:
+    stat_entropy = None
+    for idx, fn in enumerate(stat_entropy_files):
+        stat_entropy_df = pd.read_pickle(fn)
+        if stat_entropy is None:
+            stat_entropy = pd.DataFrame(columns=list(stat_entropy_df.columns))
+        stat_entropy.loc[fn.rsplit('/', 1)[-1].replace('_stat_entropy.df', '')] = stat_entropy_df.loc[0]
+    try:
+        stat_entropy.drop('karate.edgelist', inplace=True)
+    except ValueError:
+        pass
+    print stat_entropy.columns
+    stat_entropy = stat_entropy[sorted(stat_entropy.columns, key=lambda x: sorting[x] if x in sorting else 1000)].copy()
+    stat_entropy.columns = [name_mapping[i] if i in name_mapping else i for i in stat_entropy.columns]
+    stat_entropy.columns = [i.split('Bias')[0].strip() for i in stat_entropy.columns]
+    stat_entropy.index = [name_mapping[i] if i in name_mapping else i for i in stat_entropy.index]
+    rewired_idx = filter(lambda x: 'rewired' in x, stat_entropy.index)
+    stat_entropy.drop(rewired_idx, inplace=True)
+    sorting_conv = {name_mapping[key]: val for key, val in sorting.iteritems()}
+    stat_entropy = stat_entropy.loc[sorted(stat_entropy.index, key=lambda x: sorting_conv[x] if x in sorting_conv else 1000)].copy()
+    plot_bar_plot(stat_entropy, out_dir + 'stat_entropy.pdf', 'stationary entropy')
 
 worker_pool = multiprocessing.Pool(processes=15)
 
-for fn in stat_dist_files[:1]:
+for fn in filter(lambda x: 'wiki' in x or True, stat_dist_files):
     ds_name = fn.rsplit('/', 1)[-1].replace('_stat_dists.df', '')
     print ds_name.center(120, '#')
     worker_pool.apply_async(create_plots, args=(fn, special_cats[ds_name],))

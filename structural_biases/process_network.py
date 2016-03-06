@@ -20,6 +20,8 @@ import datetime
 import multiprocessing as mp
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
+from calc_bias import calc_bias
+from scipy import stats
 
 font_size = 12
 matplotlib.rcParams.update({'font.size': font_size})
@@ -80,7 +82,8 @@ def process_network(network, name, out_dir, biases, error_q, method):
         else:
             dump_base_fn = 'synthetic'
 
-        entropy_df = pd.DataFrame()
+        entropy_rate = pd.DataFrame()
+        stat_entropy = pd.DataFrame()
         sort_df = []
 
         corr_df = pd.DataFrame(columns=['deg'], data=deg_map.a)
@@ -136,7 +139,9 @@ def process_network(network, name, out_dir, biases, error_q, method):
                                                                                  calc_entropy_rate=True)
                 stat_distributions[bias_name] = stat_dist
                 #print print_prefix, '[' + biasname + '] entropy rate:', ent
-                entropy_df.at[0, bias_name] = ent
+                entropy_rate.at[0, bias_name] = ent
+                stat_entropy.at[0, bias_name] = stats.entropy(stat_dist, base=2)
+
                 sort_df.append((bias_name, ent))
                 corr_df[bias_name] = stat_dist
             except:
@@ -217,10 +222,12 @@ def process_network(network, name, out_dir, biases, error_q, method):
         sorted_keys, sorted_values = zip(*sorted(sort_df, key=lambda x: x[1], reverse=True))
         if len(set(sorted_values)) == 1:
             sorted_keys = sorted(sorted_keys)
-        entropy_df = entropy_df[list(sorted_keys)]
+        entropy_rate = entropy_rate[list(sorted_keys)]
+        stat_entropy = stat_entropy[list(sorted_keys)]
 
-        print print_prefix, ' entropy rates:\n', entropy_df
-        entropy_df.to_pickle(out_data_dir + name + '_entropy.df')
+        print print_prefix, ' entropy rates:\n', entropy_rate
+        entropy_rate.to_pickle(out_data_dir + name + '_entropy_rate.df')
+        stat_entropy.to_pickle(out_data_dir + name + '_stat_entropy.df')
 
         print print_prefix, utils.color_string('>>all done<< duration: ' + str(datetime.datetime.now() - start_time),
                                                type=utils.bcolors.GREEN)
