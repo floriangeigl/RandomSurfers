@@ -59,3 +59,5 @@ output/
 
 # OS X Indexing
 .DS_Store
+
+click_stream_bias/sunbursts_output*
