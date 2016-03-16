@@ -59,22 +59,35 @@ def create_plots(fn, colored_categories=None):
 
             stat_dist_tmp_df.columns = [bf_name_mapping[i] if i in bf_name_mapping else i for i in
                                         stat_dist_orig_columns]
-            not_baseline_cols = list(filter(lambda x: x != base_line and x != 'category', stat_dist_df.columns))
+            not_baseline_cols = list(
+                filter(lambda x: x != base_line and x != 'category' and 'prop_' not in x, stat_dist_df.columns))
             print(stat_dist_tmp_df.head(2))
             cor_out_dir = out_dir + 'bf_cor/' + current_ds_name + '/'
             if not os.path.isdir(cor_out_dir):
                 os.makedirs(cor_out_dir)
 
-            for col in not_baseline_cols:
+            ranges = [None, None, None, None]
+            for col in filter(lambda x: 'Degree' in x, not_baseline_cols):
                 x = stat_dist_tmp_df[base_line]
                 y = stat_dist_tmp_df[col]
                 assert np.allclose(1., np.array([x.sum(), y.sum()]))
-                create_bf_scatter((base_line, x), (col, y),
+                plt_ranges = create_bf_scatter((base_line, x), (col, y),
                                   cor_out_dir + col.replace(' ', '_') + '.pdf')
-                stat_dist_tmp_df.plot(x=base_line, y=col, loglog=True, kind='scatter', lw=0, alpha=.6)
+                ranges = map(lambda (idx, x): x if ranges[idx] is None else (min(ranges[idx], x) if idx % 2 == 0 else max(ranges[idx], x)), enumerate(plt_ranges))
+                # stat_dist_tmp_df.plot(x=base_line, y=col, loglog=True, kind='scatter', lw=0, alpha=.6)
 #                plt.tight_layout()
 #                plt.savefig(cor_out_dir + col.replace(' ', '_') + '_simple.png')
 #                plt.close('all')
+            # replot rescaled
+            ranges = [min(ranges[0], ranges[2]), max(ranges[1], ranges[3])]
+            for col in filter(lambda x: 'Degree' in x, not_baseline_cols):
+                x = stat_dist_tmp_df[base_line]
+                y = stat_dist_tmp_df[col]
+
+                create_bf_scatter((base_line, x), (col, y),
+                                  cor_out_dir + col.replace(' ', '_') + '.pdf', min_x=ranges[0], max_x=ranges[1],
+                                  min_y=ranges[0], max_y=ranges[1])
+
             if False:
                 bias_factors_df = create_bf_scatters_from_df(stat_dist_tmp_df, base_line, not_baseline_cols,
                                                              output_folder=out_dir + 'bf_scatter/' + current_ds_name + '/')
@@ -83,11 +96,10 @@ def create_plots(fn, colored_categories=None):
                 bias_factors_df = create_bf_scatters_from_df(stat_dist_tmp_df, base_line, not_baseline_cols,
                                                              output_folder=out_dir + 'bf_scatter/' + current_ds_name + '/',
                                                              y_range=[min_y, max_y])
-
+        print('--->', ds_name, 'all done')
     except:
+        print('!!! --->', ds_name, 'FAILED')
         print traceback.format_exc()
-
-
 
 base_dir = '/home/fgeigl/navigability_of_networks/output/steering_rnd_surfer/'
 base_line = 'adjacency'
@@ -167,6 +179,7 @@ if True:
         pass
     print entropy_rates.columns
     entropy_rates = entropy_rates[sorted(entropy_rates.columns, key=lambda x: sorting[x] if x in sorting else 1000)].copy()
+    entropy_rates = entropy_rates[filter(lambda x: 'prop_' not in x, entropy_rates.columns)]
     entropy_rates.columns = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.columns]
     entropy_rates.columns = [i.split('Bias')[0].strip() for i in entropy_rates.columns]
     entropy_rates.index = [name_mapping[i] if i in name_mapping else i for i in entropy_rates.index]
@@ -189,6 +202,7 @@ if True:
         pass
     print stat_entropy.columns
     stat_entropy = stat_entropy[sorted(stat_entropy.columns, key=lambda x: sorting[x] if x in sorting else 1000)].copy()
+    stat_entropy = stat_entropy[filter(lambda x: 'prop_' not in x, stat_entropy.columns)]
     stat_entropy.columns = [name_mapping[i] if i in name_mapping else i for i in stat_entropy.columns]
     stat_entropy.columns = [i.split('Bias')[0].strip() for i in stat_entropy.columns]
     stat_entropy.index = [name_mapping[i] if i in name_mapping else i for i in stat_entropy.index]
@@ -200,10 +214,13 @@ if True:
 
 worker_pool = multiprocessing.Pool(processes=15)
 
+worker_results = list()
 for fn in filter(lambda x: 'wiki' in x or True, stat_dist_files):
     ds_name = fn.rsplit('/', 1)[-1].replace('_stat_dists.df', '')
     print ds_name.center(120, '#')
-    worker_pool.apply_async(create_plots, args=(fn, special_cats[ds_name],))
+    worker_results.append(worker_pool.apply_async(create_plots, args=(fn, special_cats[ds_name],)))
+    # create_plots(fn, special_cats[ds_name])
 worker_pool.close()
 worker_pool.join()
+assert all((i.successful() for i in worker_results)) and len(worker_results) > 0
 print 'ALL DONE'

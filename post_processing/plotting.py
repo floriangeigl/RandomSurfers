@@ -185,6 +185,7 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     max_y = max(max_y, 10)
     ax.set_xlim([min_x, max_x])
     ax.set_ylim([min_y, max_y])
+    ranges = [min_x, max_x, min_y, max_y]
     plt.xlabel(x_label + (' (shifted)' if x_data_mod else ''))
     plt.ylabel(y_label + (' (shifted)' if y_data_mod else ''))
     ax.set_xscale('log')
@@ -210,12 +211,24 @@ def create_bf_scatter(x, y, fname, min_y=None, max_y=None, min_x=None, max_x=Non
     # plt.axhline(np.log10(1.), color='white', alpha=1., lw=3, ls='--')
     plt.plot(np.log10(np.array([min_x, max_x])), np.log10(np.array([min_x, max_x])), color='white', alpha=6., lw=1,
              ls='-')
+
+    # categorize nodes depending on their stat. val.
+    x_data = np.array(x_data)
+    x_data.sort()
+    x_cum = x_data.cumsum()
+    v_lines = list()
+    v_lines.append(x_data[np.searchsorted(x_cum, .33 * x_data.sum()) - 1])
+    v_lines.append(x_data[np.searchsorted(x_cum, .67 * x_data.sum()) - 1])
+
+    for val in v_lines:
+        plt.axvline(np.log10(val), color='green', alpha=6., lw=1, ls='-')
+
     plt.tight_layout()
     fname = fname.rsplit('.', 1)[0] + '_heatmap.pdf'
     mpl_tools.save_n_crop(fname)
     plt.close('all')
     # plt.show()
-
+    return ranges
 
 
 def create_scatters_from_df(df, columns, output_folder='./', filter_zeros=True, file_ending='.png', **kwargs):

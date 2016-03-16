@@ -163,6 +163,10 @@ def process_network(network, name, out_dir, biases, error_q, method):
             cat_pmap = network.vp['category']
             stat_distributions['category'] = [cat_pmap[v] for v in network.vertices()]
 
+        stat_distributions['prop_in_deg'] = network.degree_property_map('in').a
+        stat_distributions['prop_out_deg'] = network.degree_property_map('out').a
+        stat_distributions['prop_total_deg'] = network.degree_property_map('total').a
+
         # save to df
         pd.DataFrame.from_dict(stat_distributions).to_pickle(out_data_dir + name + '_stat_dists.df')
         if 'category' in stat_distributions:
