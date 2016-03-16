@@ -83,9 +83,12 @@ def pagerank_from_transmat(weighted_adj_matrix, print_prefix='', damping=0.85):
     return pi / pi.sum()
 
 
-def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e5, verbose=True):
+def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., scaling_factor=1e5, verbose=True, init_v=None, tol=0):
     P = normalize(transition_matrix, norm='l1', axis=0, copy=True)
-    P.data *= scaling_factor
+    if scaling_factor > 0.:
+        P.data *= scaling_factor
+    else:
+        scaling_factor = 1.
     assert not np.any(P.data < 0)
     zeros_near_z = np.isclose(P.data, 0., rtol=0., atol=1e-10).sum()
 
@@ -99,7 +102,11 @@ def stationary_dist(transition_matrix, print_prefix='', atol=1e-10, rtol=0., sca
     if verbose:
         print(print_prefix, 'P values near zero: #', zeros_near_z)
     try:
-        eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix, verbose=verbose)  # , init_v=np.array(P.sum(axis=1)).flatten())
+        eigval, pi = la.leading_eigenvector(P, print_prefix=print_prefix, verbose=verbose,
+                                            init_v=np.array(P.sum(axis=1)).flatten() if init_v is None else init_v,
+                                            tol=tol)
+        if verbose:
+            print('largest eigval:', ("%.15f" % eigval[0]))
     except scipy.sparse.linalg.ArpackNoConvergence:
         if verbose:
             print(print_prefix, 'eigenvector did not converge!')

@@ -55,11 +55,11 @@ def transition_matrix(M):
 def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=0, max_inc_tol_fac=0, k=1,
                         print_prefix='', dense_fallback=False, verbose=True):
     if verbose:
-        print(print_prefix + 'largest eigenvec', end='')
+        print(print_prefix + 'largest eigenvec', end=' ')
     k = min(k, M.shape[0] - 2)
     if scipy.sparse.issparse(M):
         if verbose:
-            print('sparse', end='')
+            print('sparse', end=' ')
         if symmetric:
             if verbose:
                 print('symmetric')
@@ -68,13 +68,7 @@ def leading_eigenvector(M, symmetric=False, init_v=None, overwrite_a=False, tol=
             try:
                 if verbose:
                     print('asymmetric')
-                #print(datetime.datetime.now(), 'normal calc'
-                l, v = linalg.eigs(M, k=k, which="LR", v0=init_v, maxiter=max(M.shape[0], 1000))
-                #print(datetime.datetime.now(), 'sigma calc'
-                #ls, vs = linalg.eigs(M, k=k, which="SM", OPpart='r', v0=init_v, maxiter=max(M.shape[0], 1000), sigma=1.)
-                #print(l, ls
-                #print(v, vs
-                #exit()
+                l, v = linalg.eigs(M, k=k, which="LR", v0=init_v, maxiter=max(M.shape[0], 1000), tol=tol)
             except scipy.sparse.linalg.ArpackNoConvergence as e:
                 if dense_fallback:
                     if verbose:
